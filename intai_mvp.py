@@ -236,11 +236,18 @@ def rapihkan(mentah):
 
 
 def hitung_skor(rows):
-    """Skor Cuan 0-100 = umur(50) + varian(25) + funnel(15) + video(10)."""
+    """Skor Cuan 0-100 = umur(50) + varian(25) + funnel(15) + video(10).
+    v0.8: komponen varian = jumlah iklan halaman yg sama dlm scan (rumus intai_mvp.py ASLI);
+    ambang MENANG/NAIK di app di-tuning dgn rumus ini (median Cuan ±66).
+    varian_batch (collation_count) tetap disimpan utk tampilan & Skor Jual."""
+    per_hal = {}
+    for r in rows:
+        per_hal[r.get("halaman")] = per_hal.get(r.get("halaman"), 0) + 1
     hasil = []
     for r in rows:
         umur = r.get("umur_hari") or 0
-        varian = r.get("varian_batch") or 0
+        r["varian_halaman"] = per_hal.get(r.get("halaman"), 1)
+        varian = r["varian_halaman"]
         skor = (min(umur / 60, 1) * 50
                 + min(varian / 10, 1) * 25
                 + {"CTWA/WA": 15, "Marketplace": 10, "LP/Website": 5}.get(r["funnel"], 0)

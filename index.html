@@ -462,7 +462,7 @@
     background:linear-gradient(135deg,#134E48 0%, #0F5B52 55%, #0D4B44 100%);
     border-radius:22px;padding:10px;box-shadow:0 18px 44px rgba(15,91,82,.28);
   }
-#view-meta .kpi {padding:15px 18px;position:relative}
+#view-meta .kpi {padding:15px 18px;position:relative;background:transparent;border:0;border-radius:0;box-shadow:none} /* v0.8: tangkal gaya .kpi dashboard (kartu putih) yg bikin teks putih tak terbaca */
 #view-meta .kpi + .kpi::before {content:"";position:absolute;left:0;top:18%;height:64%;width:1px;background:rgba(255,255,255,.14)}
 #view-meta .kpi .k {font-size:9.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:rgba(255,255,255,.62)}
 #view-meta .kpi .v {font-size:26px;font-weight:800;letter-spacing:-.8px;margin:5px 0 2px;color:#fff}
@@ -710,7 +710,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v0.8<br>Riwayat tersimpan di mesin ini</div>
+    <div class="sb-foot">Mesin Meta aktif · v0.8.1<br>Riwayat tersimpan di mesin ini</div>
   </aside>
 
   <main class="isi-utama">
@@ -768,7 +768,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v0.8 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v0.8.1 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -964,7 +964,7 @@
   </div>
 </div>
 
-<div class="foot">INTAI v0.8 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI v0.8.1 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -2210,8 +2210,8 @@ async function scan(){
       '<div class="kpi"><div class="k">Rata2 Umur</div><div class="v">' + d.rata2 + '</div><div class="s">hari tayang</div></div>' +
       '<div class="kpi"><div class="k">Tertua</div><div class="v">' + d.tertua.hari + 'h</div><div class="s">' + esc(d.tertua.nama) + '</div></div>' +
       '<div class="kpi"><div class="k">Rentang Harga</div><div class="v">' + (ph.jumlah_titik ? fmtHarga(ph.termurah.harga) + '–' + fmtHarga(ph.termahal.harga) : '—') + '</div><div class="s">' + ph.jumlah_titik + ' titik harga · median ' + (ph.median ? fmtHarga(ph.median) : '—') + '</div></div>' +
-      '<div class="kpi" title="Estimasi TOTAL belanja iklan semua pengiklan di niche ini per bulan — MODEL 🟠, bukan data Meta"><div class="k">Est. Belanja Iklan Niche</div><div class="v" style="color:#2F7D64">' + (en.bulanan_max ? fmtHarga(en.bulanan_min) + '–' + fmtHarga(en.bulanan_max) : '—') + '</div><div class="s">per bulan (model) · median ' + (en.median_bulanan ? fmtHarga(en.median_bulanan) : '—') + '</div></div>' +
-      '<div class="kpi"><div class="k">Baru ≤7 Hari</div><div class="v" style="color:' + (wkt.baru_7hari ? '#B5443A' : 'inherit') + '">' + wkt.baru_7hari + '</div><div class="s">⚡ ' + wkt.panas_3hari + ' mulai ≤3 hari</div></div>' +
+      '<div class="kpi" title="Estimasi TOTAL belanja iklan semua pengiklan di niche ini per bulan — MODEL 🟠, bukan data Meta"><div class="k">Est. Belanja Iklan Niche</div><div class="v" style="color:#9BE7C4">' + (en.bulanan_max ? fmtHarga(en.bulanan_min) + '–' + fmtHarga(en.bulanan_max) : '—') + '</div><div class="s">per bulan (model) · median ' + (en.median_bulanan ? fmtHarga(en.median_bulanan) : '—') + '</div></div>' +
+      '<div class="kpi"><div class="k">Baru ≤7 Hari</div><div class="v" style="color:' + (wkt.baru_7hari ? '#FFB4A6' : 'inherit') + '">' + wkt.baru_7hari + '</div><div class="s">⚡ ' + wkt.panas_3hari + ' mulai ≤3 hari</div></div>' +
       '<div class="kpi"><div class="k">Video</div><div class="v">' + Math.round(video/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + video + ' iklan</div></div>' +
       '<div class="kpi" title="CTWA = Click-to-WhatsApp — iklan yang tujuannya chat WA (penjualan via chat)"><div class="k">CTWA/WA</div><div class="v">' + Math.round(ctwa/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + ctwa + ' iklan</div></div>';
     const pf = {}, pm = {};
@@ -2334,6 +2334,23 @@ async function scan(){
       '</div>';
     hitungChart(ub, "ch-ring-umur");
     hitungChart(stt, "ch-ring-status");
+    // v0.8 Tahap 2: apa yang berubah sejak scan terakhir niche yang sama (tersimpan di Supabase)
+    if(d.sejak_lalu){
+      const sl = d.sejak_lalu;
+      const nm = arr => (arr && arr.length) ? " (" + esc(arr.slice(0, 3).join(", ")) + (arr.length > 3 ? ", …" : "") + ")" : "";
+      const hd = (sl.harga_detail || []).map(h => esc(h.h || "?") + ": " + fmtHarga(h.lama) + " → " + fmtHarga(h.baru)).join(" · ");
+      document.getElementById("isi-ringkasan").insertAdjacentHTML("beforeend",
+        '<div class="sejak-lalu"><b>🔁 Sejak scan terakhir' + (sl.waktu_lalu ? ' <span style="font-weight:600;color:var(--muted)">(' + esc(sl.waktu_lalu) + (sl.scan_lalu != null ? ' · ' + sl.scan_lalu + ' iklan' : '') + ')</span>' : '') + ':</b>' +
+        '<span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA">+' + sl.baru + ' iklan baru' + nm(sl.baru_nama) + '</span>' +
+        '<span class="chip" style="color:#6E7C78;border-color:#D8D0C0;background:#F1EDE4">−' + sl.hilang + ' berhenti / tak muncul' + nm(sl.hilang_nama) + '</span>' +
+        '<span class="chip" style="color:#B7791F;border-color:#E8D9B8;background:var(--soft)"' + (hd ? ' title="' + hd + '"' : '') + '>💲 ' + sl.harga_berubah + ' ganti harga</span>' +
+        '</div>' +
+        (hd ? '<div class="hint" style="margin-top:6px">💲 ' + hd + '</div>' : '') +
+        (sl.lama_tanpa_detail ? '<div class="hint" style="margin-top:6px">ℹ️ Scan sebelumnya dari versi lama (belum simpan nama & harga) — nama yang hilang & perubahan harga mulai lengkap di scan berikutnya. Angka “baru” kali ini bisa membengkak karena v0.8 menarik lebih banyak variasi iklan.</div>' : ''));
+    } else {
+      document.getElementById("isi-ringkasan").insertAdjacentHTML("beforeend",
+        '<div class="hint" style="margin-top:10px">🔁 Scan pertama untuk niche ini — scan lagi besok untuk melihat iklan baru, yang berhenti, dan perubahan harga.</div>');
+    }
     document.getElementById("hasil-scan").style.display = "";
     render();
   }catch(e){
@@ -2422,5 +2439,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a493d256dd857a21',t:'MTc5MTc4NDE3MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a493efb8aee6f46d',t:'MTc5MTc4NTM3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

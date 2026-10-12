@@ -18,6 +18,7 @@ Windows  : double-click app.bat
 import base64
 import concurrent.futures
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -33,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "0.7"
+VERSI = "0.8.1"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -43,7 +44,14 @@ url_cache = {}
 AKUN_DB = {}    # email -> {"nama": str, "hash": sha256}
 TOKENS = {}     # token -> email
 RIWAYAT = []    # [{kata, mode, waktu, jumlah, baru, hilang}]
-LAST_SEEN = {}  # (kata, mode) -> set(archive_id) utk hitung delta baru/hilang
+LAST_SEEN = {}  # (kata, mode) -> {archive_id: {"h": halaman, "hr": harga_min}} utk delta & "sejak scan terakhir"
+
+
+def ke_indeks(ids):
+    """Normalisasi isi kolom ids: list lama ['123', ...] atau dict baru {'123': {h, hr}}."""
+    if isinstance(ids, dict):
+        return {str(k): (v if isinstance(v, dict) else {}) for k, v in ids.items()}
+    return {str(i): {} for i in (ids or [])}
 
 # Supabase (opsional via env var: SUPABASE_URL + SUPABASE_KEY).
 # Terisi  -> Supabase jadi penyimpanan utama (riwayat & akun awet walau deploy ulang),
@@ -1756,7 +1764,7 @@ def rincian(o, b):
             extra_links.append(l)
 
     sk_umur = round(min(b["umur_hari"] / 60, 1) * 50, 1)
-    sk_varian = round(min(b["varian_batch"] / 10, 1) * 25, 1)
+    sk_varian = round(min((b.get("varian_halaman") or b["varian_batch"]) / 10, 1) * 25, 1)
     sk_funnel = {"CTWA/WA": 15, "Marketplace": 10, "LP/Website": 5}.get(b["funnel"], 0)
     sk_video = 10 if b["format"] == "Video" else 4
 
@@ -2207,7 +2215,8 @@ def jalankan_scan(nilai, mode="cari"):
     tugas = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         for x in out:
-            if x.get("aktif") is False:
+            # jatah gali harga hanya utk iklan aktif & nyambung (iklan mati / niche luar dilewati)
+            if x.get("aktif") is False or (x.get("relevansi") or {}).get("label") == "Lepas":
                 continue
             lk = (x["detail"].get("link_url") or "").strip()
             if not lk.startswith("http"):
@@ -2290,7 +2299,8 @@ def jalankan_scan(nilai, mode="cari"):
                 "status": "konsisten" if abs(selisih) <= 5 else
                           ("LP lebih murah" if selisih > 0 else "LP lebih mahal"),
             }
-        for v in (kumpul if x.get("aktif") is not False else []):
+        for v in (kumpul if x.get("aktif") is not False
+                  and (x.get("relevansi") or {}).get("label") != "Lepas" else []):
             label_produk = re.sub(r"\{\{[^}]*\}\}", "…", det.get("title") or x["teks"][:30] or "")
             semua_titik.append((v, x["halaman"], label_produk))
     peta_harga = {"jumlah_titik": 0}
@@ -2418,10 +2428,20 @@ def jalankan_scan(nilai, mode="cari"):
 
     tertua_x = max(hidup, key=lambda x: x["umur"])
     # catat ke riwayat mesin -> muncul otomatis di dashboard (/api/ringkasan)
-    catat_scan(label, mode, len(rows_hidup), {str(b["archive_id"]) for b in rows_hidup})
+    indeks_kini = {}
+    for x in out:
+        if x.get("aktif") is False:
+            continue
+        aid = str((x.get("detail") or {}).get("archive_id") or "")
+        if aid:
+            indeks_kini[aid] = {"h": x.get("halaman"), "hr": x.get("harga_min") or 0}
+    try:
+        sejak_lalu = catat_scan(label, mode, len(rows_hidup), indeks_kini)
+    except Exception:
+        sejak_lalu = None
 
     return {
-        "ok": True, "kata": label, "jumlah": len(rows_hidup),
+        "ok": True, "kata": label, "jumlah": len(rows_hidup), "sejak_lalu": sejak_lalu,
         "jumlah_mati": sum(1 for b in rows if b.get("aktif") is False),
         "rata2": sum(x["umur"] for x in hidup) // max(len(hidup), 1),
         "tertua": {"nama": tertua_x["halaman"], "hari": tertua_x["umur"]},
@@ -2506,8 +2526,31 @@ def supa(method, table, payload=None, params="", prefer="return=minimal"):
         return False, None
 
 
-def hash_pw(pw):
+def hash_pw_lama(pw):
+    """Format v0.7 (SHA-256 + garam tetap) — hanya utk verifikasi akun lama."""
     return hashlib.sha256(("intai#" + pw).encode("utf-8")).hexdigest()
+
+
+def hash_pw(pw):
+    """v0.8: PBKDF2-SHA256 100rb iterasi + salt acak per pengguna → 'pbkdf2$salt$hash'.
+    Muat di kolom intai_akun.hash yang sama (tanpa ubah tabel)."""
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), bytes.fromhex(salt), 100000).hex()
+    return "pbkdf2$" + salt + "$" + h
+
+
+def cek_pw(pw, tersimpan):
+    """Return (cocok, perlu_upgrade)."""
+    tersimpan = str(tersimpan or "")
+    if tersimpan.startswith("pbkdf2$"):
+        try:
+            _, salt, h = tersimpan.split("$", 2)
+            uji = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), bytes.fromhex(salt), 100000).hex()
+            return hmac.compare_digest(uji, h), False
+        except Exception:
+            return False, False
+    cocok = bool(tersimpan) and hmac.compare_digest(hash_pw_lama(pw), tersimpan)
+    return cocok, cocok
 
 
 def simpan_data():
@@ -2516,7 +2559,7 @@ def simpan_data():
         d = {
             "versi": VERSI,
             "riwayat": RIWAYAT,
-            "last_seen": [{"kata": k[0], "mode": k[1], "ids": sorted(v)}
+            "last_seen": [{"kata": k[0], "mode": k[1], "ids": v}
                           for k, v in LAST_SEEN.items()],
             "akun": AKUN_DB,
         }
@@ -2543,7 +2586,7 @@ def muat_data():
             RIWAYAT.extend(lokal.get("riwayat") or [])
             for e in lokal.get("last_seen") or []:
                 try:
-                    LAST_SEEN[(e["kata"], e["mode"])] = set(str(i) for i in e.get("ids") or [])
+                    LAST_SEEN[(e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
                 except Exception:
                     pass
             for email, a in (lokal.get("akun") or {}).items():
@@ -2574,7 +2617,7 @@ def muat_data():
             LAST_SEEN.clear()
             for e in ls:
                 try:
-                    LAST_SEEN[(e["kata"], e["mode"])] = set(str(i) for i in e.get("ids") or [])
+                    LAST_SEEN[(e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
                 except Exception:
                     pass
     elif lokal.get("last_seen"):
@@ -2610,16 +2653,41 @@ def jantung_terowongan():
         time.sleep(20)
 
 
-def catat_scan(label, mode, jumlah, ids):
+def catat_scan(label, mode, jumlah, indeks):
     """Catat hasil scan ke riwayat mesin (sumber data dashboard /api/ringkasan).
     delta baru/hilang dihitung dari perbandingan archive_id vs scan sebelumnya
-    dengan kata/mode yang sama."""
+    dengan kata/mode yang sama. v0.8: indeks = {archive_id: {"h", "hr"}} →
+    return `sejak_lalu` (nama yg baru/hilang + harga yg berubah) atau None (scan pertama)."""
+    indeks = ke_indeks(indeks)
     with lock:
         kunci = (label, mode)
         prev = LAST_SEEN.get(kunci)
-        baru = len(ids - prev) if prev else 0
-        hilang = len(prev - ids) if prev else 0
-        LAST_SEEN[kunci] = set(ids)
+        waktu_lalu = jumlah_lalu = None
+        for r in reversed(RIWAYAT):
+            if r.get("kata") == label and r.get("mode") == mode:
+                waktu_lalu, jumlah_lalu = r.get("waktu"), r.get("jumlah")
+                break
+        sejak_lalu = None
+        if prev:
+            baru_id = [k for k in indeks if k not in prev]
+            hilang_id = [k for k in prev if k not in indeks]
+            harga_ubah = [{"h": indeks[k].get("h"), "lama": prev[k].get("hr"), "baru": indeks[k].get("hr")}
+                          for k in indeks if k in prev
+                          and prev[k].get("hr") and indeks[k].get("hr")
+                          and prev[k].get("hr") != indeks[k].get("hr")]
+            unik = lambda xs: list(dict.fromkeys(x for x in xs if x))
+            sejak_lalu = {
+                "waktu_lalu": waktu_lalu, "scan_lalu": jumlah_lalu,
+                "baru": len(baru_id), "hilang": len(hilang_id), "harga_berubah": len(harga_ubah),
+                "baru_nama": unik(indeks[k].get("h") for k in baru_id)[:5],
+                "hilang_nama": unik(prev[k].get("h") for k in hilang_id)[:5],
+                "harga_detail": harga_ubah[:5],
+                # snapshot lama (v0.7) belum menyimpan nama/harga → keterangan jujur di UI
+                "lama_tanpa_detail": not any(v for v in prev.values()),
+            }
+        baru = sejak_lalu["baru"] if sejak_lalu else 0
+        hilang = sejak_lalu["hilang"] if sejak_lalu else 0
+        LAST_SEEN[kunci] = indeks
         RIWAYAT.append({
             "kata": label, "mode": mode,
             "waktu": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M") + " UTC",
@@ -2627,13 +2695,14 @@ def catat_scan(label, mode, jumlah, ids):
         })
         if len(RIWAYAT) > 500:
             del RIWAYAT[:len(RIWAYAT) - 500]
-        simpan_data()
+    simpan_data()
     if supa_aktif():
         supa("POST", "intai_riwayat", payload={
             "kata": label, "mode": mode, "waktu": RIWAYAT[-1]["waktu"] if RIWAYAT else "",
             "jumlah": jumlah, "baru": baru, "hilang": hilang})
-        supa("POST", "intai_last_seen", payload={"kata": label, "mode": mode, "ids": sorted(ids)},
+        supa("POST", "intai_last_seen", payload={"kata": label, "mode": mode, "ids": indeks},
              prefer="return=minimal,resolution=merge-duplicates")
+    return sejak_lalu
 
 
 def ringkasan_api():
@@ -2772,13 +2841,24 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/login":
             d = self.baca_json()
             email = str(d.get("email") or "").strip().lower()
+            pw = str(d.get("password") or "")
             with lock:
-                akun = AKUN_DB.get(email)
-                oke = bool(akun and akun["hash"] == hash_pw(str(d.get("password") or "")))
-                if oke:
+                akun = dict(AKUN_DB.get(email) or {})
+            oke, upgrade = cek_pw(pw, akun.get("hash")) if akun else (False, False)  # hashing di luar lock
+            if oke:
+                with lock:
                     tok = secrets.token_hex(16)
                     TOKENS[tok] = email
                     nama = akun["nama"]
+                if upgrade:  # akun v0.7 (sha256) → otomatis naik ke PBKDF2 saat login
+                    h_baru = hash_pw(pw)
+                    with lock:
+                        if email in AKUN_DB:
+                            AKUN_DB[email]["hash"] = h_baru
+                    simpan_data()
+                    if supa_aktif():
+                        supa("POST", "intai_akun", payload={"email": email, "nama": nama, "hash": h_baru},
+                             prefer="return=minimal,resolution=merge-duplicates")
             if oke:
                 self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                            "application/json")
@@ -2799,13 +2879,14 @@ class Handler(BaseHTTPRequestHandler):
                     self.tulis(200, json.dumps({"ok": False, "error": "Email sudah terdaftar di mesin ini"}),
                                "application/json")
                     return
-                AKUN_DB[email] = {"nama": nama, "hash": hash_pw(pw)}
+                h_pw = hash_pw(pw)  # sekali saja (salt acak → tiap panggilan beda)
+                AKUN_DB[email] = {"nama": nama, "hash": h_pw}
                 tok = secrets.token_hex(16)
                 TOKENS[tok] = email
             simpan_data()
             if supa_aktif():
                 supa("POST", "intai_akun",
-                     payload={"email": email, "nama": nama, "hash": hash_pw(pw)},
+                     payload={"email": email, "nama": nama, "hash": h_pw},
                      prefer="return=minimal,resolution=merge-duplicates")
             self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                        "application/json")
