@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "0.8.1"
+VERSI = "0.8.2"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -1842,10 +1842,19 @@ def rincian(o, b):
 
 
 def parse_harga(v):
-    """'IDR525,000' / 'Rp 1.259.000' / '59000' -> int rupiah."""
+    """'IDR525,000' / 'Rp 1.259.000' / '59000' / 'Rp59.000,00' -> int rupiah.
+    v0.8.1: teks bebas (mis. deskripsi kartu DPA "maks 15.00 WIB", "50g SPF50+") TIDAK lagi
+    digabung angkanya — hanya angka berawalan Rp/IDR yang diambil dari teks campuran."""
     if v is None:
         return None
-    ang = re.sub(r"[^0-9]", "", str(v))
+    t = str(v).strip()
+    if not re.fullmatch(r"(?:rp\.?|idr)?\s*[0-9][0-9.,]*\s*", t, re.I):
+        m = re.search(r"(?:\bRp\.?|\bIDR)\s?([0-9]{1,3}(?:[.,][0-9]{3})+(?:[.,][0-9]{2})?|[0-9]{4,9})(?![0-9])", t, re.I)
+        if not m:
+            return None
+        t = m.group(1)
+    t = re.sub(r"(?<=[0-9]{3})[.,][0-9]{2}\s*$", "", t.strip())  # buang desimal sen: 59.000,00 / 59000.00
+    ang = re.sub(r"[^0-9]", "", t)
     if not ang or not (4 <= len(ang) <= 11):
         return None
     try:
@@ -1878,7 +1887,12 @@ def gali_harga_lp(url):
             hasil["tipe"] = "kosong"
         else:
             kandidat = []
-            for m in re.findall(r'"price"\s*:\s*"?([0-9]{4,9})', t):
+            # v0.8.1: toko luar negeri (USD/EUR...) → angka "price" (sering dlm sen: 2600 = $26.00)
+            # bukan rupiah; hanya pola "Rp ..." yang tetap dipercaya.
+            mu = re.search(r'"(?:priceCurrency|currency|currencyCode|currency_code)"\s*:\s*"([A-Za-z]{3})"', t)
+            asing = bool(mu and mu.group(1).upper() != "IDR")
+            hasil["mata_uang"] = mu.group(1).upper() if mu else None
+            for m in ([] if asing else re.findall(r'"price"\s*:\s*"?([0-9]{4,9})', t)):
                 v = parse_harga(m)
                 if v:
                     kandidat.append(v)
@@ -1886,7 +1900,7 @@ def gali_harga_lp(url):
                 v = parse_harga(m)
                 if v:
                     kandidat.append(v)
-            for m in re.findall(r'"(?:lowPrice|highPrice)"\s*:\s*"?([0-9]{4,9})', t):
+            for m in ([] if asing else re.findall(r'"(?:lowPrice|highPrice)"\s*:\s*"?([0-9]{4,9})', t)):
                 v = parse_harga(m)
                 if v:
                     kandidat.append(v)
