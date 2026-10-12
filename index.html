@@ -650,6 +650,37 @@
 #view-meta .hero-grid {grid-template-columns:1fr}
 #view-meta .alur-grid {grid-template-columns:1fr}
 #view-meta .mp-grid {grid-template-columns:1fr 1fr}}
+
+/* ===== v0.8: Rak Angle, Ringkasan tabel, Banding Niche, Bertahan vs Tumbang ===== */
+#view-meta .hook-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+#view-meta .hook-kartu{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s;display:flex;flex-direction:column;gap:8px}
+#view-meta .hook-kartu:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(34,48,46,.10);border-color:var(--accent)}
+#view-meta .hook-teks{font-size:13px;font-weight:650;color:#22302E;line-height:1.45}
+#view-meta .hook-meta{display:flex;gap:5px;flex-wrap:wrap}
+#view-meta .hook-aksi{font-size:11px;font-weight:750;color:var(--accent);margin-top:auto}
+#view-meta .ringkas-scroll{overflow-x:auto}
+#view-meta table.ringkas-tabel{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px;table-layout:auto}
+#view-meta table.ringkas-tabel thead th{position:static;top:auto;z-index:auto;cursor:default;background:transparent;box-shadow:none}
+#view-meta .banding-grid>*{min-width:0}
+#view-meta table.ringkas-tabel th{text-align:left;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--line)}
+#view-meta table.ringkas-tabel td{padding:8px 10px;border-bottom:1px dashed var(--line);vertical-align:top}
+#view-meta .rk-k{font-weight:750;color:#3E4B48;white-space:nowrap}
+#view-meta .rk-v{font-weight:650;color:#22302E}
+#view-meta .rk-c{color:var(--muted);font-size:11.5px}
+#view-meta .ringkas-grafik-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+#view-meta .ringkas-grafik{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+#view-meta .ringkas-grafik .k,#view-meta .banding-kartu .k,#view-meta #banding-mati .k{font-size:11px;font-weight:800;color:#3E4B48;margin-bottom:8px}
+#view-meta .sejak-lalu{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:12px}
+#view-meta #banding-mati{margin-top:12px;border:1px solid var(--line);border-radius:14px;padding:13px 15px;background:#fff}
+#view-meta #panel-banding{margin-top:14px}
+#view-meta .bandingbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#view-meta .bandingbar input{flex:1;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font:inherit;font-size:14px;background:#fff}
+#view-meta .banding-vonis{border-radius:14px;padding:13px 15px;background:#E4F0EA;border:1px solid #BEDCD2;font-size:13.5px;color:#22302E;margin:6px 0 12px}
+#view-meta .banding-vonis.seri{background:var(--soft);border-color:#E8D9B8}
+#view-meta .banding-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#view-meta .banding-kartu{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff}
+#view-meta .banding-top{font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
+@media (max-width:760px){#view-meta .ringkas-grafik-row,#view-meta .banding-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -679,7 +710,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v0.7<br>Riwayat tersimpan di mesin ini</div>
+    <div class="sb-foot">Mesin Meta aktif · v0.8<br>Riwayat tersimpan di mesin ini</div>
   </aside>
 
   <main class="isi-utama">
@@ -737,7 +768,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v0.7 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v0.8 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -761,13 +792,20 @@
       <div class="modebar">
         <button class="mode on" id="md-cari" onclick="setMode('cari')">🔍 Kata Kunci</button>
         <button class="mode" id="md-halaman" onclick="setMode('halaman')">🎯 Intip Kompetitor</button>
+        <button class="mode" id="md-banding" onclick="setMode('banding')">⚖️ Banding Niche</button>
       </div>
-      <div class="scanbar">
+      <div class="scanbar bandingbar" id="form-banding" style="display:none">
+        <input id="bq1" type="text" placeholder="Niche A… (contoh: madu)" autocomplete="off">
+        <span style="font-weight:800;color:var(--muted)">vs</span>
+        <input id="bq2" type="text" placeholder="Niche B… (contoh: kopi diet)" autocomplete="off">
+        <button class="btn" id="go-banding" onclick="jalankanBanding()">ADU</button>
+      </div>
+      <div class="scanbar" id="form-scan">
         <input id="q" type="text" placeholder="Kata kunci produk... (contoh: rak sepatu, serum, kopi diet)" autocomplete="off">
         <button class="btn" id="go" onclick="scan()">SCAN</button>
       </div>
       <div class="hint" id="modetext">Mode kata kunci: semua iklan aktif yang mengandung kata tsb · Tekan Enter untuk scan</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px;align-items:center">
+      <div id="cepat-row" style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px;align-items:center">
         <span style="font-size:11px;color:var(--faint);font-weight:650">Coba cepat:</span>
         <button class="chip2" onclick="isiCepat('rak sepatu')">rak sepatu</button>
         <button class="chip2" onclick="isiCepat('serum')">serum</button>
@@ -800,7 +838,17 @@
   <div class="alur-kartu"><div class="alur-no">4</div><b>Data Lengkap</b><p>Bedah tiap iklan: harga 3 lapis, video, estimasi duit, sampai rakit naskah video.</p></div>
 </div>
 
-<div class="loading" id="loading"><div class="spin"></div><span id="tahap-loading">① Menghubungi Meta Ad Library… ±30 detik</span></div>
+<div id="panel-banding" style="display:none">
+  <div class="judul-bagian">
+    <span class="eb">BANDING</span>
+    <span class="jt">⚖️ Banding Niche</span>
+    <span class="ket">Dua scan berurutan (±1,5 menit) → adu momentum, ketahanan, turnover & uang iklan</span>
+  </div>
+  <div class="hint" id="status-banding">Isi dua niche di atas, lalu tekan ADU.</div>
+  <div id="isi-banding" style="margin-top:10px"></div>
+</div>
+
+<div class="loading" id="loading"><div class="spin"></div><span id="tahap-loading">① Menghubungi Meta Ad Library… ±45 detik</span></div>
 <div class="error" id="error"></div>
 
 <div id="hasil-scan" style="display:none">
@@ -839,11 +887,12 @@
     <div class="chart"><div class="k">📅 Kapan Iklan Dimulai</div><div id="ch-bulan"></div></div>
     <div class="chart"><div class="k">🎯 CTA yang Dipakai</div><div id="ch-cta"></div></div>
   </div>
+  <div id="banding-mati" style="display:none"></div>
 
   <div class="judul-bagian">
     <span class="eb">LANGKAH 3</span>
     <span class="jt">🧠 Rak Angle</span>
-    <span class="ket">Hook dari iklan paling kuat — klik baris untuk baca lengkap</span>
+    <span class="ket">Hook kembar dikelompokkan — makin banyak iklan memakai, makin terbukti · klik kartu untuk lihat iklannya</span>
   </div>
   <div class="chart" style="margin-top:0"><div id="ch-hook"></div></div>
 
@@ -863,6 +912,7 @@
     <button class="chip2" data-f="LP/Website" onclick="setFilter('LP/Website',this)">LP/Website</button>
     <button class="chip2" data-f="Tanpa tautan" onclick="setFilter('Tanpa tautan',this)">Tanpa tautan</button>
     <span style="width:1px;height:18px;background:var(--line);margin:0 5px"></span>
+    <button class="chip2" id="ch-mati" onclick="toggleMati()" title="Tampilkan iklan yang sudah berhenti tayang — bahan evaluasi anti-pattern">🪦 Iklan mati (<span id="ct-mati">0</span>)</button>
     <button class="chip2 on" id="ch-lepas" onclick="toggleLepas()" title="Sembunyikan iklan yang tidak nyambung dengan kata kunci">🚫 Sembunyikan niche luar</button>
     <button class="chip2" data-f="Baru" onclick="setFilter('Baru',this)" title="Hanya iklan yang mulai ≤7 hari — sinyal awal">🔥 Baru ≤7h</button>
     <button class="chip2" onclick="toggleFilterBar()" title="Filter lanjutan: rentang umur, harga, format">⚙ Filter</button>
@@ -914,7 +964,7 @@
   </div>
 </div>
 
-<div class="foot">INTAI v0.7 Utuh · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI v0.8 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -1325,6 +1375,12 @@ function tandai(teksEsc, cocok){
 let DATA = [], FILTER = "semua", SORT = {k:"skor", asc:false}, MODE = "cari", HOOKS = [];
 let SEMBUNYIKAN_LEPAS = true;
 
+let TAMPILKAN_MATI = false;
+function toggleMati(){
+  TAMPILKAN_MATI = !TAMPILKAN_MATI;
+  document.getElementById("ch-mati").classList.toggle("on", TAMPILKAN_MATI);
+  render();
+}
 function toggleLepas(){
   SEMBUNYIKAN_LEPAS = !SEMBUNYIKAN_LEPAS;
   document.getElementById("ch-lepas").classList.toggle("on", SEMBUNYIKAN_LEPAS);
@@ -1351,8 +1407,20 @@ function setMode(m){
   MODE = m;
   document.getElementById("md-cari").classList.toggle("on", m === "cari");
   document.getElementById("md-halaman").classList.toggle("on", m === "halaman");
+  document.getElementById("md-banding").classList.toggle("on", m === "banding");
   const q = document.getElementById("q");
-  if(m === "halaman"){
+  const banding = (m === "banding");
+  document.getElementById("form-scan").style.display = banding ? "none" : "";
+  document.getElementById("form-banding").style.display = banding ? "" : "none";
+  document.getElementById("cepat-row").style.display = banding ? "none" : "flex";
+  document.getElementById("panel-banding").style.display = banding ? "" : "none";
+  const hs = document.getElementById("hasil-scan");
+  if(hs) hs.style.display = (banding || !DATA.length) ? "none" : "";
+  if(banding){
+    if(q.value.trim() && !document.getElementById("bq1").value) document.getElementById("bq1").value = q.value.trim();
+    document.getElementById("modetext").innerHTML = "Mode banding: <b>adu dua niche berdampingan</b> — momentum, ketahanan, turnover, uang iklan, plus pemenang top masing-masing · Enter di kolom kanan untuk menjalankan";
+    setTimeout(() => document.getElementById(document.getElementById("bq1").value ? "bq2" : "bq1").focus(), 50);
+  } else if(m === "halaman"){
     q.placeholder = "ID Halaman kompetitor (angka)... ambil dari detail iklan";
     document.getElementById("modetext").innerHTML = "Mode kompetitor: <b>semua iklan aktif dari satu halaman</b> — tombolnya ada di detail tiap iklan · Enter untuk scan";
   } else {
@@ -1657,9 +1725,10 @@ function render(){
   const fFormat = document.getElementById("f-format").value;
   const pantau = pantauanMuat();
   const dipantau = x => pantau.some(p => p.halaman === x.halaman && p.link === x.link);
-  let tersembunyi = 0;
+  let tersembunyi = 0, matiSembunyi = 0;
   const statusTab = (FILTER === "MENANG" || FILTER === "NAIK" || FILTER === "UJI");
   let rows = DATA.filter(x => {
+    if(x.aktif === false && !TAMPILKAN_MATI){ matiSembunyi++; return false; }
     if(statusTab){ if(x.status !== FILTER) return false; }
     else{
       if(FILTER === "Baru" && x.umur > 7) return false;
@@ -1687,13 +1756,16 @@ function render(){
   });
   document.getElementById("countinfo").innerHTML = rows.length + " tampil" +
     (tersembunyi ? " · <b style=\"color:#B5443A\">" + tersembunyi + " niche luar disembunyikan</b>" : "") +
+    (matiSembunyi ? " · <b style=\"color:#6E7C78\">" + matiSembunyi + " iklan mati disembunyikan</b>" : "") +
     " dari " + DATA.length + " iklan";
   document.getElementById("jml-pantauan").textContent = pantau.length;
   // hitungan tab status (hidup)
   const ct = {MENANG: 0, NAIK: 0, UJI: 0};
-  DATA.forEach(x => { if(ct[x.status] != null) ct[x.status]++; });
+  let nMati = 0;
+  DATA.forEach(x => { if(x.aktif === false){ nMati++; return; } if(ct[x.status] != null) ct[x.status]++; });
   const setCt = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
-  setCt("ct-semua", DATA.length); setCt("ct-menang", ct.MENANG); setCt("ct-naik", ct.NAIK); setCt("ct-uji", ct.UJI);
+  setCt("ct-mati", nMati);
+  setCt("ct-semua", DATA.length - nMati); setCt("ct-menang", ct.MENANG); setCt("ct-naik", ct.NAIK); setCt("ct-uji", ct.UJI);
   const tb = document.getElementById("tbody");
   tb.innerHTML = "";
   rows.forEach(x => {
@@ -1711,6 +1783,7 @@ function render(){
         '<span data-bintang="' + id + '" onclick="event.stopPropagation();togglePantauan(' + id + ')" title="Bintangi — simpan ke Pantauan (tersimpan di browser)" style="cursor:pointer;margin-right:4px;font-size:13px;color:' + (dipantau(x) ? '#B7791F' : '#CBD5E1') + '">' + (dipantau(x) ? '★' : '☆') + '</span>' +
         esc(x.halaman) +
         ' ' + statusChip(x.status) +
+        (x.aktif === false ? ' <span class="chip" style="color:#6E7C78;border-color:#D8D0C0;background:#F1EDE4" title="Iklan sudah berhenti tayang — bahan evaluasi anti-pattern">🪦 MATI</span>' : '') +
         (x.umur <= 3 ? ' <span class="chip" style="color:#B5443A;border-color:#E8C4BE;background:#F6E7E3">⚡ PANAS</span>' :
          x.umur <= 7 ? ' <span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA">🔥 BARU</span>' : '') +
         '</div><div class="cup2">' + esc(bersih(x.teks).slice(0,60)) + '</div></td>' +
@@ -1925,6 +1998,124 @@ function toggleTop(i){
     isi + '</div>';
   document.body.appendChild(ov);
 }
+function toggleHook(i){
+  const hk = (HOOKS || [])[i];
+  if(!hk) return;
+  const isi = (hk.idx || []).filter(ix => DATA[ix]).map(ix => {
+    const x = DATA[ix];
+    return '<div class="tp-ad" onclick="bukaIklanDariModal(' + ix + ')">▶ ' + esc(x.halaman) + ' · ' + esc(x.format) +
+      ' · ' + x.umur + ' hari aktif · skor ' + x.skor + ' — klik untuk bedah detail</div>';
+  }).join("");
+  let ov = document.querySelector(".brief-ov");
+  if(ov) ov.remove();
+  ov = document.createElement("div");
+  ov.className = "brief-ov";
+  ov.style.cssText = "position:fixed;inset:0;z-index:520;background:rgba(34,48,46,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px";
+  ov.addEventListener("click", e => { if(e.target === ov) ov.remove(); });
+  ov.innerHTML = '<div class="modal" style="max-width:560px;width:100%;max-height:82vh;overflow:auto">' +
+    '<div class="bar-detail"><span class="jd">🧠 Hook: “' + esc((hk.hook || "").slice(0, 60)) + '”</span>' +
+    '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
+    '<div class="hint" style="margin:8px 0">Hook ini dipakai <b>' + hk.jml + ' iklan</b> dari ' + (hk.halaman || []).length +
+    ' pengiklan — makin banyak dipakai, makin terbukti di niche ini.</div>' + isi + '</div>';
+  document.body.appendChild(ov);
+}
+
+/* ===== Banding Niche: 2 scan berurutan, adu 4 dimensi ===== */
+function statistikNiche(d){
+  const rows = (d.rows || []).filter(x => !x.relevansi || x.relevansi.label !== "Lepas"); // niche luar tak dihitung
+  const aktif = rows.filter(x => x.aktif !== false), mati = rows.filter(x => x.aktif === false);
+  const umur = aktif.map(x => x.umur || 0).sort((a,b) => a-b);
+  const hrg = aktif.map(x => x.harga_min).filter(v => v > 0).sort((a,b) => a-b);
+  const wkt = d.waktu || {}, en = d.ekonomi_niche || {}, acn = d.acuan || {};
+  return {
+    kata: d.kata, jml: rows.length, aktif: aktif.length, mati: mati.length,
+    pengiklan: new Set(aktif.map(x => x.halaman)).size,
+    baru: wkt.baru_7hari || 0,
+    momentum: aktif.length ? Math.round((wkt.baru_7hari || 0) / aktif.length * 100) : 0,
+    turnover: rows.length ? Math.round(mati.length / rows.length * 100) : 0,
+    umur_med: umur.length ? umur[Math.floor(umur.length/2)] : 0,
+    harga_med: hrg.length ? hrg[Math.floor(hrg.length/2)] : 0,
+    bulanan: Math.round(((en.bulanan_min || 0) + (en.bulanan_max || 0)) / 2),
+    bulanan_teks: en.bulanan_max ? fmtHarga(en.bulanan_min) + "–" + fmtHarga(en.bulanan_max) : "—",
+    funnel: acn.funnel || "—", format: acn.format || "—", cta: acn.cta || "—",
+    top3: (d.top_produk || []).slice(0, 3),
+  };
+}
+async function jalankanBanding(){
+  const q1 = document.getElementById("bq1").value.trim();
+  const q2 = document.getElementById("bq2").value.trim();
+  const st = document.getElementById("status-banding");
+  const isi = document.getElementById("isi-banding");
+  const btn = document.getElementById("go-banding");
+  if(!q1 || !q2){ st.innerHTML = '<b style="color:#B5443A">Isi dulu kedua niche.</b>'; return; }
+  if(q1.toLowerCase() === q2.toLowerCase()){ st.innerHTML = '<b style="color:#B5443A">Dua niche masih sama — isi yang berbeda.</b>'; return; }
+  isi.innerHTML = "";
+  btn.disabled = true;
+  const putar = '<span class="spin" style="display:inline-block;width:14px;height:14px;vertical-align:-3px;margin-right:6px"></span>';
+  try{
+    st.innerHTML = putar + '① Scan niche <b>' + esc(q1) + '</b>… (±45 detik)';
+    const d1 = await (await fetch("/scan?q=" + encodeURIComponent(q1) + "&mode=cari")).json();
+    if(!d1.ok) throw new Error(q1 + ": " + (d1.error || "scan gagal"));
+    st.innerHTML = putar + '② Scan niche <b>' + esc(q2) + '</b>… (±45 detik)';
+    const d2 = await (await fetch("/scan?q=" + encodeURIComponent(q2) + "&mode=cari")).json();
+    if(!d2.ok) throw new Error(q2 + ": " + (d2.error || "scan gagal"));
+    st.innerHTML = "✅ Dua scan selesai.";
+    renderBanding(d1, d2);
+  }catch(e){
+    st.innerHTML = '<b style="color:#B5443A">Gagal: ' + esc(String(e.message || e)) + '</b> — tunggu ±1 menit lalu ADU lagi.';
+  }finally{
+    btn.disabled = false;
+  }
+}
+function renderBanding(d1, d2){
+  const A = statistikNiche(d1), B = statistikNiche(d2);
+  // 4 dimensi: momentum↑, ketahanan↑, turnover↓, uang iklan↑
+  const dim = [
+    ["Momentum (baru ≤7h)", A.momentum, B.momentum, A.momentum + "%", B.momentum + "%", "tinggi"],
+    ["Ketahanan (umur median)", A.umur_med, B.umur_med, A.umur_med + " hari", B.umur_med + " hari", "tinggi"],
+    ["Turnover (iklan mati)", A.turnover, B.turnover, A.turnover + "%", B.turnover + "%", "rendah"],
+    ["Uang iklan (est./bln) 🟠", A.bulanan, B.bulanan, A.bulanan_teks, B.bulanan_teks, "tinggi"],
+  ];
+  let m1 = 0, m2 = 0;
+  const vonis = dim.map(([nama, va, vb, ta, tb, arah]) => {
+    let p = 0;
+    if(va !== vb) p = (arah === "tinggi") ? (va > vb ? 1 : 2) : (va < vb ? 1 : 2);
+    if(p === 1) m1++; else if(p === 2) m2++;
+    return {nama, ta, tb, p};
+  });
+  const jago = m1 === m2 ? null : (m1 > m2 ? A : B);
+  const baris = (k, va, vb, p) =>
+    '<tr><td class="rk-k">' + k + '</td><td class="rk-v"' + (p === 1 ? ' style="color:var(--accent);font-weight:800"' : '') + '>' + va + (p === 1 ? ' ✓' : '') +
+    '</td><td class="rk-v"' + (p === 2 ? ' style="color:var(--accent);font-weight:800"' : '') + '>' + vb + (p === 2 ? ' ✓' : '') + '</td></tr>';
+  const kartuTop = s => s.top3.length ? s.top3.map((p, i) =>
+    '<div class="banding-top">' + ["🥇","🥈","🥉"][i] + ' ' + esc(Array.from(p.nama || p.halaman || "").slice(0, 34).join("")) +
+    ' <span style="color:var(--muted)">· ' + esc(Array.from(p.halaman || "").slice(0, 22).join("")) + '</span> <b style="color:var(--accent)">★ ' + (p.skor_jual || 0) + '</b></div>').join("")
+    : '<div class="hint">Tidak ada produk terdeteksi.</div>';
+  const kepala = '<thead><tr><th></th><th>' + esc(A.kata) + '</th><th>' + esc(B.kata) + '</th></tr></thead>';
+  document.getElementById("isi-banding").innerHTML =
+    '<div class="banding-vonis' + (jago ? '' : ' seri') + '">' +
+      (jago ? '🏆 Niche <b>' + esc(jago.kata) + '</b> unggul di <b>' + Math.max(m1, m2) + ' dari 4</b> dimensi — secara sinyal lebih layak dicoba duluan.'
+            : '🤝 Seimbang — keduanya punya kelebihan. Pilih yang paling cocok dengan modal & kemampuan produksimu.') +
+      ' <span style="color:var(--muted);font-size:11.5px">(sinyal pasar, bukan jaminan laku)</span></div>' +
+    '<div class="banding-grid">' +
+      '<div class="banding-kartu"><div class="k">⚔️ Adu 4 dimensi</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
+        vonis.map(v => baris(v.nama, v.ta, v.tb, v.p)).join("") + '</tbody></table></div>' +
+      '<div class="banding-kartu"><div class="k">🧬 Profil niche</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
+        baris("Iklan aktif (nyambung)", A.aktif, B.aktif, 0) +
+        baris("Pengiklan unik", A.pengiklan, B.pengiklan, 0) +
+        baris("Iklan mati terpantau", A.mati, B.mati, 0) +
+        baris("Harga median", A.harga_med ? fmtHarga(A.harga_med) : "—", B.harga_med ? fmtHarga(B.harga_med) : "—", 0) +
+        baris("Funnel dominan", esc(A.funnel), esc(B.funnel), 0) +
+        baris("Format dominan", esc(A.format), esc(B.format), 0) +
+        baris("CTA dominan", esc(A.cta), esc(B.cta), 0) +
+      '</tbody></table></div>' +
+    '</div>' +
+    '<div class="banding-grid" style="margin-top:12px">' +
+      '<div class="banding-kartu"><div class="k">🏆 Pemenang top · ' + esc(A.kata) + '</div>' + kartuTop(A) + '</div>' +
+      '<div class="banding-kartu"><div class="k">🏆 Pemenang top · ' + esc(B.kata) + '</div>' + kartuTop(B) + '</div>' +
+    '</div>' +
+    '<div class="hint" style="margin-top:10px">💡 Mau bedah salah satunya? Pilih mode 🔍 Kata Kunci lalu scan niche itu.</div>';
+}
 function bukaIklanDariModal(idx){
   const ov = document.querySelector(".brief-ov");
   if(ov) ov.remove();
@@ -1966,7 +2157,7 @@ async function scan(){
   // B1: tahap loading informatif — cerminan alur mesin di belakang
   const tahapan = [
     "① Menghubungi Meta Ad Library…",
-    "② Membongkar struktur iklan…",
+    "② Menarik 3 variasi iklan (semua · video · gambar + yang sudah mati)…",
     "③ Menggali harga LP & Marketplace…",
     "④ Menyusun rekap, ranking & estimasi…"
   ];
@@ -1974,7 +2165,7 @@ async function scan(){
   let iTahap = 0;
   const timerTahap = setInterval(() => {
     iTahap = Math.min(iTahap + 1, tahapan.length - 1);
-    if(elTahap) elTahap.textContent = tahapan[iTahap] + " (±30 detik)";
+    if(elTahap) elTahap.textContent = tahapan[iTahap] + " (±45 detik)";
     document.getElementById("status").textContent = tahapan[iTahap];
   }, 4500);
   const t0 = Date.now();
@@ -2005,15 +2196,16 @@ async function scan(){
     }));
     DATA.forEach((x, i) => { x._id = i; });
     HOOKS = (d.angle && d.angle.top_hooks) || [];
-    // KPI
-    const unik = new Set(DATA.map(x => x.halaman)).size;
-    const video = DATA.filter(x => String(x.format).toUpperCase() === "VIDEO").length;
-    const ctwa = DATA.filter(x => x.funnel === "CTWA/WA").length;
+    // KPI — dihitung dari iklan yang MASIH tayang (iklan mati = bahan analisis "tumbang" saja)
+    const HIDUP = DATA.filter(x => x.aktif !== false);
+    const unik = new Set(HIDUP.map(x => x.halaman)).size;
+    const video = HIDUP.filter(x => String(x.format).toUpperCase() === "VIDEO").length;
+    const ctwa = HIDUP.filter(x => x.funnel === "CTWA/WA").length;
     const ph = d.peta_harga || {jumlah_titik: 0};
     const wkt = d.waktu || {per_bulan:{}, baru_7hari:0, panas_3hari:0};
     const en = d.ekonomi_niche || {bulanan_min:0, bulanan_max:0, median_bulanan:0};
     document.getElementById("kpis").innerHTML =
-      '<div class="kpi"><div class="k">Total Iklan</div><div class="v">' + d.jumlah + '</div><div class="s">' + esc(d.kata) + '</div></div>' +
+      '<div class="kpi"><div class="k">Iklan Aktif</div><div class="v">' + d.jumlah + '</div><div class="s">' + esc(d.kata) + (d.jumlah_mati ? ' · 🪦 ' + d.jumlah_mati + ' mati' : '') + '</div></div>' +
       '<div class="kpi"><div class="k">Pengiklan Unik</div><div class="v">' + unik + '</div><div class="s">halaman berbeda</div></div>' +
       '<div class="kpi"><div class="k">Rata2 Umur</div><div class="v">' + d.rata2 + '</div><div class="s">hari tayang</div></div>' +
       '<div class="kpi"><div class="k">Tertua</div><div class="v">' + d.tertua.hari + 'h</div><div class="s">' + esc(d.tertua.nama) + '</div></div>' +
@@ -2023,17 +2215,52 @@ async function scan(){
       '<div class="kpi"><div class="k">Video</div><div class="v">' + Math.round(video/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + video + ' iklan</div></div>' +
       '<div class="kpi" title="CTWA = Click-to-WhatsApp — iklan yang tujuannya chat WA (penjualan via chat)"><div class="k">CTWA/WA</div><div class="v">' + Math.round(ctwa/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + ctwa + ' iklan</div></div>';
     const pf = {}, pm = {};
-    DATA.forEach(x => { pf[x.funnel] = (pf[x.funnel]||0)+1; pm[x.format] = (pm[x.format]||0)+1; });
+    HIDUP.forEach(x => { pf[x.funnel] = (pf[x.funnel]||0)+1; pm[x.format] = (pm[x.format]||0)+1; });
     hitungChart(pf, "ch-funnel");
     hitungChart(pm, "ch-format");
     hitungChart(wkt.per_bulan || {}, "ch-bulan");
     hitungChart((d.angle && d.angle.cta) || {}, "ch-cta");
-    const hooks = (d.angle && d.angle.top_hooks) || [];
+    // Yang bertahan vs yang tumbang (iklan mati dari active_status=all)
+    (function(){
+      const el = document.getElementById("banding-mati");
+      const nyambung = x => !x.relevansi || x.relevansi.label !== "Lepas";
+      const hidup = DATA.filter(x => x.aktif !== false && nyambung(x)), mati = DATA.filter(x => x.aktif === false && nyambung(x));
+      if(!mati.length){ el.innerHTML = ""; el.style.display = "none"; return; }
+      el.style.display = "";
+      const stat = list => {
+        if(!list.length) return {jml:0, umur:"—", format:"—", funnel:"—", harga:0};
+        const umur = list.map(x => x.umur || 0).sort((a,b) => a-b);
+        const hrg = list.map(x => x.harga_min).filter(v => v > 0).sort((a,b) => a-b);
+        const fmt = {}, fn = {};
+        list.forEach(x => { fmt[x.format] = (fmt[x.format]||0)+1; fn[x.funnel] = (fn[x.funnel]||0)+1; });
+        const top = o => { const e = Object.entries(o).sort((a,b) => b[1]-a[1])[0]; return e ? e[0] + " (" + Math.round(e[1]/list.length*100) + "%)" : "—"; };
+        return {jml: list.length, umur: umur[Math.floor(umur.length/2)], format: top(fmt), funnel: top(fn), harga: hrg.length ? hrg[Math.floor(hrg.length/2)] : 0};
+      };
+      const A = stat(hidup), B = stat(mati);
+      const br = (k, va, vb) => '<tr><td class="rk-k">' + k + '</td><td class="rk-v">' + va + '</td><td class="rk-c">' + vb + '</td></tr>';
+      el.innerHTML = '<div class="k">🪦 Yang Bertahan vs Yang Tumbang — pelajaran anti-pattern</div>' +
+        '<div class="ringkas-scroll"><table class="ringkas-tabel"><thead><tr><th>Metrik</th><th>🟢 Masih tayang (' + A.jml + ')</th><th>🪦 Sudah mati (' + B.jml + ')</th></tr></thead><tbody>' +
+        br("Umur median", A.umur + " hari", B.umur + " hari" + (B.jml ? " (lalu berhenti)" : "")) +
+        br("Format dominan", esc(A.format), esc(B.format)) +
+        br("Funnel dominan", esc(A.funnel), esc(B.funnel)) +
+        br("Harga median", A.harga ? fmtHarga(A.harga) : "—", B.harga ? fmtHarga(B.harga) : "— (harga iklan mati tak digali)") +
+        '</tbody></table></div>' +
+        '<div class="hint" style="margin-top:9px">💡 Pola yang dominan di kolom kanan tapi jarang di kiri = calon jebakan. Lihat iklannya lewat tombol 🪦 Iklan mati di tabel bawah.</div>';
+    })();
+    // Rak Angle: kartu hook kembar (dikelompokkan server)
+    const hooks = HOOKS;
     document.getElementById("ch-hook").innerHTML = hooks.length
-      ? hooks.map(hk =>
-          '<div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px dashed var(--line);flex-wrap:wrap">' +
-          '<span style="flex:1;min-width:220px;font-size:12.5px;color:#22302E">“' + esc(hk.hook) + '”</span>' +
-          '<span style="font-size:10.5px;color:var(--muted);white-space:nowrap">' + esc(hk.halaman) + ' · ' + hk.umur + 'h · skor ' + hk.skor + '</span></div>').join("") +
+      ? '<div class="hook-grid">' + hooks.map((hk, i) =>
+          '<div class="hook-kartu" onclick="toggleHook(' + i + ')" title="Klik — lihat semua iklan yang memakai hook ini">' +
+          '<div class="hook-teks">“' + esc(hk.hook) + '”</div>' +
+          '<div class="hook-meta">' +
+          '<span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA">× ' + (hk.jml || 1) + ' iklan</span>' +
+          '<span class="chip" style="color:#B7791F;border-color:#E8D9B8;background:var(--soft)">skor terbaik ' + (hk.skor_max != null ? hk.skor_max : hk.skor) + '</span>' +
+          '<span class="chip" style="color:#3E4B48;border-color:#D8D0C0;background:#FBFAF7">⏱ ' + (hk.umur_max != null ? hk.umur_max : hk.umur) + 'h</span>' +
+          '</div>' +
+          '<div class="hint" style="margin:0">' + esc([].concat(hk.halaman || []).slice(0, 2).join(", ")) + ([].concat(hk.halaman || []).length > 2 ? " +" + ([].concat(hk.halaman).length - 2) : "") + '</div>' +
+          '<div class="hook-aksi">Lihat ' + (hk.jml || 1) + ' iklan pemakai hook ini ▸</div>' +
+          '</div>').join("") + '</div>' +
         ((d.angle && d.angle.rata2_teks_awet) ? '<div class="hint" style="margin-top:9px">📏 Rata2 panjang teks: iklan awet (≥60h) = <b>' + d.angle.rata2_teks_awet + ' karakter</b> · iklan baru (≤14h) = <b>' + d.angle.rata2_teks_baru + ' karakter</b></div>' : '')
       : '<div class="hint">Tidak ada teks untuk dirangkum.</div>';
     const tp = d.top_produk || [], acn = d.acuan || {};
@@ -2078,12 +2305,35 @@ async function scan(){
         '<span class="chip" style="color:#3E4B48;border-color:#D8D0C0;background:#FBFAF7">Budget test: ' + fmtHarga(acn.budget_test[0]) + '–' + fmtHarga(acn.budget_test[1]) + '/hari</span>' +
         '</div>'
       : '';
-    const kal = [];
-    kal.push('Niche <b>' + esc(d.kata) + '</b>: <b>' + d.jumlah + '</b> iklan aktif dari <b>' + unik + '</b> pengiklan' + (wkt.baru_7hari ? ' — <b style="color:#B5443A">' + wkt.baru_7hari + ' di antaranya baru mulai ≤7 hari</b> (sinyal yang layak dipantau)' : '') + '.');
-    if(tp[0]) kal.push('Pemenang saat ini: <b>' + esc(tp[0].halaman) + '</b> (skor jual ' + tp[0].skor_jual + ') — ' + tp[0].umur + ' hari bertahan di iklan' + (tp[0].terjual ? ', <b>' + Number(tp[0].terjual).toLocaleString('id-ID') + ' terjual</b>' : '') + '.');
-    if(acn.harga_median) kal.push('Medan dominan: <b>' + esc(acn.funnel) + '</b> (' + esc(acn.format) + ', CTA: ' + esc(acn.cta) + ') · harga median <b>' + fmtHarga(acn.harga_median) + '</b> · budget test ' + fmtHarga(acn.budget_test[0]) + '–' + fmtHarga(acn.budget_test[1]) + '/hari.');
-    if(en.bulanan_max) kal.push('Estimasi belanja iklan niche ini: <b>' + fmtHarga(en.bulanan_min) + '–' + fmtHarga(en.bulanan_max) + '/bulan</b> (model 🟠, ±20–30%).');
-    document.getElementById("isi-ringkasan").innerHTML = kal.join(' ');
+    // RINGKASAN EKSEKUTIF v2.4: tabel 8 baris + sebaran umur & status (iklan hidup)
+    const stt = {MENANG: 0, NAIK: 0, UJI: 0};
+    const ub = {"Baru ≤7h": 0, "8–30h": 0, "31–90h": 0, ">90h": 0};
+    HIDUP.forEach(x => {
+      stt[x.status || "UJI"] = (stt[x.status || "UJI"] || 0) + 1;
+      const u = x.umur || 0;
+      if(u <= 7) ub["Baru ≤7h"]++; else if(u <= 30) ub["8–30h"]++; else if(u <= 90) ub["31–90h"]++; else ub[">90h"]++;
+    });
+    const rr = [];
+    rr.push(["Niche " + esc(d.kata), d.jumlah + " iklan aktif", unik + " pengiklan"]);
+    rr.push(["Pemenang", tp[0] ? esc(tp[0].halaman) + " · ★ " + tp[0].skor_jual : "—",
+      tp[0] ? (tp[0].umur + " hari bertahan" + (tp[0].terjual ? " · " + Number(tp[0].terjual).toLocaleString("id-ID") + " terjual" : "")) : "—"]);
+    rr.push(["Medan dominan", acn.funnel && acn.funnel !== "—" ? esc(acn.funnel) + " · " + esc(acn.format) : "—", acn.cta ? "CTA " + esc(acn.cta) : "—"]);
+    rr.push(["Harga median", acn.harga_median ? fmtHarga(acn.harga_median) : "—",
+      acn.budget_test ? "budget test " + fmtHarga(acn.budget_test[0]) + "–" + fmtHarga(acn.budget_test[1]) + "/hari" : "—"]);
+    rr.push(["Est. belanja niche", en.bulanan_max ? fmtHarga(en.bulanan_min) + "–" + fmtHarga(en.bulanan_max) + "/bulan" : "—", "model 🟠, ±20–30%"]);
+    rr.push(["Sinyal baru", wkt.baru_7hari + " iklan mulai ≤7 hari", wkt.panas_3hari + " panas ≤3 hari"]);
+    rr.push(["Iklan mati", (d.jumlah_mati || 0) + " sudah berhenti tayang", "bahan evaluasi anti-pattern"]);
+    rr.push(["Iklan tertua", d.tertua ? esc(d.tertua.nama) : "—", d.tertua ? d.tertua.hari + " hari bertahan" : "—"]);
+    document.getElementById("isi-ringkasan").innerHTML =
+      '<div class="ringkas-scroll"><table class="ringkas-tabel"><thead><tr><th>Metrik</th><th>Nilai</th><th>Catatan</th></tr></thead><tbody>' +
+      rr.map(r => '<tr><td class="rk-k">' + r[0] + '</td><td class="rk-v">' + r[1] + '</td><td class="rk-c">' + r[2] + '</td></tr>').join("") +
+      '</tbody></table></div>' +
+      '<div class="ringkas-grafik-row">' +
+        '<div class="ringkas-grafik"><div class="k">📊 Sebaran umur iklan aktif</div><div id="ch-ring-umur"></div></div>' +
+        '<div class="ringkas-grafik"><div class="k">🏆 Status keputusan</div><div id="ch-ring-status"></div></div>' +
+      '</div>';
+    hitungChart(ub, "ch-ring-umur");
+    hitungChart(stt, "ch-ring-status");
     document.getElementById("hasil-scan").style.display = "";
     render();
   }catch(e){
@@ -2098,6 +2348,8 @@ async function scan(){
   }
 }
 document.getElementById("q").addEventListener("keydown", e => { if(e.key === "Enter") scan(); });
+document.getElementById("bq1").addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById("bq2").focus(); });
+document.getElementById("bq2").addEventListener("keydown", e => { if(e.key === "Enter") jalankanBanding(); });
 
 
 
@@ -2170,5 +2422,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49095cd0cabb4ac',t:'MTc5MTc1MDIzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a493d256dd857a21',t:'MTc5MTc4NDE3MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

@@ -50,6 +50,8 @@ LAST_SEEN = {}  # (kata, mode) -> set(archive_id) utk hitung delta baru/hilang
 #           intai_data.json tetap ditulis sebagai cadangan lokal.
 # Kosong  -> aplikasi jalan normal dengan intai_data.json saja.
 SUPA_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+if SUPA_URL.endswith("/rest/v1"):
+    SUPA_URL = SUPA_URL[: -len("/rest/v1")]  # toleran: user kadang ikut menyalin ekor /rest/v1
 SUPA_KEY = os.environ.get("SUPABASE_KEY") or ""
 SOSIAL = ("instagram.com", "facebook.com", "fb.com", "wa.me", "api.whatsapp.com",
           "twitter.com", "x.com", "threads.net", "youtube.com", "youtu.be", "line.me")
@@ -1592,10 +1594,27 @@ KELUARGA_KATA = [
 ]
 
 
+# v2 anti-bocor (dari kamar sebelah; daftar kata = rekonstruksi): kategori hiburan, bukan produk jualan
+HIBURAN = ("short drama", "full episode", "full episodes", "watch full", "drama", "episode",
+           "episodes", "movie", "movies", "novel", "chapter", "streaming", "nonton", "tonton",
+           "trailer", "binge", "gameplay", "game", "games", "gaming")
+
+# v2.1: penanda katalog lintas negara (importir — bukan penjual niche lokal)
+LINTAS = ("alibaba", "aliexpress", "1688", "made in china", "ship from china", "ships from china",
+          "shipping worldwide", "worldwide delivery", "ship worldwide", "delivery worldwide")
+
+
+def _ada_kata(pola_kata, *teks_list):
+    rx = r"\b" + re.escape(pola_kata) + r"\b"
+    return any(re.search(rx, t) for t in teks_list)
+
+
 def hitung_relevansi(kata, snap, o, b):
     """Nilai kecocokan iklan thd kata kunci scan (0-100) — berantas niche luar.
     Dicek ke: teks utama, judul, caption, deskripsi link, nama halaman, isi kartu,
-    kategori halaman, link (ter-decode) + keluarga kata senada bahasa ID."""
+    kategori halaman, link (ter-decode) + keluarga kata senada bahasa ID.
+    v0.8: + anti-bocor v2–v2.3 (multi-kata, hiburan, lintas negara, katalog campuran,
+    produk-bukan-bahan). Bobot dasar & ambang label = v0.7."""
     kata = (kata or "").strip().lower()
     if not kata:
         return {"nilai": 100, "label": "Relevan", "cocok": []}
@@ -1610,37 +1629,82 @@ def hitung_relevansi(kata, snap, o, b):
                 " ".join(str(x.get("page_name") or "") for x in [snap.get("branded_content") or {}] if isinstance(x, dict)),
                 " ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or [])),
                 " ".join(str(x.get("name") or x.get("title") or "") for x in (o.get("menu_items") or []) if isinstance(x, dict))]
+    kartu_teks = []
     for c in (snap.get("cards") or []):
         if isinstance(c, dict):
-            potongan.append(str(c.get("title") or "") + " " + str(c.get("body") or "")
-                            + " " + str(c.get("link_description") or ""))
+            kt = (str(c.get("title") or "") + " " + str(c.get("body") or "")
+                  + " " + str(c.get("link_description") or ""))
+            potongan.append(kt)
+            kartu_teks.append(kt.lower())
     teks_utama = " ".join(str(p) for p in potongan).lower()
     nama_hal = str(o.get("page_name") or snap.get("page_name") or "").lower()
     link = unquote(str(snap.get("link_url") or "")).lower()
 
     skor, cocok = 0, []
-    if kata in teks_utama:
+    frasa = kata in teks_utama
+    if frasa:
         skor += 50
         cocok.append(kata)
+    jml_token = 0
     for t in token:
         if t in teks_utama:
             skor += 20
+            jml_token += 1
             if t not in cocok:
                 cocok.append(t)
         elif t in nama_hal:
             skor += 8
+            jml_token += 1
             cocok.append(t + " (nama halaman)")
         elif t in link:
             skor += 10
+            jml_token += 1
             cocok.append(t + " (tautan)")
     # keluarga kata senada: "rak sepatu" nyambung ke iklan yang bilang "furniture"
+    # v2.1: kata query sendiri tidak dihitung lagi sebagai "senada" (dulu double-count)
     for f in KELUARGA_KATA:
         if any(w in kata for w in f):
             for w in f:
-                if len(w) > 3 and (w in teks_utama or w in nama_hal or w in link):
+                if len(w) > 3 and w not in token and w != kata and (w in teks_utama or w in nama_hal or w in link):
                     skor += 15
                     cocok.append(w + " (senada)")
                     break
+    # v2: multi-kata wajib semua token nyambung — satu kata saja tidak cukup
+    if len(token) >= 2 and jml_token < len(token):
+        skor = min(skor, 28)
+    # v2: penalti kategori hiburan (biang bocor: drama/game/novel)
+    for h in HIBURAN:
+        if _ada_kata(h, teks_utama, nama_hal):
+            skor = max(0, skor - (25 if frasa else 50))
+            cocok.append("hiburan: " + h)
+            break
+    # v2.1: katalog lintas negara
+    for l in LINTAS:
+        if _ada_kata(l, teks_utama, nama_hal):
+            skor = min(skor, 12)
+            cocok.append("lintas negara: " + l)
+            break
+    # v2.2: katalog campuran (DPA) — mayoritas kartu BUKAN niche query
+    if len(kartu_teks) >= 3:
+        senada = set(token)
+        for f in KELUARGA_KATA:
+            if any(w in kata for w in f):
+                senada.update(w for w in f if len(w) > 2)
+        nyambung = sum(1 for kt in kartu_teks if any(w in kt for w in senada))
+        if nyambung / len(kartu_teks) < 0.3:
+            skor = min(skor, 12)
+            cocok.append("katalog campuran: %d/%d kartu nyambung" % (nyambung, len(kartu_teks)))
+    # v2.3: "produk, bukan bahan" — kata kunci disebut sekadar bahan/varian rasa produk lain
+    if len(token) == 1 and skor >= 15:
+        k = re.escape(kata)
+        bahan = (re.search(r"\b(dengan|plus|mengandung|berbahan|ekstrak|extract|diperkaya|topping|varian|rasa)\b[^.?!]{0,45}\b" + k + r"\b", teks_utama)
+                 or re.search(r"\b(ubi|singkong|ketela|kentang|roti|kue|donat|bakar|goreng|sate|ayam|ikan|daging|sosis|es|jus|teh|kopi|susu|yoghurt|granola|cokelat|coklat|permen|keripik|snack|biskuit|mie|sambal|saus|sabun|shampoo|lotion|serum|masker|lulur)\s+" + k + r"\b", teks_utama))
+        produk = (kata in nama_hal or kata in link
+                  or re.search(r"\b(minum|konsumsi|diminum|dimakan|pakai|dipakai|beli|order|pesan|checkout|ready|restock|manfaat|khasiat|ampuh)\b[^.?!]{0,40}\b" + k + r"\b", teks_utama)
+                  or re.search(r"\b" + k + r"\s+(asli|murni|hutan|super|premium|botol|gram|kg|ml|herbal|original|ori|termurah|terlaris)\b", teks_utama))
+        if bahan and not produk:
+            skor = min(skor, 12)
+            cocok.append(kata + " sekadar bahan/varian, bukan produk utama")
     skor = max(0, min(100, skor))
     if skor >= 40:
         label = "Relevan"
@@ -1968,6 +2032,11 @@ def bangun_top_produk(out):
     berdasarkan penjualan × omzet × lama aktif (Skor Jual)."""
     grup = {}
     for idx, x in enumerate(out):
+        if x.get("aktif") is False:  # pemenang harus hidup — iklan mati bukan acuan
+            continue
+        reln = (x.get("relevansi") or {}).get("nilai", 100)
+        if reln < 15:  # iklan Lepas (niche luar) tidak masuk ranking produk
+            continue
         det = x["detail"]
         nama = (det.get("title") or "").strip()
         nama = re.sub(r"\{\{[^}]*\}\}", " ", nama).strip()
@@ -1991,6 +2060,7 @@ def bangun_top_produk(out):
         g["omzet_min"] = max(g["omzet_min"], ek.get("omzet_min") or 0)
         g["omzet_max"] = max(g["omzet_max"], ek.get("omzet_max") or 0)
         g["umur"] = max(g["umur"], x["umur"])
+        g["rel"] = max(g.get("rel", 0), reln)
         g["varian"] += x.get("varian") or 0
         g["ads"].append({"idx": idx, "umur": x["umur"], "skor": x["skor"],
                          "format": x["format"], "skor_jual": x.get("jual")})
@@ -2006,6 +2076,9 @@ def bangun_top_produk(out):
         if g["harga_min"] and g["harga_max"]:
             unit = [int(g["omzet_min"] / max(g["harga_max"], 1)),
                     int(g["omzet_max"] / max(g["harga_min"], 1))]
+        # gerbang mutu kartu: wajib ada bukti niaga ATAU relevansi kuat
+        if not (g["harga_min"] or g["terjual"] or unit or g.get("rel", 0) >= 60):
+            continue
         g["skor_jual"] = sj["nilai"]
         g["label"] = sj["label"]
         g["unit"] = unit
@@ -2033,18 +2106,26 @@ def jalankan_scan(nilai, mode="cari"):
         nilai = re.sub(r"\D", "", nilai)
         if not nilai:
             return {"ok": False, "error": "ID halaman tidak valid"}
-        url = ("https://www.facebook.com/ads/library/?active_status=active&ad_type=all"
-               f"&country=ID&view_all_page_id={quote(nilai)}&search_type=page&media_type=all")
-        html = ambil_halaman_url(s, url)
         label = f"halaman {nilai}"
+        mentah, lihat_k = [], set()
+        for media in ("all", "video", "image"):  # variasi media + ikut iklan mati
+            url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
+                   f"&country=ID&view_all_page_id={quote(nilai)}&search_type=page&media_type={media}")
+            try:
+                html = ambil_halaman_url(s, url)
+                for o in mesin.ekstrak_iklan(html):
+                    aid = str(o.get("ad_archive_id") or "")
+                    if aid and aid not in lihat_k:
+                        lihat_k.add(aid)
+                        mentah.append(o)
+            except Exception:
+                pass
+            time.sleep(3)
     else:
-        html, _ = mesin.ambil_halaman(s, nilai, "ID")
         label = nilai
-    if len(html) < 50000:
-        return {"ok": False, "error": "Ad Library tidak merespons (coba lagi 1 menit)"}
-    mentah = mesin.ekstrak_iklan(html)
+        mentah = mesin.kumpul_iklan(s, nilai, "ID")  # 3 variasi media + iklan mati
     if not mentah:
-        return {"ok": False, "error": "Tidak ada iklan ditemukan"}
+        return {"ok": False, "error": "Tidak ada iklan ditemukan (atau Ad Library sedang tidak merespons — coba lagi 1 menit)"}
     # A4 perapian: buang duplikat archive_id (ekstraksi bisa menangkap blok sama dua kali)
     lihat_id, mentah_unik = set(), []
     for o in mentah:
@@ -2107,6 +2188,7 @@ def jalankan_scan(nilai, mode="cari"):
         if umur is None or umur < 0 or umur > 3650:
             umur, tgl = 0, "?"
         out.append({
+            "aktif": b.get("aktif") is not False,
             "halaman": b["halaman"], "teks": teks_bersih, "format": b["format"],
             "funnel": b["funnel"], "link": b["link"], "tgl": tgl,
             "umur": umur, "skor": b["skor"], "varian": b["varian_batch"],
@@ -2116,7 +2198,8 @@ def jalankan_scan(nilai, mode="cari"):
             "status": status_iklan(umur, b["skor"]),
             "detail": rincian(o, b) if o else {"skor_detail": {"total": b["skor"]}, "raw": {}},
         })
-    tertua = max(rows, key=lambda x: x["umur_hari"])
+    rows_hidup = [b for b in rows if b.get("aktif") is not False] or rows
+    tertua = max(rows_hidup, key=lambda x: x["umur_hari"])
 
     # === GALI HARGA: DPA (kartu) + LP + Marketplace (paralel, best-effort) ===
     LP_MAKS, MP_MAKS = 8, 6
@@ -2124,6 +2207,8 @@ def jalankan_scan(nilai, mode="cari"):
     tugas = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         for x in out:
+            if x.get("aktif") is False:
+                continue
             lk = (x["detail"].get("link_url") or "").strip()
             if not lk.startswith("http"):
                 continue
@@ -2205,7 +2290,7 @@ def jalankan_scan(nilai, mode="cari"):
                 "status": "konsisten" if abs(selisih) <= 5 else
                           ("LP lebih murah" if selisih > 0 else "LP lebih mahal"),
             }
-        for v in kumpul:
+        for v in (kumpul if x.get("aktif") is not False else []):
             label_produk = re.sub(r"\{\{[^}]*\}\}", "…", det.get("title") or x["teks"][:30] or "")
             semua_titik.append((v, x["halaman"], label_produk))
     peta_harga = {"jumlah_titik": 0}
@@ -2218,16 +2303,22 @@ def jalankan_scan(nilai, mode="cari"):
             "median": urut[len(urut) // 2][0],
         }
 
+    # v0.8: agregat niche (uang, pemenang, acuan, waktu) HANYA dari iklan yang masih tayang
+    # + buang niche luar (Lepas) supaya uang/pemenang/acuan tidak tercemar iklan tak nyambung
+    hidup = ([x for x in out if x.get("aktif") is not False
+              and (x.get("relevansi") or {}).get("label") != "Lepas"]
+             or [x for x in out if x.get("aktif") is not False] or out)
+
     # ekonomi niche: total belanja iklan terpantau (model)
-    est_list = sorted((x["est_min"] + x["est_max"]) // 2 for x in out)
+    est_list = sorted((x["est_min"] + x["est_max"]) // 2 for x in hidup)
     ekonomi_niche = {
-        "bulanan_min": sum(x["est_min"] for x in out),
-        "bulanan_max": sum(x["est_max"] for x in out),
+        "bulanan_min": sum(x["est_min"] for x in hidup),
+        "bulanan_max": sum(x["est_max"] for x in hidup),
         "median_bulanan": est_list[len(est_list) // 2] if est_list else 0,
     }
 
     # === PEMENANG + FORMULA JUALAN (acuan untuk iklan user sendiri) ===
-    urut_jual = sorted(out, key=lambda z: -(z.get("jual") or 0))
+    urut_jual = sorted(hidup, key=lambda z: -(z.get("jual") or 0))
     pemenang = []
     for x in urut_jual[:5]:
         det = x["detail"]
@@ -2254,15 +2345,15 @@ def jalankan_scan(nilai, mode="cari"):
         })
 
     hitung = lambda kunci: sorted(
-        {k: sum(1 for x in out if (x.get(kunci) or x["detail"].get(kunci)) == k)
-         for k in {x.get(kunci) or x["detail"].get(kunci) for x in out}}.items(),
+        {k: sum(1 for x in hidup if (x.get(kunci) or x["detail"].get(kunci)) == k)
+         for k in {x.get(kunci) or x["detail"].get(kunci) for x in hidup}}.items(),
         key=lambda kv: -kv[1])
     funnel_dom = (hitung("funnel") or [("—", 0)])[0][0]
     format_dom = (hitung("format") or [("—", 0)])[0][0]
-    cta_dom = sorted({(x["detail"].get("cta_text") or "—") for x in out},
-                     key=lambda c: -sum(1 for x in out if (x["detail"].get("cta_text") or "—") == c))
-    harga_urut = sorted(x["harga_min"] for x in out if x.get("harga_min"))
-    harian_urut = sorted(((x["detail"].get("ekonomi") or {}).get("harian_min") or 0) for x in out)
+    cta_dom = sorted({(x["detail"].get("cta_text") or "—") for x in hidup},
+                     key=lambda c: -sum(1 for x in hidup if (x["detail"].get("cta_text") or "—") == c))
+    harga_urut = sorted(x["harga_min"] for x in hidup if x.get("harga_min"))
+    harian_urut = sorted(((x["detail"].get("ekonomi") or {}).get("harian_min") or 0) for x in hidup)
     acuan = {
         "funnel": funnel_dom,
         "format": format_dom,
@@ -2275,7 +2366,9 @@ def jalankan_scan(nilai, mode="cari"):
     # === WAKTU & ANGLE: kapan mereka mulai + hook yang dipakai ===
     per_bulan, hooks, cta_dist = {}, [], {}
     panjang_awet, panjang_baru = [], []
-    for x in out:
+    for idx, x in enumerate(out):
+        if x.get("aktif") is False:
+            continue
         det = x["detail"]
         ep = det.get("mulai_epoch")
         if ep:
@@ -2286,9 +2379,11 @@ def jalankan_scan(nilai, mode="cari"):
         if teks_iklan:
             hook = re.split(r"[.\n!?]", teks_iklan)[0]
             hook = re.sub(r"\s+", " ", hook)[:90].strip()
-            if len(hook) > 6:
+            reln = (x.get("relevansi") or {}).get("nilai") or 0
+            if (len(hook) > 6 and "{{" not in hook and "}}" not in hook
+                    and "http" not in hook.lower() and "www." not in hook.lower() and reln >= 15):
                 hooks.append({"hook": hook, "halaman": x["halaman"],
-                              "umur": x["umur"], "skor": x["skor"]})
+                              "umur": x["umur"], "skor": x["skor"], "idx": idx})
         cta = det.get("cta_text") or "—"
         cta_dist[cta] = cta_dist.get(cta, 0) + 1
         L = len(teks_iklan or "")
@@ -2296,10 +2391,22 @@ def jalankan_scan(nilai, mode="cari"):
             panjang_awet.append(L)
         elif x["umur"] <= 14:
             panjang_baru.append(L)
-    hooks.sort(key=lambda z: -z["skor"])
+    # rak angle: kelompokkan hook identik — pola yang dipakai banyak iklan = hook terbukti
+    grup_hook = {}
+    for h in hooks:
+        k = (h["hook"] or "").lower()
+        g = grup_hook.setdefault(k, {"hook": h["hook"], "jml": 0, "skor_max": 0, "umur_max": 0,
+                                     "halaman": [], "idx": []})
+        g["jml"] += 1
+        g["skor_max"] = max(g["skor_max"], h.get("skor") or 0)
+        g["umur_max"] = max(g["umur_max"], h.get("umur") or 0)
+        if h["halaman"] not in g["halaman"]:
+            g["halaman"].append(h["halaman"])
+        g["idx"].append(h.get("idx"))
+    hooks = sorted(grup_hook.values(), key=lambda z: (-z["jml"], -z["skor_max"]))
     waktu = {
-        "baru_7hari": sum(1 for x in out if x["umur"] <= 7),
-        "panas_3hari": sum(1 for x in out if x["umur"] <= 3),
+        "baru_7hari": sum(1 for x in hidup if x["umur"] <= 7),
+        "panas_3hari": sum(1 for x in hidup if x["umur"] <= 3),
         "per_bulan": dict(sorted(per_bulan.items())),
     }
     angle = {
@@ -2309,13 +2416,15 @@ def jalankan_scan(nilai, mode="cari"):
         "rata2_teks_baru": (sum(panjang_baru) // len(panjang_baru)) if panjang_baru else 0,
     }
 
+    tertua_x = max(hidup, key=lambda x: x["umur"])
     # catat ke riwayat mesin -> muncul otomatis di dashboard (/api/ringkasan)
-    catat_scan(label, mode, len(rows), {str(b["archive_id"]) for b in rows})
+    catat_scan(label, mode, len(rows_hidup), {str(b["archive_id"]) for b in rows_hidup})
 
     return {
-        "ok": True, "kata": label, "jumlah": len(rows),
-        "rata2": sum(b["umur_hari"] for b in rows) // max(len(rows), 1),
-        "tertua": {"nama": tertua["halaman"], "hari": tertua["umur_hari"]},
+        "ok": True, "kata": label, "jumlah": len(rows_hidup),
+        "jumlah_mati": sum(1 for b in rows if b.get("aktif") is False),
+        "rata2": sum(x["umur"] for x in hidup) // max(len(hidup), 1),
+        "tertua": {"nama": tertua_x["halaman"], "hari": tertua_x["umur"]},
         "peta_harga": peta_harga,
         "ekonomi_niche": ekonomi_niche,
         "top_produk": bangun_top_produk(out),

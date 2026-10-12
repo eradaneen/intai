@@ -114,6 +114,49 @@ def objek_json_dari(html, pos):
     return None
 
 
+def _buka_url(s, url):
+    """Buka URL Ad Library + lewati tantangan anti-bot + pulangkan HTML.
+    (dari intai_mvp.py asli kamar sebelah)"""
+    r = s.get(url, timeout=30)
+    for _ in range(5):
+        if r.status_code == 200 and len(r.content) > 50000:
+            return r.text
+        if r.status_code == 403 and "__rd_verify" in r.text:
+            m = PAT_VERIFY.search(r.text)
+            if m:
+                try:
+                    s.post("https://www.facebook.com" + m.group(1), timeout=25)
+                except Exception:
+                    pass
+        time.sleep(2)
+        r = s.get(url, timeout=30)
+    return r.text
+
+
+def kumpul_iklan(s, kata_kunci, negara="ID"):
+    """B5+B6: tarik dari 3 variasi filter media + active_status=all (ikut iklan mati),
+    gabung & buang duplikat. Best-effort — satu variasi gagal = dilewati.
+    Catatan: GraphQL pagination dibatasi rate-limit Meta (code 1675004),
+    jadi volume dinaikkan lewat variasi filter HTML yang aman.
+    (dari intai_mvp.py asli kamar sebelah)"""
+    hasil, lihat = [], set()
+    for media in ("all", "video", "image"):
+        url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
+               f"&country={negara}&q={quote(kata_kunci)}"
+               f"&search_type=keyword_unordered&media_type={media}")
+        try:
+            html = _buka_url(s, url)
+            for o in ekstrak_iklan(html):
+                aid = str(o.get("ad_archive_id") or "")
+                if aid and aid not in lihat:
+                    lihat.add(aid)
+                    hasil.append(o)
+        except Exception:
+            pass
+        time.sleep(3)
+    return hasil
+
+
 def ekstrak_iklan(html):
     """Kumpulkan objek iklan unik dari HTML Ad Library via ad_archive_id."""
     lihat, hasil = set(), []
@@ -187,6 +230,7 @@ def rapihkan(mentah):
             "varian_batch": o.get("collation_count") or 1,
             "platform": platform,
             "archive_id": o.get("ad_archive_id"),
+            "aktif": bool(o.get("is_active")),  # dari intai_mvp.py asli (kamar sebelah)
         })
     return rows
 
