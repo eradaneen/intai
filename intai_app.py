@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.2"
+VERSI = "1.3"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -1125,7 +1125,7 @@ function statusChip(st){
 }
 function eksporCSV(){
   if(!DATA.length){ alert("Belum ada hasil untuk diekspor. Jalankan scan dulu."); return; }
-  const kol = ["status","halaman","format","funnel","relevansi_label","relevansi_nilai","skor_cuan","skor_jual","umur_hari","varian","mulai","akhir","harga_min","harga_max","est_terjual_min","est_terjual_max","cta","platform","link","teks_ringkas"];
+  const kol = ["status","halaman","format","funnel","relevansi_label","relevansi_nilai","skor_cuan","skor_jual","umur_hari","varian","mulai","akhir","harga_min","harga_max","est_belanja_bln_min","est_belanja_bln_max","cta","platform","link","teks_ringkas"];
   const isi = [kol.join(",")].concat(DATA.map(x => {
     const d = x.detail || {};
     const v = [
@@ -3123,6 +3123,190 @@ def statistik_arsip():
     return d
 
 
+# ======================= GALERI v1.3 (P5): jelajah semua iklan terarsip =======================
+# Filter di server atas seluruh arsip (cache 45 dtk; segar otomatis tiap arsip bertambah).
+# Label: 🟢 tanggal/status asli Meta · 🔵 skor & status model INTAI · 🟠 estimasi belanja (model).
+GALERI_KOLOM = ("archive_id,page_id,halaman,niche,mode,aktif,mulai,umur,format,funnel,cta,hook,domain,"
+                "harga_min,harga_max,status,skor,relevansi,est_min,est_max,thumb,pertama_terlihat,terakhir_terlihat")
+GALERI_MAKS = 8000
+GALERI_CACHE = {"t": 0.0, "versi": None, "rows": None, "ok": False}
+kunci_galeri = threading.Lock()
+
+
+def _galeri_semua():
+    """Return (ok, rows). Semua baris intai_iklan (maks GALERI_MAKS), kolom ringkas."""
+    versi = ARSIP_STATUS.get("terakhir_waktu")
+    with kunci_galeri:
+        if GALERI_CACHE["rows"] is not None and GALERI_CACHE["versi"] == versi and time.time() - GALERI_CACHE["t"] < 45:
+            return GALERI_CACHE["ok"], GALERI_CACHE["rows"]
+        if supa_aktif():
+            kol = GALERI_KOLOM + (",berakhir" if p2_siap() else "")
+            rows, ok = [], True
+            for off in range(0, GALERI_MAKS, 1000):
+                o, r = supa("GET", "intai_iklan", params=f"?select={kol}&order=archive_id.asc&limit=1000&offset={off}")
+                if not o or not isinstance(r, list):
+                    ok = bool(rows)
+                    break
+                rows += r
+                if len(r) < 1000:
+                    break
+        else:
+            with kunci_arsip:
+                _muat_arsip_lokal()
+                rows, ok = [dict(v) for v in ARSIP_LOKAL["iklan"].values()], True
+        GALERI_CACHE.update({"t": time.time(), "versi": versi, "rows": rows, "ok": ok})
+        return ok, rows
+
+
+def _hari_ini():
+    return datetime.now(timezone.utc).date()
+
+
+def _galeri_baris(r, hari):
+    b = _baris_profil(r, hari)
+    b.update({"halaman": r.get("halaman"), "page_id": r.get("page_id"), "thumb": r.get("thumb"),
+              "relevansi": r.get("relevansi"), "mode": r.get("mode")})
+    return b
+
+
+def _umur_atau_durasi(r, hari):
+    return _umur_kini(r, hari) if r.get("aktif") is True else _durasi(r)
+
+
+GALERI_PRESET = {
+    # kunci: (label, saring(r, hari) -> bool, urutan bawaan)
+    "tahan":  ("Tahan lama ≥30 hari", lambda r, h: r.get("aktif") is True and (_umur_kini(r, h) or 0) >= 30, "umur"),
+    "baru":   ("Baru 7 hari", lambda r, h: r.get("aktif") is True and bool(_tgl(r.get("mulai")))
+               and (h - _tgl(r.get("mulai"))).days < 7, "mulai"),
+    "menang": ("Status MENANG", lambda r, h: r.get("aktif") is True and r.get("status") == "MENANG", "skor"),
+    "video":  ("Video aktif", lambda r, h: r.get("aktif") is True and r.get("format") == "Video", "umur"),
+    "harga":  ("Ada harga", lambda r, h: (_int(r.get("harga_min"), 0) or 0) > 0, "harga"),
+    "wa":     ("Jualan via WA", lambda r, h: r.get("funnel") == "CTWA/WA", "umur"),
+    "gagal":  ("Gagal cepat ≤7 hari", lambda r, h: r.get("aktif") is False and (_durasi(r) or 99) <= 7, "berakhir"),
+    "semua":  ("Semua iklan", lambda r, h: True, "dilihat"),
+}
+GALERI_URUT = {
+    "umur": lambda r, h: -(_umur_atau_durasi(r, h) or 0),
+    "mulai": lambda r, h: -int(str(r.get("mulai") or "0000-00-00").replace("-", "") or 0),
+    "skor": lambda r, h: -(_int(r.get("skor"), 0) or 0),
+    "belanja": lambda r, h: -(_int(r.get("est_max"), 0) or 0),
+    "harga": lambda r, h: (_int(r.get("harga_min"), 0) or 10 ** 12),
+    "berakhir": lambda r, h: -int(str(r.get("berakhir") or "0000-00-00").replace("-", "") or 0),
+    "dilihat": lambda r, h: "".join(chr(255 - ord(c)) for c in str(r.get("terakhir_terlihat") or "")),
+}
+
+
+def _galeri_saring(rows, p, hari):
+    q = re.sub(r"\s+", " ", str(p.get("cari") or "")).strip().lower()[:80]
+    niche, fmt, fun, st = (str(p.get(k) or "").strip() for k in ("niche", "format", "funnel", "status"))
+    aktif = str(p.get("aktif") or "")
+    lepas = str(p.get("lepas") or "") == "1"
+    out = []
+    for r in rows:
+        if not lepas and r.get("relevansi") == "Lepas":
+            continue
+        if niche == "__pesaing":   # iklan yg hanya terlihat lewat scan halaman pesaing (niche kosong, aturan P1)
+            if r.get("niche"):
+                continue
+        elif niche and r.get("niche") != niche:
+            continue
+        if fmt and r.get("format") != fmt:
+            continue
+        if fun and r.get("funnel") != fun:
+            continue
+        if st and r.get("status") != st:
+            continue
+        if aktif == "aktif" and r.get("aktif") is not True:
+            continue
+        if aktif == "mati" and r.get("aktif") is not False:
+            continue
+        if q:
+            gabung = " ".join(str(r.get(k) or "") for k in ("hook", "halaman", "domain", "niche", "cta")).lower()
+            if not all(kata in gabung for kata in q.split(" ")):
+                continue
+        out.append(r)
+    return out
+
+
+def galeri_iklan(p):
+    """p: dict parameter (preset, cari, niche, format, funnel, status, aktif, lepas, urut, hal, per)."""
+    ok, rows = _galeri_semua()
+    if not ok and not rows:
+        return {"ok": True, "siap": False}
+    hari = _hari_ini()
+    dasar = _galeri_saring(rows, p, hari)
+    hitung = {k: sum(1 for r in dasar if f(r, hari)) for k, (_, f, _u) in GALERI_PRESET.items()}
+    preset = str(p.get("preset") or "")
+    if preset not in GALERI_PRESET:
+        preset = "tahan" if hitung["tahan"] >= 6 else "semua"
+    label, saring, urut0 = GALERI_PRESET[preset]
+    hasil = [r for r in dasar if saring(r, hari)]
+    urut = str(p.get("urut") or "") or urut0
+    if urut not in GALERI_URUT:
+        urut = urut0
+    hasil.sort(key=lambda r: GALERI_URUT[urut](r, hari))
+    per = min(60, max(6, _int(p.get("per"), 24) or 24))
+    total = len(hasil)
+    n_hal = max(1, -(-total // per))
+    hal = min(n_hal, max(1, _int(p.get("hal"), 1) or 1))
+    bukan_lepas = [r for r in rows if r.get("relevansi") != "Lepas"]
+
+    def faset(k):
+        c = {}
+        for r in bukan_lepas:
+            v = r.get(k)
+            if v:
+                c[v] = c.get(v, 0) + 1
+        return [{"v": v, "n": n} for v, n in sorted(c.items(), key=lambda kv: -kv[1])]
+
+    nama_hal = {}
+    for r in rows:
+        if str(r.get("niche") or "").startswith("halaman ") and r.get("halaman"):
+            nama_hal.setdefault(r["niche"], r["halaman"])
+    niche_f = faset("niche")
+    for e in niche_f:
+        e["label"] = ("Pesaing · " + nama_hal.get(e["v"], e["v"][8:])) if e["v"].startswith("halaman ") else e["v"]
+    n_tanpa = sum(1 for r in bukan_lepas if not r.get("niche"))
+    if n_tanpa:
+        niche_f.append({"v": "__pesaing", "n": n_tanpa, "label": "Pesaing (scan halaman)"})
+    return {
+        "ok": True, "siap": True, "preset": preset, "label": label, "urut": urut,
+        "hitung": hitung, "total": total, "hal": hal, "n_hal": n_hal, "per": per,
+        "arsip": len(rows), "lepas_disembunyikan": (0 if str(p.get("lepas") or "") == "1" else len(rows) - len(bukan_lepas)),
+        "iklan": [_galeri_baris(r, hari) for r in hasil[(hal - 1) * per: hal * per]],
+        "faset": {"niche": niche_f, "format": faset("format"), "funnel": faset("funnel"), "status": faset("status")},
+        "preset_label": {k: v[0] for k, v in GALERI_PRESET.items()},
+        "terpotong": len(rows) >= GALERI_MAKS,
+    }
+
+
+def galeri_csv(p):
+    ok, rows = _galeri_semua()
+    hari = _hari_ini()
+    p = dict(p)
+    preset = str(p.get("preset") or "")
+    dasar = _galeri_saring(rows, p, hari)
+    if preset in GALERI_PRESET:
+        dasar = [r for r in dasar if GALERI_PRESET[preset][1](r, hari)]
+        urut = str(p.get("urut") or "") or GALERI_PRESET[preset][2]
+        if urut in GALERI_URUT:
+            dasar.sort(key=lambda r: GALERI_URUT[urut](r, hari))
+    import csv, io
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["archive_id", "ad_library", "pengiklan", "page_id", "niche", "aktif", "mulai", "berakhir",
+                "hari_tayang", "format", "funnel", "cta", "status_intai", "skor_intai", "harga_min", "harga_max",
+                "est_belanja_bln_min", "est_belanja_bln_max", "domain", "hook"])
+    for r in dasar:
+        b = _galeri_baris(r, hari)
+        w.writerow([b["archive_id"], "https://www.facebook.com/ads/library/?id=" + str(b["archive_id"]), b["halaman"] or "",
+                    b["page_id"] or "", b["niche"] or "", "ya" if b["aktif"] else "tidak", b["mulai"] or "", b["berakhir"] or "",
+                    b["hari"] if b["hari"] is not None else "", b["format"] or "", b["funnel"] or "", b["cta"] or "",
+                    b["status"] or "", b["skor"] if b["skor"] is not None else "", b["harga_min"] or "", b["harga_max"] or "",
+                    b["est_min"] or "", b["est_max"] or "", b["domain"] or "", (b["hook"] or "").replace("\n", " ")])
+    return "\ufeff" + buf.getvalue()   # BOM → Excel membaca UTF-8 (emoji/aksen aman)
+
+
 # ======================= JADWAL v1.2 (P4): scan otomatis harian + tren =======================
 # Render gratis tidur bila 15 mnt tanpa kunjungan → pemicu dari luar (cron-job.org) memanggil
 # /api/jadwal/tick tiap 10 mnt di jendela jam tertentu. Tick menjawab < 1 dtk; scan jalan di thread.
@@ -3681,7 +3865,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren") \
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri") \
                 or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif u.path == "/api/versi":
@@ -3713,6 +3897,19 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(403, json.dumps({"ok": False, "pesan": "kunci salah"}), "application/json")
                 return
             self.tulis(200, json.dumps(jadwal_tick()), "application/json")   # ringkas (< 200 byte) utk cron-job.org
+        elif u.path == "/api/galeri":
+            prm = {k: v[0] for k, v in parse_qs(u.query).items()}
+            self.tulis(200, json.dumps(galeri_iklan(prm), ensure_ascii=False), "application/json")
+        elif u.path == "/api/galeri.csv":
+            prm = {k: v[0] for k, v in parse_qs(u.query).items()}
+            isi = galeri_csv(prm).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition",
+                             f'attachment; filename="intai-galeri-{datetime.now(WIB).strftime("%Y%m%d-%H%M")}.csv"')
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(isi)
         elif u.path == "/api/tren":
             self.tulis(200, json.dumps(tren_niche(parse_qs(u.query).get("niche", [""])[0]), ensure_ascii=False),
                        "application/json")
