@@ -44,6 +44,13 @@ AKUN_DB = {}    # email -> {"nama": str, "hash": sha256}
 TOKENS = {}     # token -> email
 RIWAYAT = []    # [{kata, mode, waktu, jumlah, baru, hilang}]
 LAST_SEEN = {}  # (kata, mode) -> set(archive_id) utk hitung delta baru/hilang
+
+# Supabase (opsional via env var: SUPABASE_URL + SUPABASE_KEY).
+# Terisi  -> Supabase jadi penyimpanan utama (riwayat & akun awet walau deploy ulang),
+#           intai_data.json tetap ditulis sebagai cadangan lokal.
+# Kosong  -> aplikasi jalan normal dengan intai_data.json saja.
+SUPA_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+SUPA_KEY = os.environ.get("SUPABASE_KEY") or ""
 SOSIAL = ("instagram.com", "facebook.com", "fb.com", "wa.me", "api.whatsapp.com",
           "twitter.com", "x.com", "threads.net", "youtube.com", "youtu.be", "line.me")
 MARKETPLACE = ("shopee.co.id", "shope.ee", "tokopedia.com", "lazada.co.id",
@@ -2363,6 +2370,33 @@ def ambil_video(target):
         return None
 
 
+def supa_aktif():
+    return bool(SUPA_URL and SUPA_KEY)
+
+
+def supa(method, table, payload=None, params="", prefer="return=minimal"):
+    """Panggil PostgREST Supabase (best-effort, tidak pernah melempar error).
+    Return (ok, data)."""
+    if not supa_aktif():
+        return False, None
+    try:
+        r = requests.request(
+            method, f"{SUPA_URL}/rest/v1/{table}{params}",
+            json=payload,
+            headers={"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+                     "Content-Type": "application/json", "Prefer": prefer},
+            timeout=15)
+        data = None
+        if r.content:
+            try:
+                data = r.json()
+            except Exception:
+                data = None
+        return r.status_code in (200, 201, 204), data
+    except Exception:
+        return False, None
+
+
 def hash_pw(pw):
     return hashlib.sha256(("intai#" + pw).encode("utf-8")).hexdigest()
 
@@ -2386,22 +2420,70 @@ def simpan_data():
 
 
 def muat_data():
-    """Muat intai_data.json saat startup — riwayat & akun tak hilang saat restart."""
+    """Muat data saat startup: intai_data.json, lalu bila Supabase terpasang,
+    Supabase jadi sumber utama (menimpa). Kalau tabel Supabase masih kosong tapi
+    file lokal berisi, file lokal di-seed ke Supabase — riwayat lama ikut pindah."""
     try:
         with open(BERKAS_DATA, "r", encoding="utf-8") as f:
-            d = json.load(f)
+            lokal = json.load(f)
     except Exception:
+        lokal = {}
+
+    def terapkan_lokal():
+        with lock:
+            RIWAYAT.extend(lokal.get("riwayat") or [])
+            for e in lokal.get("last_seen") or []:
+                try:
+                    LAST_SEEN[(e["kata"], e["mode"])] = set(str(i) for i in e.get("ids") or [])
+                except Exception:
+                    pass
+            for email, a in (lokal.get("akun") or {}).items():
+                if isinstance(a, dict) and a.get("hash"):
+                    AKUN_DB[email] = {"nama": a.get("nama") or email, "hash": a["hash"]}
+
+    if not supa_aktif():
+        terapkan_lokal()
         return
-    with lock:
-        RIWAYAT.extend(d.get("riwayat") or [])
-        for e in d.get("last_seen") or []:
-            try:
-                LAST_SEEN[(e["kata"], e["mode"])] = set(str(i) for i in e.get("ids") or [])
-            except Exception:
-                pass
-        for email, a in (d.get("akun") or {}).items():
-            if isinstance(a, dict) and a.get("hash"):
-                AKUN_DB[email] = {"nama": a.get("nama") or email, "hash": a["hash"]}
+
+    # --- riwayat ---
+    ok, rows = supa("GET", "intai_riwayat",
+                    params="?select=kata,mode,waktu,jumlah,baru,hilang&order=id.asc&limit=1000")
+    if ok and isinstance(rows, list) and rows:
+        with lock:
+            RIWAYAT.clear()
+            for r in rows:
+                RIWAYAT.append({k: r.get(k) for k in ("kata", "mode", "waktu", "jumlah", "baru", "hilang")})
+    else:
+        terapkan_lokal()
+        if lokal.get("riwayat"):
+            supa("POST", "intai_riwayat", payload=lokal["riwayat"])  # seed massal
+
+    # --- last_seen ---
+    ok, ls = supa("GET", "intai_last_seen", params="?select=kata,mode,ids&limit=1000")
+    if ok and isinstance(ls, list) and ls:
+        with lock:
+            LAST_SEEN.clear()
+            for e in ls:
+                try:
+                    LAST_SEEN[(e["kata"], e["mode"])] = set(str(i) for i in e.get("ids") or [])
+                except Exception:
+                    pass
+    elif lokal.get("last_seen"):
+        supa("POST", "intai_last_seen", payload=lokal["last_seen"],
+             prefer="return=minimal,resolution=merge-duplicates")
+
+    # --- akun ---
+    ok, ak = supa("GET", "intai_akun", params="?select=email,nama,hash&limit=10000")
+    if ok and isinstance(ak, list) and ak:
+        with lock:
+            AKUN_DB.clear()
+            for a in ak:
+                AKUN_DB[a["email"]] = {"nama": a.get("nama") or a["email"], "hash": a["hash"]}
+    elif lokal.get("akun"):
+        supa("POST", "intai_akun",
+             payload=[{"email": e, "nama": a.get("nama") or e, "hash": a["hash"]}
+                      for e, a in lokal["akun"].items() if isinstance(a, dict) and a.get("hash")],
+             prefer="return=minimal,resolution=merge-duplicates")
 
 
 def jantung_terowongan():
@@ -2437,6 +2519,12 @@ def catat_scan(label, mode, jumlah, ids):
         if len(RIWAYAT) > 500:
             del RIWAYAT[:len(RIWAYAT) - 500]
         simpan_data()
+    if supa_aktif():
+        supa("POST", "intai_riwayat", payload={
+            "kata": label, "mode": mode, "waktu": RIWAYAT[-1]["waktu"] if RIWAYAT else "",
+            "jumlah": jumlah, "baru": baru, "hilang": hilang})
+        supa("POST", "intai_last_seen", payload={"kata": label, "mode": mode, "ids": sorted(ids)},
+             prefer="return=minimal,resolution=merge-duplicates")
 
 
 def ringkasan_api():
@@ -2606,6 +2694,10 @@ class Handler(BaseHTTPRequestHandler):
                 tok = secrets.token_hex(16)
                 TOKENS[tok] = email
             simpan_data()
+            if supa_aktif():
+                supa("POST", "intai_akun",
+                     payload={"email": email, "nama": nama, "hash": hash_pw(pw)},
+                     prefer="return=minimal,resolution=merge-duplicates")
             self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                        "application/json")
         elif u.path == "/api/logout":
@@ -2624,8 +2716,9 @@ def main():
     threading.Thread(target=jantung_terowongan, daemon=True, name="keepalive").start()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"[INTAI APP v{VERSI} HUB] Hidup di http://localhost:{PORT}  (dashboard: / · scan: /meta · Ctrl+C berhenti)")
+    print(f"[INTAI APP] Penyimpanan: {'Supabase + cadangan lokal' if supa_aktif() else 'lokal saja (' + os.path.basename(BERKAS_DATA) + ')'}")
     if n_riwayat:
-        print(f"[INTAI APP] {n_riwayat} riwayat scan dimuat dari {os.path.basename(BERKAS_DATA)}")
+        print(f"[INTAI APP] {n_riwayat} riwayat scan dimuat")
     try:
         threading.Timer(1.2, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     except Exception:
