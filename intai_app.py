@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.0"
+VERSI = "1.1"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -2454,6 +2454,7 @@ def jalankan_scan(nilai, mode="cari"):
     except Exception:
         sejak_lalu = None
     # v1.0 P1: arsipkan semua iklan + pengiklan + potret niche (latar, best-effort)
+    ARSIP_STATUS["antri"] = ARSIP_STATUS.get("antri", 0) + 1
     threading.Thread(target=arsipkan_scan, daemon=True, name="arsip",
                      args=(out, label, mode, len(rows_hidup), ekonomi_niche)).start()
 
@@ -2729,8 +2730,8 @@ def catat_scan(label, mode, jumlah, indeks):
 BERKAS_ARSIP = os.path.join(BASE_DIR, "intai_arsip.json")
 ARSIP_MAKS_LOKAL = 20000
 kunci_arsip = threading.Lock()
-ARSIP_LOKAL = {"dimuat": False, "iklan": {}, "pengiklan": {}, "snapshot": []}
-ARSIP_STATUS = {"terakhir_ok": None, "terakhir_galat": "", "terakhir_waktu": None}
+ARSIP_LOKAL = {"dimuat": False, "iklan": {}, "pengiklan": {}, "snapshot": [], "peristiwa": [], "pantau": {}}
+ARSIP_STATUS = {"terakhir_ok": None, "terakhir_galat": "", "terakhir_waktu": None, "antri": 0, "peristiwa_terakhir": 0}
 _ARSIP_CACHE = {"t": 0.0, "data": None}
 
 
@@ -2766,6 +2767,21 @@ def _hook(teks):
         if len(b) >= 4:
             return b[:140]
     return None
+
+
+def _tgl_dari_id(s_):
+    """'8 Jun 2026' (format fmt_epoch) -> '2026-06-08'. Selain itu None."""
+    m = re.fullmatch(r"(\d{1,2}) (\w{3}) (\d{4})", str(s_ or "").strip())
+    if not m or m.group(2) not in BULAN:
+        return None
+    return f"{int(m.group(3)):04d}-{BULAN.index(m.group(2)) + 1:02d}-{int(m.group(1)):02d}"
+
+
+def _tgl(s_):
+    try:
+        return datetime.strptime(str(s_)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return None
 
 
 def baris_arsip_iklan(x, label, mode, kini):
@@ -2808,6 +2824,7 @@ def baris_arsip_iklan(x, label, mode, kini):
         "est_max": _int(x.get("est_max")),
         # URL gambar fbcdn kedaluwarsa dlm hitungan hari — disimpan sbg petunjuk saja, bukan arsip gambar
         "thumb": _teks(thumb, 900) if thumb.startswith("http") else None,
+        "berakhir": (_tgl_dari_id(det.get("berakhir")) if x.get("aktif") is False else None),
         "terakhir_terlihat": kini,
     }
 
@@ -2867,14 +2884,24 @@ def _muat_arsip_lokal():
     try:
         with open(BERKAS_ARSIP, "r", encoding="utf-8") as f:
             d = json.load(f)
-        ARSIP_LOKAL["iklan"] = d.get("iklan") or {}
-        ARSIP_LOKAL["pengiklan"] = d.get("pengiklan") or {}
-        ARSIP_LOKAL["snapshot"] = d.get("snapshot") or []
+        for k, bawaan in (("iklan", {}), ("pengiklan", {}), ("snapshot", []), ("peristiwa", []), ("pantau", {})):
+            ARSIP_LOKAL[k] = d.get(k) or bawaan
     except Exception:
         pass
 
 
-def _simpan_arsip_lokal(iklan, pengiklan, snap, kini):
+def _tulis_arsip_lokal():
+    try:
+        with open(BERKAS_ARSIP + ".tmp", "w", encoding="utf-8") as f:
+            json.dump({k: ARSIP_LOKAL[k] for k in ("iklan", "pengiklan", "snapshot", "peristiwa", "pantau")},
+                      f, ensure_ascii=False)
+        os.replace(BERKAS_ARSIP + ".tmp", BERKAS_ARSIP)
+        return True, ""
+    except Exception as e:
+        return False, str(e)[:120]
+
+
+def _simpan_arsip_lokal(iklan, pengiklan, snap, kini, peristiwa=None, pid_scan=None):
     _muat_arsip_lokal()
     for tabel, baris, kunci in (("iklan", iklan, "archive_id"), ("pengiklan", pengiklan, "page_id")):
         db = ARSIP_LOKAL[tabel]
@@ -2886,21 +2913,77 @@ def _simpan_arsip_lokal(iklan, pengiklan, snap, kini):
             db[b[kunci]] = gabung
     ARSIP_LOKAL["snapshot"].append(snap)
     ARSIP_LOKAL["snapshot"] = ARSIP_LOKAL["snapshot"][-2000:]
+    if peristiwa:
+        ARSIP_LOKAL["peristiwa"].extend(peristiwa)
+        ARSIP_LOKAL["peristiwa"] = ARSIP_LOKAL["peristiwa"][-5000:]
+    if pid_scan and pid_scan in ARSIP_LOKAL["pantau"]:
+        ARSIP_LOKAL["pantau"][pid_scan]["terakhir_cek"] = kini
     if len(ARSIP_LOKAL["iklan"]) > ARSIP_MAKS_LOKAL:  # buang yg paling lama tak terlihat
         urut = sorted(ARSIP_LOKAL["iklan"].items(), key=lambda kv: kv[1].get("terakhir_terlihat") or "")
         ARSIP_LOKAL["iklan"] = dict(urut[-ARSIP_MAKS_LOKAL:])
-    try:
-        with open(BERKAS_ARSIP + ".tmp", "w", encoding="utf-8") as f:
-            json.dump({k: ARSIP_LOKAL[k] for k in ("iklan", "pengiklan", "snapshot")}, f, ensure_ascii=False)
-        os.replace(BERKAS_ARSIP + ".tmp", BERKAS_ARSIP)
-        return True, ""
-    except Exception as e:
-        return False, str(e)[:120]
+    return _tulis_arsip_lokal()
+
+
+# ---------- P2: deteksi perubahan (hanya yg BENAR-BENAR teramati antar dua scan) ----------
+_P2 = {"ok": None, "t": 0.0}
+
+
+def p2_siap():
+    """Tabel/kolom P2 (SUPABASE-PESAING.sql) sudah ada? Positif di-cache permanen, negatif 2 menit."""
+    if not supa_aktif():
+        return True
+    if _P2["ok"] or (_P2["ok"] is False and time.time() - _P2["t"] < 120):
+        return bool(_P2["ok"])
+    ok1, _ = supa("GET", "intai_iklan", params="?select=berakhir&limit=1")
+    ok2, _ = supa("GET", "intai_peristiwa", params="?select=id&limit=1")
+    ok3, _ = supa("GET", "intai_pantau", params="?select=page_id&limit=1")
+    _P2.update({"ok": bool(ok1 and ok2 and ok3), "t": time.time()})
+    return _P2["ok"]
+
+
+def _supa_in(tabel, kolom, nilai, select, ekstra=""):
+    """GET ...?kolom=in.(a,b,..) per 100 nilai. Return (ok, baris). Nilai non-ID dibuang."""
+    nilai = [v for v in dict.fromkeys(str(v) for v in nilai if v) if re.fullmatch(r"[0-9A-Za-z_.-]{1,64}", v)]
+    hasil = []
+    for i in range(0, len(nilai), 100):
+        ok, r = supa("GET", tabel, params=f"?select={select}&{kolom}=in.({','.join(nilai[i:i + 100])}){ekstra}")
+        if not ok or not isinstance(r, list):
+            return False, []
+        hasil.extend(r)
+    return True, hasil
+
+
+def deteksi_peristiwa(iklan, lama_iklan, lama_pg, kini):
+    """lama_iklan {archive_id: {aktif, niche}}, lama_pg {page_id: terakhir_terlihat}.
+    'mati'/'hidup' = status aktif berubah dibanding arsip. 'baru' = iklan belum pernah terarsip,
+    pengiklannya SUDAH dikenal, dan tanggal mulai (Meta) >= hari terakhir pengiklan itu terlihat.
+    Pengiklan yang baru pertama kali terarsip tidak menghasilkan 'baru' (bukan perubahan)."""
+    ev = []
+    for b in iklan:
+        aid, pid, aktif = b["archive_id"], b.get("page_id"), b.get("aktif")
+        lama = lama_iklan.get(aid)
+        jenis = None
+        if lama is not None:
+            if lama.get("aktif") is True and aktif is False:
+                jenis = "mati"
+            elif lama.get("aktif") is False and aktif is True:
+                jenis = "hidup"
+        elif aktif and pid and pid in lama_pg and b.get("mulai"):
+            t_lalu = str(lama_pg.get(pid) or "")[:10]
+            if t_lalu and b["mulai"] >= t_lalu:
+                jenis = "baru"
+        if jenis:
+            ev.append({"page_id": pid, "archive_id": aid, "jenis": jenis, "waktu": kini,
+                       "halaman": b.get("halaman"), "niche": b.get("niche") or (lama or {}).get("niche"),
+                       "hook": b.get("hook"), "mulai": b.get("mulai"), "berakhir": b.get("berakhir"),
+                       "format": b.get("format"), "funnel": b.get("funnel"), "harga_min": b.get("harga_min")})
+    return ev
 
 
 def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
     """Dipanggil di thread latar sesudah scan. Return (ok, galat)."""
     kini = _iso_kini()
+    n_ev = 0
     try:
         iklan, lihat = [], set()
         for x in out:
@@ -2910,7 +2993,10 @@ def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
                 iklan.append(b)
         pengiklan = baris_arsip_pengiklan(out, label, kini)
         snap = ringkas_snapshot(out, label, mode, jumlah, ekonomi_niche, kini)
+        pid_scan = None
         if mode == "halaman":
+            m = re.search(r"(\d+)", str(label or ""))
+            pid_scan = m.group(1) if m else None
             # Intip Kompetitor bukan niche: jangan timpa niche/mode hasil scan kata kunci.
             # Kunci dibuang dari SEMUA baris (syarat upsert massal) → merge-duplicates tak menyentuh kolom itu.
             for b in iklan:
@@ -2922,9 +3008,24 @@ def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
             if supa_aktif():
                 galat = []
                 gabung = "return=minimal,resolution=merge-duplicates"
+                p2 = p2_siap()
+                ev = []
+                if p2:
+                    ok_a, la = _supa_in("intai_iklan", "archive_id", [b["archive_id"] for b in iklan],
+                                        "archive_id,aktif,niche")
+                    ok_b, lp = _supa_in("intai_pengiklan", "page_id", [b["page_id"] for b in pengiklan],
+                                        "page_id,terakhir_terlihat")
+                    if ok_a and ok_b:   # salah satu gagal dibaca → lebih baik tanpa peristiwa daripada peristiwa palsu
+                        ev = deteksi_peristiwa(iklan, {str(r.get("archive_id")): r for r in la},
+                                               {str(r.get("page_id")): r.get("terakhir_terlihat") for r in lp}, kini)
+                else:
+                    for b in iklan:
+                        b.pop("berakhir", None)   # kolom belum ada (SUPABASE-PESAING.sql belum dijalankan)
+                ok_ik = True
                 for i in range(0, len(iklan), 200):
                     ok, d = supa("POST", "intai_iklan", payload=iklan[i:i + 200], prefer=gabung)
                     if not ok:
+                        ok_ik = False
                         galat.append("iklan: " + str(d)[:160])
                         break
                 if pengiklan:
@@ -2934,12 +3035,30 @@ def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
                 ok, d = supa("POST", "intai_snapshot", payload=snap)
                 if not ok:
                     galat.append("snapshot: " + str(d)[:160])
+                if p2 and ok_ik and ev:
+                    for i in range(0, len(ev), 200):
+                        ok, d = supa("POST", "intai_peristiwa", payload=ev[i:i + 200])
+                        if not ok:
+                            galat.append("peristiwa: " + str(d)[:160])
+                            break
+                    else:
+                        n_ev = len(ev)
+                if p2 and pid_scan:
+                    supa("PATCH", "intai_pantau", payload={"terakhir_cek": kini}, params=f"?page_id=eq.{pid_scan}")
                 hasil = (not galat, "; ".join(galat))
             else:
-                hasil = _simpan_arsip_lokal(iklan, pengiklan, snap, kini)
+                _muat_arsip_lokal()
+                ev = deteksi_peristiwa(iklan, ARSIP_LOKAL["iklan"],
+                                       {k: v.get("terakhir_terlihat") for k, v in ARSIP_LOKAL["pengiklan"].items()},
+                                       kini)
+                hasil = _simpan_arsip_lokal(iklan, pengiklan, snap, kini, ev, pid_scan)
+                n_ev = len(ev) if hasil[0] else 0
     except Exception as e:
         hasil = (False, "arsip: " + str(e)[:160])
-    ARSIP_STATUS.update({"terakhir_ok": hasil[0], "terakhir_galat": hasil[1], "terakhir_waktu": kini})
+    finally:
+        ARSIP_STATUS["antri"] = max(0, ARSIP_STATUS.get("antri", 1) - 1)
+    ARSIP_STATUS.update({"terakhir_ok": hasil[0], "terakhir_galat": hasil[1], "terakhir_waktu": kini,
+                         "peristiwa_terakhir": n_ev})
     _ARSIP_CACHE["t"] = 0.0
     return hasil
 
@@ -2980,6 +3099,10 @@ def statistik_arsip():
             d["sejak"] = r[0]["waktu"] if ok and isinstance(r, list) and r else None
             ok, r = supa("GET", "intai_snapshot", params="?select=niche&mode=neq.halaman&limit=5000")
             d["niche"] = len({x.get("niche") for x in r}) if ok and isinstance(r, list) else 0
+            d["p2_siap"] = p2_siap()
+            if d["p2_siap"]:
+                d["pantau"] = supa_hitung("intai_pantau") or 0
+                d["peristiwa"] = supa_hitung("intai_peristiwa") or 0
     else:
         with kunci_arsip:
             _muat_arsip_lokal()
@@ -2989,10 +3112,245 @@ def statistik_arsip():
                  "iklan_aktif": sum(1 for v in ik.values() if v.get("aktif")),
                  "pengiklan": len(ARSIP_LOKAL["pengiklan"]), "snapshot": len(sn),
                  "sejak": (sn[0].get("waktu") if sn else None),
-                 "niche": len({x.get("niche") for x in sn if x.get("mode") != "halaman"})}
+                 "niche": len({x.get("niche") for x in sn if x.get("mode") != "halaman"}),
+                 "p2_siap": True, "pantau": len(ARSIP_LOKAL["pantau"]), "peristiwa": len(ARSIP_LOKAL["peristiwa"])}
     d["status_terakhir"] = dict(ARSIP_STATUS)
     _ARSIP_CACHE.update({"t": time.time(), "data": d})
     return d
+
+
+# ======================= PESAING v1.1 (P2): profil pengiklan + pantau + feed =======================
+# Semua angka dari arsip INTAI (iklan yang pernah terlihat di scan) — bukan seluruh iklan si pengiklan,
+# kecuali sudah pernah di-scan mode halaman. Frontend menampilkan cakupan ini apa adanya.
+PANTAU_MAKS = 30
+KOLOM_PROFIL = ("archive_id,halaman,niche,aktif,mulai,umur,format,funnel,platform,cta,hook,link,domain,"
+                "harga_min,harga_max,status,skor,skor_jual,varian,est_min,est_max,pertama_terlihat,terakhir_terlihat")
+
+
+def _umur_kini(r, hari):
+    m = _tgl(r.get("mulai"))
+    return (hari - m).days + 1 if m else _int(r.get("umur"), 0)
+
+
+def _durasi(r):
+    m, b = _tgl(r.get("mulai")), _tgl(r.get("berakhir"))
+    return (b - m).days + 1 if (m and b and b >= m) else None
+
+
+def ringkas_profil(rows):
+    hari = datetime.now(timezone.utc).date()
+    aktif = [r for r in rows if r.get("aktif") is True]
+    mati = [r for r in rows if r.get("aktif") is False]
+    med = lambda xs: (sorted(xs)[len(xs) // 2] if xs else None)
+    umur_a = [_umur_kini(r, hari) for r in aktif]
+    tertua = max(aktif, key=lambda r: _umur_kini(r, hari)) if aktif else None
+    dur = [d for d in (_durasi(r) for r in mati) if d]
+    basis = aktif or rows
+
+    def dist(k, rs=None, top=None):
+        c = {}
+        for r in (basis if rs is None else rs):
+            v = r.get(k) or "—"
+            c[v] = c.get(v, 0) + 1
+        items = sorted(c.items(), key=lambda kv: -kv[1])
+        return dict(items[:top] if top else items)
+
+    bulan = []
+    for i in range(5, -1, -1):
+        yy, mm = hari.year, hari.month - i
+        while mm <= 0:
+            mm += 12
+            yy -= 1
+        k = f"{yy:04d}-{mm:02d}"
+        bulan.append({"bulan": k, "n": sum(1 for r in rows if str(r.get("mulai") or "").startswith(k))})
+    harga = sorted(h for h in (_int(r.get("harga_min")) for r in aktif) if h and h > 0)
+    est = [r for r in aktif if _int(r.get("est_min"))]
+    return {
+        "total": len(rows), "aktif": len(aktif), "mati": len(mati),
+        "umur_median": med(umur_a), "umur_max": (_umur_kini(tertua, hari) if tertua else None),
+        "tertua": ({"hook": tertua.get("hook"), "archive_id": tertua.get("archive_id"),
+                    "mulai": tertua.get("mulai")} if tertua else None),
+        "baru_30h": sum(1 for r in rows if _tgl(r.get("mulai")) and (hari - _tgl(r.get("mulai"))).days < 30),
+        "per_bulan": bulan,
+        "durasi_mati": {"n": len(dur), "median": med(dur), "cepat": sum(1 for x in dur if x <= 7),
+                        "tahan": sum(1 for x in dur if x >= 30), "tanpa_tanggal": len(mati) - len(dur)},
+        "basis": "aktif" if aktif else "semua",
+        "format": dist("format"), "funnel": dist("funnel"), "status": dist("status") if aktif else {},
+        "niche": dist("niche", [r for r in rows if r.get("niche")], 8),
+        "domain": dist("domain", [r for r in rows if r.get("domain")], 6),
+        "cta": dist("cta", [r for r in basis if r.get("cta")], 5),
+        "harga": {"n": len(harga), "min": harga[0] if harga else None, "median": med(harga),
+                  "max": harga[-1] if harga else None},
+        "belanja": {"n": len(est), "min": sum(_int(r.get("est_min"), 0) for r in est),
+                    "max": sum(_int(r.get("est_max"), 0) for r in est)},
+        "menang": sum(1 for r in aktif if r.get("status") == "MENANG"),
+    }
+
+
+def _baris_profil(r, hari):
+    aktif = r.get("aktif") is True
+    return {
+        "archive_id": r.get("archive_id"), "aktif": aktif, "hook": r.get("hook"),
+        "format": r.get("format"), "funnel": r.get("funnel"), "niche": r.get("niche"),
+        "mulai": r.get("mulai"), "berakhir": r.get("berakhir"),
+        "hari": (_umur_kini(r, hari) if aktif else _durasi(r)),  # aktif: umur s/d hari ini · mati: lama tayang
+        "harga_min": r.get("harga_min"), "harga_max": r.get("harga_max"), "status": r.get("status"),
+        "skor": r.get("skor"), "est_min": r.get("est_min"), "est_max": r.get("est_max"),
+        "domain": r.get("domain"), "cta": r.get("cta"),
+        "pertama_terlihat": r.get("pertama_terlihat"), "terakhir_terlihat": r.get("terakhir_terlihat"),
+    }
+
+
+def profil_pengiklan(pid):
+    pid = re.sub(r"\D", "", str(pid or ""))[:40]
+    if not pid:
+        return {"ok": False, "error": "page_id tidak valid"}
+    if supa_aktif():
+        ok, pg = supa("GET", "intai_pengiklan", params=f"?select=*&page_id=eq.{pid}")
+        if not ok:
+            return {"ok": True, "siap": False, "sumber": "supabase", "page_id": pid}
+        p2 = p2_siap()
+        kol = KOLOM_PROFIL + (",berakhir" if p2 else "")
+        ok, ik = supa("GET", "intai_iklan", params=f"?select={kol}&page_id=eq.{pid}&order=terakhir_terlihat.desc&limit=1000")
+        ik = ik if ok and isinstance(ik, list) else []
+        ev, dipantau = [], False
+        if p2:
+            ok, r = supa("GET", "intai_peristiwa", params=f"?select=*&page_id=eq.{pid}&order=waktu.desc&limit=60")
+            ev = r if ok and isinstance(r, list) else []
+            ok, r = supa("GET", "intai_pantau", params=f"?select=page_id&page_id=eq.{pid}")
+            dipantau = bool(ok and isinstance(r, list) and r)
+        ok, sn = supa("GET", "intai_snapshot",
+                      params=f"?select=waktu,aktif,mati,jumlah&niche=eq.{quote('halaman ' + pid)}&order=waktu.asc&limit=500")
+        sn = sn if ok and isinstance(sn, list) else []
+        pg = pg[0] if isinstance(pg, list) and pg else None
+        sumber = "supabase"
+    else:
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            pg = ARSIP_LOKAL["pengiklan"].get(pid)
+            ik = [dict(v) for v in ARSIP_LOKAL["iklan"].values() if str(v.get("page_id")) == pid]
+            ev = [dict(e) for e in reversed(ARSIP_LOKAL["peristiwa"]) if str(e.get("page_id")) == pid][:60]
+            dipantau = pid in ARSIP_LOKAL["pantau"]
+            sn = [s_ for s_ in ARSIP_LOKAL["snapshot"] if s_.get("niche") == "halaman " + pid]
+        p2, sumber = True, "lokal"
+    hari = datetime.now(timezone.utc).date()
+    baris = sorted((_baris_profil(r, hari) for r in ik), key=lambda b: (not b["aktif"], -(b["hari"] or 0)))
+    return {
+        "ok": True, "siap": True, "p2_siap": p2, "sumber": sumber, "page_id": pid,
+        "kosong": not pg and not ik, "pengiklan": pg, "dipantau": dipantau,
+        "ringkas": ringkas_profil(ik), "iklan": baris[:400], "iklan_total": len(baris),
+        "peristiwa": ev,
+        "riwayat": [{"waktu": x.get("waktu"), "aktif": x.get("aktif"), "mati": x.get("mati")} for x in sn][-60:],
+        "scan_halaman": len(sn), "scan_halaman_terakhir": (sn[-1].get("waktu") if sn else None),
+    }
+
+
+def daftar_pantau():
+    batas = datetime.fromtimestamp(time.time() - 7 * 86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if supa_aktif():
+        if not p2_siap():
+            return {"ok": True, "siap": False, "sumber": "supabase"}
+        ok, pn = supa("GET", "intai_pantau", params="?select=*&order=ditambah.desc&limit=100")
+        if not ok or not isinstance(pn, list):
+            return {"ok": True, "siap": False, "sumber": "supabase"}
+        pids = [str(p.get("page_id")) for p in pn]
+        pg, hit, ev7 = {}, {}, []
+        if pids:
+            ok, r = _supa_in("intai_pengiklan", "page_id", pids, "page_id,nama,likes,profil,terakhir_terlihat")
+            pg = {str(x.get("page_id")): x for x in r}
+
+            def hitung(pid):
+                return pid, supa_hitung("intai_iklan", f"&page_id=eq.{pid}"), \
+                    supa_hitung("intai_iklan", f"&page_id=eq.{pid}&aktif=is.true")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+                hit = {p: (t, a) for p, t, a in ex.map(hitung, pids)}
+            ok, ev7 = _supa_in("intai_peristiwa", "page_id", pids, "page_id,jenis", f"&waktu=gte.{batas}")
+        sumber = "supabase"
+    else:
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            pn = sorted((dict(v) for v in ARSIP_LOKAL["pantau"].values()), key=lambda p: p.get("ditambah") or "", reverse=True)
+            pids = [str(p.get("page_id")) for p in pn]
+            pg = {p: ARSIP_LOKAL["pengiklan"].get(p) or {} for p in pids}
+            hit = {p: (0, 0) for p in pids}
+            for v in ARSIP_LOKAL["iklan"].values():
+                p = str(v.get("page_id"))
+                if p in hit:
+                    t, a = hit[p]
+                    hit[p] = (t + 1, a + (1 if v.get("aktif") else 0))
+            ev7 = [e for e in ARSIP_LOKAL["peristiwa"] if str(e.get("page_id")) in hit and (e.get("waktu") or "") >= batas]
+        sumber = "lokal"
+    daftar = []
+    for p in pn:
+        pid = str(p.get("page_id"))
+        g_ = pg.get(pid) or {}
+        t, a = hit.get(pid, (None, None))
+        jn = [e.get("jenis") for e in ev7 if str(e.get("page_id")) == pid]
+        daftar.append({
+            "page_id": pid, "nama": g_.get("nama") or p.get("nama"), "likes": g_.get("likes"),
+            "profil": g_.get("profil"), "ditambah": p.get("ditambah"), "terakhir_cek": p.get("terakhir_cek"),
+            "terakhir_terlihat": g_.get("terakhir_terlihat"), "total": t, "aktif": a,
+            "baru_7h": jn.count("baru"), "mati_7h": jn.count("mati"), "hidup_7h": jn.count("hidup"),
+        })
+    return {"ok": True, "siap": True, "sumber": sumber, "maks": PANTAU_MAKS, "daftar": daftar}
+
+
+def peristiwa_feed(lingkup="pantau", batas_n=60):
+    batas_n = max(1, min(int(batas_n or 60), 200))
+    if supa_aktif():
+        if not p2_siap():
+            return {"ok": True, "siap": False, "feed": []}
+        if lingkup == "pantau":
+            ok, pn = supa("GET", "intai_pantau", params="?select=page_id&limit=100")
+            pids = [str(p.get("page_id")) for p in pn] if ok and isinstance(pn, list) else []
+            ok, r = _supa_in("intai_peristiwa", "page_id", pids, "*", f"&order=waktu.desc&limit={batas_n}") if pids else (True, [])
+        else:
+            ok, r = supa("GET", "intai_peristiwa", params=f"?select=*&order=waktu.desc&limit={batas_n}")
+        r = r if ok and isinstance(r, list) else []
+    else:
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            pids = set(ARSIP_LOKAL["pantau"])
+            r = [dict(e) for e in ARSIP_LOKAL["peristiwa"] if lingkup != "pantau" or str(e.get("page_id")) in pids]
+    r.sort(key=lambda e: str(e.get("waktu") or ""), reverse=True)
+    return {"ok": True, "siap": True, "lingkup": lingkup, "feed": r[:batas_n]}
+
+
+def ubah_pantau(aksi, pid, nama=""):
+    pid = re.sub(r"\D", "", str(pid or ""))[:40]
+    if not pid:
+        return {"ok": False, "error": "page_id tidak valid"}
+    nama = _teks(nama, 160)
+    if supa_aktif():
+        if not p2_siap():
+            return {"ok": False, "error": "Tabel pantau belum dibuat — jalankan SUPABASE-PESAING.sql di Supabase"}
+        if aksi == "hapus":
+            ok, d = supa("DELETE", "intai_pantau", params=f"?page_id=eq.{pid}")
+        else:
+            _, ada = supa("GET", "intai_pantau", params=f"?select=page_id&page_id=eq.{pid}")
+            if not ada and (supa_hitung("intai_pantau") or 0) >= PANTAU_MAKS:
+                return {"ok": False, "error": f"Maksimal {PANTAU_MAKS} pesaing dipantau — hapus salah satu dulu"}
+            ok, d = supa("POST", "intai_pantau", payload={"page_id": pid, "nama": nama},
+                         prefer="return=minimal,resolution=merge-duplicates")
+        if not ok:
+            return {"ok": False, "error": "Gagal menyimpan: " + str(d)[:140]}
+    else:
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            pn = ARSIP_LOKAL["pantau"]
+            if aksi == "hapus":
+                pn.pop(pid, None)
+            else:
+                if pid not in pn and len(pn) >= PANTAU_MAKS:
+                    return {"ok": False, "error": f"Maksimal {PANTAU_MAKS} pesaing dipantau — hapus salah satu dulu"}
+                lama = pn.get(pid) or {}
+                pn[pid] = {"page_id": pid, "nama": nama or lama.get("nama"),
+                           "ditambah": lama.get("ditambah") or _iso_kini(), "terakhir_cek": lama.get("terakhir_cek")}
+            ok, galat = _tulis_arsip_lokal()
+        if not ok:
+            return {"ok": False, "error": galat}
+    _ARSIP_CACHE["t"] = 0.0
+    return {"ok": True, "page_id": pid, "dipantau": aksi != "hapus"}
 
 
 def ringkasan_api():
@@ -3055,7 +3413,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok"):
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing") \
+                or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif u.path == "/api/versi":
             self.tulis(200, json.dumps({"ok": True, "v": VERSI}), "application/json")
@@ -3071,6 +3430,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(200, json.dumps({"ok": False}), "application/json")
         elif u.path == "/api/arsip":
             self.tulis(200, json.dumps(statistik_arsip(), ensure_ascii=False), "application/json")
+        elif u.path == "/api/arsip/status":
+            self.tulis(200, json.dumps(dict(ARSIP_STATUS, ok=True), ensure_ascii=False), "application/json")
+        elif u.path == "/api/pengiklan":
+            pid = parse_qs(u.query).get("id", [""])[0]
+            self.tulis(200, json.dumps(profil_pengiklan(pid), ensure_ascii=False), "application/json")
+        elif u.path == "/api/pantau":
+            self.tulis(200, json.dumps(daftar_pantau(), ensure_ascii=False), "application/json")
+        elif u.path == "/api/peristiwa":
+            qs = parse_qs(u.query)
+            self.tulis(200, json.dumps(peristiwa_feed(qs.get("lingkup", ["pantau"])[0],
+                                                      _int(qs.get("limit", ["60"])[0], 60)),
+                                       ensure_ascii=False), "application/json")
         elif u.path == "/api/ringkasan":
             self.tulis(200, json.dumps(ringkasan_api(), ensure_ascii=False), "application/json")
         elif u.path == "/scan":
@@ -3182,6 +3553,10 @@ class Handler(BaseHTTPRequestHandler):
                      prefer="return=minimal,resolution=merge-duplicates")
             self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                        "application/json")
+        elif u.path == "/api/pantau":
+            d = self.baca_json()
+            hasil = ubah_pantau(str(d.get("aksi") or "tambah"), d.get("page_id"), d.get("nama") or "")
+            self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
         elif u.path == "/api/logout":
             d = self.baca_json()
             with lock:

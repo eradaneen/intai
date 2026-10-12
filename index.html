@@ -716,6 +716,97 @@
 .arsip-cat{font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.65}
 .arsip-peringatan{font-size:11px;line-height:1.65;background:var(--emas-soft);border:1px solid #E8D9B8;color:#7A5410;border-radius:12px;padding:10px 12px;margin-top:4px}
 .arsip-peringatan code{background:#fff;border-radius:6px;padding:1px 6px;font-weight:800;font-family:inherit}
+
+/* ===== v1.1 P2: pesaing + profil pengiklan (scoped) ===== */
+#view-pesaing .ps-progres,#view-pengiklan .ps-progres{background:var(--accent);color:#fff;border-radius:14px;padding:11px 16px;font-size:12px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.ps-progres .putar{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:psputar .8s linear infinite;flex:0 0 auto}
+@keyframes psputar{to{transform:rotate(360deg)}}
+#view-pesaing .ps-tambah{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+#view-pesaing .ps-tambah input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:inherit;font-size:12.5px;background:#FBFAF7;color:var(--ink)}
+#view-pesaing .ps-tambah input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+#view-pesaing .ps-tabs{display:flex;gap:4px;text-transform:none;letter-spacing:0}
+#view-pesaing .ps-tab{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:4px 10px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer}
+#view-pesaing .ps-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#view-pesaing .ps-cara{display:flex;flex-direction:column;gap:9px;font-size:11.5px;line-height:1.65;color:var(--muted)}
+#view-pesaing .ps-cara b{color:var(--ink)}
+.ps-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2)}
+.ps-item:last-child{border-bottom:0}
+.ps-ava{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex:0 0 auto}
+.ps-info{flex:1;min-width:0}
+.ps-nama{font-weight:800;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.ps-nama:hover{color:var(--accent);text-decoration:underline}
+.ps-meta{font-size:10.5px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ps-bdg{font-size:9.5px;font-weight:800;border-radius:999px;padding:2px 8px;border:1px solid}
+.ps-bdg.baru{color:#2F7D64;background:#E4F0EA;border-color:#BEDCD2}
+.ps-bdg.mati{color:#B5443A;background:#F6E7E3;border-color:#EBC9C2}
+.ps-bdg.hidup{color:#2E6B8F;background:#E3EEF4;border-color:#C5DAE6}
+.ps-bdg.netral{color:var(--muted);background:#FBFAF7;border-color:var(--line)}
+.ps-tb{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ps-tb:hover{border-color:var(--accent);color:var(--accent)}
+.ps-tb.utama{background:var(--accent);border-color:var(--accent);color:#fff}
+.ps-tb.utama:hover{background:var(--accent2);color:#fff}
+.ps-tb.bahaya:hover{border-color:var(--bad);color:var(--bad)}
+.ps-tb:disabled{opacity:.5;cursor:wait}
+.ps-tb .ik{margin:0}
+.pf-ev{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line2)}
+.pf-ev:last-child{border-bottom:0}
+.pf-ev .ps-bdg{flex:0 0 auto;margin-top:1px;min-width:72px;text-align:center}
+.pf-ev-isi{flex:1;min-width:0;font-size:12px;line-height:1.55}
+.pf-ev-isi a{font-weight:800;color:var(--accent);cursor:pointer}
+.pf-ev-hook{color:var(--ink)}
+.pf-ev-isi small{display:block;color:var(--faint);font-size:10.5px;margin-top:2px}
+.pf-kosong{font-size:12px;color:var(--muted);line-height:1.7;padding:6px 0}
+#view-pengiklan .pf-kepala{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin:22px 0 14px}
+#view-pengiklan .pf-ava{width:64px;height:64px;border-radius:20px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex:0 0 auto;box-shadow:var(--shadow)}
+#view-pengiklan .pf-judul{flex:1;min-width:260px}
+#view-pengiklan .pf-judul h1{font-size:clamp(22px,3vw,30px);letter-spacing:-1px;line-height:1.15}
+#view-pengiklan .pf-sub{font-size:11.5px;color:var(--muted);margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 14px}
+#view-pengiklan .pf-sub code{background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 6px;font-family:inherit;font-weight:700;cursor:pointer}
+#view-pengiklan .pf-aksi{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#view-pengiklan .pf-kembali{margin-top:18px}
+#view-pengiklan .pf-catatan{font-size:11.5px;line-height:1.7;border-radius:14px;padding:11px 14px;margin:0 0 14px;border:1px solid var(--line);background:#fff;color:var(--muted)}
+#view-pengiklan .pf-catatan.kuning{background:var(--emas-soft);border-color:#E8D9B8;color:#7A5410}
+#view-pengiklan .pf-catatan b{color:inherit}
+#view-pengiklan .kpi .sub{font-size:10.5px;color:var(--muted);line-height:1.45;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-pengiklan .pf-sumber{font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:none;color:var(--muted)}
+#view-pengiklan .pf-batang{display:flex;align-items:flex-end;gap:10px;height:130px;padding-top:8px}
+#view-pengiklan .pf-batang .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px}
+#view-pengiklan .pf-batang .b i{display:block;width:100%;max-width:44px;background:var(--accent);border-radius:8px 8px 3px 3px;min-height:3px}
+#view-pengiklan .pf-batang .b.nol i{background:var(--line)}
+#view-pengiklan .pf-batang .b b{font-size:11px}
+#view-pengiklan .pf-batang .b span{font-size:9.5px;color:var(--faint);font-weight:700}
+#view-pengiklan .pf-dist{margin-bottom:12px}
+#view-pengiklan .pf-dist:last-child{margin-bottom:0}
+#view-pengiklan .pf-dist .jd{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+#view-pengiklan .pf-bar{display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;margin:4px 0}
+#view-pengiklan .pf-bar .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-weight:650}
+#view-pengiklan .pf-bar .g{height:8px;background:var(--line2);border-radius:99px;overflow:hidden}
+#view-pengiklan .pf-bar .g i{display:block;height:100%;background:var(--accent);border-radius:99px}
+#view-pengiklan .pf-bar .n{text-align:right;font-weight:800;color:var(--muted)}
+#view-pengiklan .pf-chips{display:flex;flex-wrap:wrap;gap:6px}
+#view-pengiklan .pf-chip{font-size:11px;font-weight:700;border:1px solid var(--line);background:#FBFAF7;border-radius:999px;padding:4px 10px;color:var(--ink)}
+#view-pengiklan .pf-chip.klik{cursor:pointer}
+#view-pengiklan .pf-chip.klik:hover{border-color:var(--accent);color:var(--accent)}
+#view-pengiklan .pf-chip small{color:var(--faint);font-weight:800;margin-left:4px}
+#view-pengiklan .pf-angka3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+#view-pengiklan .pf-angka3 div{background:#FBFAF7;border:1px solid var(--line2);border-radius:12px;padding:10px 6px}
+#view-pengiklan .pf-angka3 b{display:block;font-size:19px;letter-spacing:-.5px;color:var(--accent)}
+#view-pengiklan .pf-angka3 span{font-size:10px;color:var(--muted);font-weight:700;line-height:1.35;display:block;margin-top:2px}
+#view-pengiklan .pf-filter{display:flex;gap:4px}
+#view-pengiklan .pf-filter button{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:4px 10px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;text-transform:none;letter-spacing:0}
+#view-pengiklan .pf-filter button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#view-pengiklan .pf-tabel-wrap{overflow-x:auto;margin:0 -4px}
+#view-pengiklan table.pf-tabel{width:100%;border-collapse:collapse;font-size:11.5px}
+#view-pengiklan .pf-tabel th{text-align:left;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);font-weight:800;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+#view-pengiklan .pf-tabel td{padding:9px 6px;border-bottom:1px solid var(--line2);vertical-align:top}
+#view-pengiklan .pf-tabel tr.mati td{color:var(--muted)}
+#view-pengiklan .pf-grid{grid-template-columns:1fr 1fr}
+#view-pengiklan .pf-tabel .hook{min-width:320px;max-width:520px;line-height:1.45}
+#view-pengiklan .pf-tabel .hook small{display:block;color:var(--faint);font-size:10px;margin-top:2px}
+#view-pengiklan .pf-tabel .nw{white-space:nowrap}
+#view-pengiklan .pf-titik{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}
+#view-pengiklan .pf-titik.mati{background:#C9C2B5}
+#view-pengiklan .pf-lagi{text-align:center;margin-top:10px}
 </style>
 </head>
 <body>
@@ -725,7 +816,7 @@
   <span onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:12px;cursor:pointer;font-weight:900;font-size:14px">✕</span>
 </div>
 <!-- v0.9: sprite ikon -->
-<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="ik-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/></symbol><symbol id="ik-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></symbol><symbol id="ik-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol><symbol id="ik-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="ik-sliders" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></symbol><symbol id="ik-star" viewBox="0 0 24 24"><path d="M12 2.8l2.85 5.78 6.38.93-4.62 4.5 1.09 6.35L12 17.36l-5.7 3 1.09-6.35-4.62-4.5 6.38-.93z"/></symbol><symbol id="ik-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol><symbol id="ik-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="ik-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol><symbol id="ik-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol><symbol id="ik-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol><symbol id="ik-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="ik-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="ik-clapper" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol><symbol id="ik-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol><symbol id="ik-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol><symbol id="ik-copy" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol><symbol id="ik-down" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></symbol><symbol id="ik-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol><symbol id="ik-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></symbol><symbol id="ik-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="ik-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol><symbol id="ik-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></symbol><symbol id="ik-music" viewBox="0 0 24 24"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></symbol><symbol id="ik-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol><symbol id="ik-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8 12 2.7 2.7L16 9.4"/></symbol><symbol id="ik-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></symbol></svg>
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="ik-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/></symbol><symbol id="ik-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></symbol><symbol id="ik-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol><symbol id="ik-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="ik-sliders" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></symbol><symbol id="ik-star" viewBox="0 0 24 24"><path d="M12 2.8l2.85 5.78 6.38.93-4.62 4.5 1.09 6.35L12 17.36l-5.7 3 1.09-6.35-4.62-4.5 6.38-.93z"/></symbol><symbol id="ik-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol><symbol id="ik-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="ik-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol><symbol id="ik-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol><symbol id="ik-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol><symbol id="ik-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="ik-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="ik-clapper" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol><symbol id="ik-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol><symbol id="ik-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol><symbol id="ik-copy" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol><symbol id="ik-down" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></symbol><symbol id="ik-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol><symbol id="ik-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></symbol><symbol id="ik-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="ik-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol><symbol id="ik-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></symbol><symbol id="ik-music" viewBox="0 0 24 24"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></symbol><symbol id="ik-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol><symbol id="ik-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8 12 2.7 2.7L16 9.4"/></symbol><symbol id="ik-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol><symbol id="ik-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="ik-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="ik-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="ik-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></symbol></svg>
 <div class="shell">
 
   <aside class="sb">
@@ -740,6 +831,7 @@
     <nav class="sb-nav" id="sb-nav">
     <button class="sb-item on" style="animation-delay:80ms" onclick="ke('/dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Dashboard</button>
     <button class="sb-item" style="animation-delay:140ms" onclick="ke('/meta')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Scan Meta Ad Library</button>
+    <button class="sb-item" style="animation-delay:170ms" onclick="ke('/pesaing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Pesaing Dipantau</button>
     <button class="sb-item" style="animation-delay:200ms" onclick="ke('/shopee')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Scan Shopee</button>
     <button class="sb-item" style="animation-delay:260ms" onclick="ke('/tiktok')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>Scan TikTok</button>
     </nav>
@@ -747,7 +839,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v1.0<br>Shopee &amp; TikTok: disiapkan</div>
+    <div class="sb-foot">Mesin Meta aktif · v1.1<br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
 
   <main class="isi-utama">
@@ -810,7 +902,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v1.0 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v1.1 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -1006,7 +1098,7 @@
   </div>
 </div>
 
-<div class="foot">INTAI v1.0 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI v1.1 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -1031,6 +1123,53 @@
 
     </div>
 
+    <!-- v1.1 P2: pesaing dipantau -->
+    <div id="view-pesaing" style="display:none">
+      <div class="sapaan-bar">
+        <div>
+          <h1>Pesaing Dipantau</h1>
+          <div class="sub2">Pengiklan yang kamu ikuti. Tiap kali dicek, INTAI membandingkan hasil scan dengan arsip: iklan <b>baru</b>, iklan yang <b>dimatikan</b>, dan yang <b>hidup lagi</b>. Hanya perubahan yang benar-benar teramati, tanpa tebakan.</div>
+        </div>
+        <button class="btn" id="ps-cek-semua" onclick="cekSemuaPesaing()"><svg class=ik><use href=#ik-refresh></use></svg>Cek semua sekarang</button>
+      </div>
+      <div id="ps-progres" class="ps-progres" style="display:none"></div>
+      <div id="ps-peringatan"></div>
+      <div class="dash-grid">
+        <div class="kol">
+          <div class="kartu">
+            <div class="judul-kartu"><b>Daftar pesaing</b><span id="ps-jml">memuat…</span></div>
+            <div id="ps-daftar"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+            <div class="ps-tambah">
+              <input id="ps-pid" placeholder="Tambah lewat ID halaman (angka)…" inputmode="numeric" autocomplete="off">
+              <button class="btn2" onclick="tambahPesaingManual()">Tambah</button>
+            </div>
+          </div>
+        </div>
+        <div class="kol">
+          <div class="kartu">
+            <div class="judul-kartu"><b>Perubahan terbaru</b>
+              <span class="ps-tabs"><button class="ps-tab on" data-l="pantau" onclick="gantiFeed('pantau')">Dipantau</button><button class="ps-tab" data-l="semua" onclick="gantiFeed('semua')">Semua pengiklan</button></span>
+            </div>
+            <div id="ps-feed"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+          </div>
+          <div class="kartu">
+            <div class="judul-kartu"><b>Cara kerjanya</b><span>tanpa data palsu</span></div>
+            <div class="ps-cara">
+              <div><b>Iklan baru</b> = iklan yang belum ada di arsip dan tanggal mulainya (dari Meta) jatuh <i>sesudah</i> pengiklan itu terakhir kita lihat.</div>
+              <div><b>Dimatikan</b> = di scan sebelumnya masih aktif, sekarang tidak. Tanggal berakhirnya asli dari Meta 🟢.</div>
+              <div><b>Cek</b> = scan semua iklan halaman itu (±20–40 dtk per pesaing). Makin rutin dicek, makin tajam feed-nya.</div>
+              <div>Pengiklan yang baru pertama kali terarsip <b>tidak</b> dihitung sebagai "baru", karena itu bukan perubahan.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- v1.1 P2: profil pengiklan (/pengiklan/{page_id}) -->
+    <div id="view-pengiklan" style="display:none">
+      <div id="pf-isi"><div class="chart-kosong" style="color:var(--faint);padding:40px 0">Memuat profil…</div></div>
+    </div>
+
     <!-- v0.9: modul Shopee (mesin disiapkan, tanpa data) -->
     <div id="view-shopee" class="view-modul" style="display:none">
       <div class="mk">
@@ -1051,7 +1190,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v1.0 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI v1.1 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
 
@@ -1075,7 +1214,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v1.0 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI v1.1 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
   </main>
@@ -1756,7 +1895,8 @@ function detailHTML(x){
     '<button class="tombol2" data-u="' + esc(d.link_url) + '" onclick="salin(this.dataset.u)">Salin Link</button>';
   if(d.archive_id) h += '<button class="tombol2" data-u="' + esc("https://www.facebook.com/ads/library/?id=" + d.archive_id) + '" onclick="buka(this.dataset.u)">Buka di Ad Library</button>';
   if(d.page_id) h += '<button class="tombol" onclick="event.stopPropagation();bukaIklanPenuh(' + esc(String(x._id)) + ')"><svg class=ik><use href=#ik-file></use></svg> Buka Halaman Detail Iklan (penuh)</button>' +
-    '<button class="tombol2" onclick="event.stopPropagation();intipHalaman(\'' + esc(String(d.page_id)) + '\')"><svg class=ik><use href=#ik-target></use></svg> Semua iklan halaman ini (mode kompetitor)</button>';
+    '<button class="tombol2" onclick="event.stopPropagation();intipHalaman(\'' + esc(String(d.page_id)) + '\')"><svg class=ik><use href=#ik-target></use></svg> Semua iklan halaman ini (mode kompetitor)</button>' +
+    '<button class="tombol" onclick="event.stopPropagation();bukaProfil(\'' + esc(String(d.page_id)) + '\')"><svg class=ik><use href=#ik-users></use></svg> Profil pengiklan &amp; pantau</button>';
   h += '</div>';
 
   // KARTU
@@ -2487,14 +2627,351 @@ async function muatArsip(){
     '</div>' +
     '<div class="arsip-cat">' + (d.iklan ? 'Tumbuh sejak <b>' + esc(sejak || "—") + '</b> · tiap scan menambah data.' : 'Masih kosong — scan berikutnya mulai mengisi arsip.') +
     ' Bahan untuk profil pengiklan, peringkat niche &amp; grafik tren.</div>' +
+    (d.p2_siap === false ? '<div class="arsip-peringatan" style="margin-top:8px">Fitur <b>Pesaing Dipantau</b> butuh <code>SUPABASE-PESAING.sql</code> (sekali jalan).</div>'
+      : (d.pantau !== undefined ? '<div class="arsip-cat" style="margin-top:6px"><a style="color:var(--accent);font-weight:800;cursor:pointer" onclick="ke(\'/pesaing\')">' + f(d.pantau) + ' pesaing dipantau · ' + f(d.peristiwa) + ' perubahan tercatat →</a></div>' : '')) +
     (st.terakhir_ok === false ? '<div class="arsip-peringatan" style="margin-top:8px">Simpan arsip terakhir gagal: ' + esc(String(st.terakhir_galat || "").slice(0, 160)) + '</div>' : '');
 }
 
+
+/* ===== v1.1 P2: pesaing dipantau + profil pengiklan ===== */
+const PF = {pid: "", data: null, filter: "semua", tampil: 60, feed: "pantau", sibuk: false};
+function pfTgl(s){
+  if(!s) return "—";
+  try{ const d = new Date(String(s).length <= 10 ? s + "T00:00:00Z" : s);
+       return d.toLocaleDateString("id-ID", {day: "numeric", month: "short", year: "numeric", timeZone: "UTC"}); }catch(e){ return String(s); }
+}
+function pfRelatif(iso){
+  if(!iso) return "—";
+  const t = new Date(iso).getTime();
+  if(isNaN(t)) return "—";
+  const dt = Math.max(0, (Date.now() - t) / 1000);
+  if(dt < 90) return "baru saja";
+  if(dt < 3600) return Math.round(dt / 60) + " menit lalu";
+  if(dt < 86400) return Math.round(dt / 3600) + " jam lalu";
+  return Math.round(dt / 86400) + " hari lalu";
+}
+function pfAngka(n){ return (n === null || n === undefined) ? "—" : Number(n).toLocaleString("id-ID"); }
+function pfInisial(nama){ const a = Array.from(String(nama || "?").trim()); return esc((a[0] || "?").toUpperCase()); }
+function pfAdLib(aid){ return "https://www.facebook.com/ads/library/?id=" + encodeURIComponent(aid); }
+function pfAdLibHalaman(pid){ return "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ID&view_all_page_id=" + encodeURIComponent(pid) + "&search_type=page&media_type=all"; }
+function pfTutupOverlay(){
+  const hp = document.getElementById("halaman-iklan");
+  if(hp && hp.style.display === "block" && typeof tutupHalamanIklan === "function") tutupHalamanIklan();
+  document.querySelectorAll(".brief-ov").forEach(function(o){ o.remove(); });
+}
+function bukaProfil(pid){
+  pid = String(pid || "").replace(/\D/g, "");
+  if(!pid){ toast("ID halaman tidak valid."); return; }
+  pfTutupOverlay();
+  PF.pid = pid;
+  tampilView("pengiklan");
+}
+async function tungguArsip(maks){
+  const t0 = Date.now();
+  while(Date.now() - t0 < (maks || 20000)){
+    try{ const r = await fetch("/api/arsip/status"); const d = await r.json(); if(!d.antri) return d; }catch(e){ return null; }
+    await new Promise(function(res){ setTimeout(res, 700); });
+  }
+  return null;
+}
+async function scanHalamanDiam(pid){
+  try{
+    const r = await fetch("/scan?q=" + encodeURIComponent(pid) + "&mode=halaman");
+    const d = await r.json();
+    return d && d.ok ? {ok: true, aktif: d.jumlah, mati: d.jumlah_mati} : {ok: false, error: (d && d.error) || "gagal"};
+  }catch(e){ return {ok: false, error: "koneksi terputus"}; }
+}
+function pfProgres(idWadah, html){
+  const el = document.getElementById(idWadah);
+  if(!el) return;
+  if(!html){ el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "flex"; el.innerHTML = '<span class="putar"></span><span>' + html + '</span>';
+}
+function itemPeristiwa(e, denganNama){
+  const J = {baru: ["Iklan baru", "baru"], mati: ["Dimatikan", "mati"], hidup: ["Hidup lagi", "hidup"]}[e.jenis] || [esc(e.jenis), "netral"];
+  let ket = [];
+  if(e.jenis === "mati" && e.berakhir){
+    let tay = "";
+    if(e.mulai){ const h = Math.round((new Date(e.berakhir) - new Date(e.mulai)) / 864e5) + 1; if(h > 0) tay = " · tayang " + h + " hari"; }
+    ket.push("berakhir " + pfTgl(e.berakhir) + " 🟢" + tay);
+  } else if(e.mulai){ ket.push("mulai " + pfTgl(e.mulai) + " 🟢"); }
+  if(e.format && e.format !== "?") ket.push(esc(e.format));
+  if(e.funnel) ket.push(esc(e.funnel));
+  if(e.harga_min) ket.push(fmtHarga(e.harga_min));
+  ket.push("terdeteksi " + pfRelatif(e.waktu));
+  return '<div class="pf-ev"><span class="ps-bdg ' + J[1] + '">' + J[0] + '</span><div class="pf-ev-isi">' +
+    (denganNama ? '<a data-pid="' + esc(e.page_id || "") + '" onclick="bukaProfil(this.dataset.pid)">' + esc(e.halaman || e.page_id || "?") + '</a> · ' : '') +
+    '<span class="pf-ev-hook">' + esc(e.hook || "(iklan tanpa teks)") + '</span><small>' + ket.join(" · ") + '</small></div>' +
+    (e.archive_id ? '<button class="ps-tb" title="Buka di Ad Library" data-u="' + esc(pfAdLib(e.archive_id)) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg></button>' : '') +
+    '</div>';
+}
+
+/* ---------- Pesaing Dipantau ---------- */
+async function muatPesaing(){
+  const daftar = document.getElementById("ps-daftar"), jml = document.getElementById("ps-jml"), per = document.getElementById("ps-peringatan");
+  if(!daftar) return;
+  let d = null;
+  try{ d = await (await fetch("/api/pantau")).json(); }catch(e){}
+  if(!d || !d.ok){ daftar.innerHTML = '<div class="pf-kosong">Daftar pesaing tidak terbaca. Coba muat ulang.</div>'; return; }
+  if(!d.siap){
+    per.innerHTML = '<div class="arsip-peringatan" style="margin-bottom:14px"><b>Fitur Pesaing belum aktif.</b> Jalankan <code>SUPABASE-PESAING.sql</code> sekali di Supabase (SQL Editor → Run). Profil pengiklan tetap bisa dibuka dari detail iklan.</div>';
+    daftar.innerHTML = '<div class="pf-kosong">Menunggu tabel pantau dibuat.</div>';
+    jml.textContent = "—";
+    document.getElementById("ps-feed").innerHTML = '<div class="pf-kosong">Feed perubahan aktif setelah SQL dijalankan.</div>';
+    return;
+  }
+  per.innerHTML = "";
+  PF.pesaing = d.daftar || [];
+  jml.textContent = PF.pesaing.length + " / " + (d.maks || 30);
+  if(!PF.pesaing.length){
+    daftar.innerHTML = '<div class="pf-kosong"><b>Belum ada pesaing.</b> Cara menambah: scan kata kunci di <b>Scan Meta</b> → klik satu iklan → <b>Profil pengiklan</b> → <b>Pantau</b>. Atau ketik ID halaman di bawah.</div>';
+  } else {
+    daftar.innerHTML = PF.pesaing.map(function(p){
+      const bdg = [];
+      if(p.baru_7h) bdg.push('<span class="ps-bdg baru">+' + p.baru_7h + ' baru</span>');
+      if(p.mati_7h) bdg.push('<span class="ps-bdg mati">−' + p.mati_7h + ' mati</span>');
+      if(p.hidup_7h) bdg.push('<span class="ps-bdg hidup">' + p.hidup_7h + ' hidup lagi</span>');
+      if(!bdg.length && p.terakhir_cek) bdg.push('<span class="ps-bdg netral">tanpa perubahan 7 hari</span>');
+      return '<div class="ps-item"><div class="ps-ava">' + pfInisial(p.nama) + '</div><div class="ps-info">' +
+        '<span class="ps-nama" data-pid="' + esc(p.page_id) + '" onclick="bukaProfil(this.dataset.pid)">' + esc(p.nama || ("Halaman " + p.page_id)) + '</span>' +
+        '<div class="ps-meta"><span><b>' + pfAngka(p.aktif) + '</b> aktif · ' + pfAngka(p.total) + ' terarsip</span><span>· ' +
+        (p.terakhir_cek ? 'dicek ' + pfRelatif(p.terakhir_cek) : 'belum pernah dicek') + '</span>' + bdg.join("") + '</div></div>' +
+        '<button class="ps-tb" data-pid="' + esc(p.page_id) + '" onclick="cekSatuPesaing(this.dataset.pid, this)" title="Scan semua iklan halaman ini sekarang"><svg class=ik><use href=#ik-refresh></use></svg>Cek</button>' +
+        '<button class="ps-tb bahaya" data-pid="' + esc(p.page_id) + '" data-n="' + esc(p.nama || p.page_id) + '" onclick="hapusPesaing(this.dataset.pid, this.dataset.n)" title="Berhenti memantau"><svg class=ik><use href=#ik-x></use></svg></button>' +
+        '</div>';
+    }).join("");
+  }
+  muatFeed();
+}
+async function muatFeed(){
+  const box = document.getElementById("ps-feed");
+  if(!box) return;
+  document.querySelectorAll("#view-pesaing .ps-tab").forEach(function(b){ b.classList.toggle("on", b.dataset.l === PF.feed); });
+  let d = null;
+  try{ d = await (await fetch("/api/peristiwa?lingkup=" + PF.feed + "&limit=50")).json(); }catch(e){}
+  if(!d || !d.ok || !d.siap){ box.innerHTML = '<div class="pf-kosong">Feed belum tersedia.</div>'; return; }
+  box.innerHTML = (d.feed || []).length ? d.feed.map(function(e){ return itemPeristiwa(e, true); }).join("") :
+    '<div class="pf-kosong">' + (PF.feed === "pantau"
+      ? 'Belum ada perubahan pada pesaing yang dipantau. Perubahan muncul mulai <b>cek kedua</b>: cek pertama merekam kondisi awal, cek berikutnya membandingkannya.'
+      : 'Belum ada perubahan tercatat. Feed terisi saat pengiklan yang sudah dikenal terlihat lagi di scan berikutnya.') + '</div>';
+}
+function gantiFeed(l){ PF.feed = l; muatFeed(); }
+async function cekSatuPesaing(pid, btn){
+  if(PF.sibuk){ toast("Masih ada pengecekan berjalan."); return; }
+  PF.sibuk = true; if(btn) btn.disabled = true;
+  const p = (PF.pesaing || []).find(function(x){ return x.page_id === pid; }) || {};
+  pfProgres("ps-progres", "Mengecek <b>" + esc(p.nama || pid) + "</b>… (±20–40 dtk)");
+  const h = await scanHalamanDiam(pid);
+  await tungguArsip();
+  pfProgres("ps-progres", "");
+  PF.sibuk = false;
+  toast(h.ok ? "Selesai: <b>" + esc(p.nama || pid) + "</b> · " + h.aktif + " iklan aktif" : "Gagal mengecek: " + esc(h.error));
+  muatPesaing();
+}
+async function cekSemuaPesaing(){
+  const list = PF.pesaing || [];
+  if(!list.length){ toast("Belum ada pesaing yang dipantau."); return; }
+  if(PF.sibuk){ toast("Masih ada pengecekan berjalan."); return; }
+  PF.sibuk = true;
+  const tombol = document.getElementById("ps-cek-semua"); if(tombol) tombol.disabled = true;
+  let ok = 0, gagal = 0;
+  for(let i = 0; i < list.length; i++){
+    pfProgres("ps-progres", "Mengecek " + (i + 1) + "/" + list.length + ": <b>" + esc(list[i].nama || list[i].page_id) + "</b>… (±20–40 dtk per pesaing, jangan tutup halaman)");
+    const h = await scanHalamanDiam(list[i].page_id);
+    if(h.ok) ok++; else gagal++;
+  }
+  await tungguArsip();
+  pfProgres("ps-progres", "");
+  PF.sibuk = false; if(tombol) tombol.disabled = false;
+  toast("Cek selesai: <b>" + ok + "</b> berhasil" + (gagal ? ", " + gagal + " gagal (Ad Library kadang menolak — coba lagi nanti)" : "") + ".");
+  muatPesaing();
+}
+async function ubahPantau(aksi, pid, nama){
+  try{
+    const r = await fetch("/api/pantau", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({aksi: aksi, page_id: pid, nama: nama || ""})});
+    return await r.json();
+  }catch(e){ return {ok: false, error: "koneksi terputus"}; }
+}
+async function hapusPesaing(pid, nama){
+  if(!confirm("Berhenti memantau " + nama + "?\nArsip iklannya tetap tersimpan.")) return;
+  const d = await ubahPantau("hapus", pid);
+  toast(d.ok ? "Berhenti memantau <b>" + esc(nama) + "</b>." : "Gagal: " + esc(d.error || ""));
+  muatPesaing();
+}
+async function tambahPesaingManual(){
+  const inp = document.getElementById("ps-pid");
+  const pid = String(inp.value || "").replace(/\D/g, "");
+  if(!pid){ toast("Isi ID halaman (angka). Ada di detail iklan bagian <b>Identitas → page_id</b>."); return; }
+  const d = await ubahPantau("tambah", pid, "");
+  if(!d.ok){ toast("Gagal: " + esc(d.error || "")); return; }
+  inp.value = "";
+  toast("Ditambahkan. Klik <b>Cek</b> agar INTAI merekam kondisi awalnya.");
+  muatPesaing();
+}
+
+/* ---------- Profil Pengiklan ---------- */
+function pfDist(judul, obj, total){
+  const items = Object.entries(obj || {});
+  if(!items.length) return "";
+  const maks = Math.max.apply(null, items.map(function(kv){ return kv[1]; }));
+  return '<div class="pf-dist"><div class="jd">' + judul + '</div>' + items.slice(0, 6).map(function(kv){
+    return '<div class="pf-bar"><span class="t" title="' + esc(kv[0]) + '">' + esc(kv[0]) + '</span><span class="g"><i style="width:' +
+      Math.max(4, Math.round(kv[1] / maks * 100)) + '%"></i></span><span class="n">' + kv[1] + '</span></div>';
+  }).join("") + '</div>';
+}
+function pfBarisIklan(){
+  const d = PF.data; if(!d) return "";
+  let rows = d.iklan || [];
+  if(PF.filter === "aktif") rows = rows.filter(function(r){ return r.aktif; });
+  if(PF.filter === "mati") rows = rows.filter(function(r){ return !r.aktif; });
+  const n = rows.length;
+  rows = rows.slice(0, PF.tampil);
+  if(!n) return '<div class="pf-kosong">Tidak ada iklan di filter ini.</div>';
+  return '<div class="pf-tabel-wrap"><table class="pf-tabel"><thead><tr><th>Status</th><th>Hook / teks pembuka</th><th>Format</th><th>Funnel</th><th title="Aktif: umur sampai hari ini. Mati: lama tayang dari tanggal mulai–berakhir Meta">Hari</th><th>Harga</th><th>Mulai</th><th></th></tr></thead><tbody>' +
+    rows.map(function(r){
+      const st = r.aktif ? '<span class="pf-titik"></span>Aktif' : '<span class="pf-titik mati"></span>Mati';
+      const hari = r.hari ? (r.aktif ? r.hari + " hr" : "tayang " + r.hari + " hr") : "—";
+      const harga = r.harga_min ? fmtHarga(r.harga_min) + (r.harga_max && r.harga_max !== r.harga_min ? "–" + fmtHarga(r.harga_max) : "") : "—";
+      const sub = [r.status, r.niche ? "niche: " + r.niche : "", r.domain].filter(Boolean).map(esc).join(" · ");
+      return '<tr class="' + (r.aktif ? "" : "mati") + '"><td class="nw">' + st + '</td><td class="hook">' + esc(r.hook || "(tanpa teks)") +
+        (sub ? '<small>' + sub + '</small>' : '') + '</td><td class="nw">' + esc(r.format || "—") + '</td><td class="nw">' + esc(r.funnel || "—") +
+        '</td><td class="nw">' + hari + '</td><td class="nw">' + harga + '</td><td class="nw">' + pfTgl(r.mulai) + '</td>' +
+        '<td><button class="ps-tb" title="Buka di Ad Library" data-u="' + esc(pfAdLib(r.archive_id)) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg></button></td></tr>';
+    }).join("") + '</tbody></table></div>' +
+    (n > PF.tampil ? '<div class="pf-lagi"><button class="ps-tb" onclick="PF.tampil+=60;document.getElementById(\'pf-daftar\').innerHTML=pfBarisIklan()">Tampilkan lagi (' + (n - PF.tampil) + ' tersisa)</button></div>' : '');
+}
+function pfFilter(f){
+  PF.filter = f; PF.tampil = 60;
+  document.querySelectorAll("#view-pengiklan .pf-filter button").forEach(function(b){ b.classList.toggle("on", b.dataset.f === f); });
+  document.getElementById("pf-daftar").innerHTML = pfBarisIklan();
+}
+async function muatProfil(pid){
+  const box = document.getElementById("pf-isi");
+  if(!box) return;
+  pid = String(pid || PF.pid || "").replace(/\D/g, "");
+  PF.pid = pid; PF.filter = "semua"; PF.tampil = 60;
+  if(!pid){ box.innerHTML = '<div class="pf-kosong" style="padding:40px 0">ID halaman tidak ada di alamat.</div>'; return; }
+  box.innerHTML = '<div class="chart-kosong" style="color:var(--faint);padding:40px 0">Memuat profil…</div>';
+  let d = null;
+  try{ d = await (await fetch("/api/pengiklan?id=" + encodeURIComponent(pid))).json(); }catch(e){}
+  if(PF.pid !== pid) return;  // user sudah pindah profil
+  const kembali = '<div class="pf-kembali"><button class="ps-tb" onclick="pfKembali()"><svg class=ik><use href=#ik-back></use></svg>Kembali</button></div>';
+  if(!d || !d.ok){ box.innerHTML = kembali + '<div class="pf-catatan kuning" style="margin-top:14px">Profil tidak terbaca' + (d && d.error ? ': ' + esc(d.error) : '') + '.</div>'; return; }
+  if(!d.siap){ box.innerHTML = kembali + '<div class="arsip-peringatan" style="margin-top:14px"><b>Arsip belum siap.</b> Jalankan <code>SUPABASE-ARSIP.sql</code> di Supabase dulu.</div>'; return; }
+  PF.data = d;
+  const pg = d.pengiklan || {}, R = d.ringkas || {};
+  const nama = pg.nama || (d.iklan && d.iklan[0] && d.iklan[0].halaman) || ("Halaman " + pid);
+  document.title = "INTAI — " + nama;
+  const tPantau = d.p2_siap ? (d.dipantau
+      ? '<button class="ps-tb" id="pf-pantau" onclick="pfTogglePantau()"><svg class=ik><use href=#ik-check></use></svg>Dipantau</button>'
+      : '<button class="ps-tb utama" id="pf-pantau" onclick="pfTogglePantau()"><svg class=ik><use href=#ik-eye></use></svg>Pantau pesaing ini</button>') : '';
+  let h = kembali +
+    '<div class="pf-kepala"><div class="pf-ava">' + pfInisial(nama) + '</div><div class="pf-judul"><h1>' + esc(nama) + '</h1>' +
+    '<div class="pf-sub"><span>ID <code title="Klik untuk salin" data-u="' + esc(pid) + '" onclick="salin(this.dataset.u)">' + esc(pid) + '</code></span>' +
+    (pg.likes ? '<span>' + pfAngka(pg.likes) + ' pengikut halaman 🟢</span>' : '') +
+    (pg.pertama_terlihat ? '<span>dikenal INTAI sejak ' + pfTgl(pg.pertama_terlihat) + '</span>' : '') +
+    (pg.terakhir_terlihat ? '<span>terakhir terlihat ' + pfRelatif(pg.terakhir_terlihat) + '</span>' : '') + '</div>' +
+    '<div class="pf-aksi">' + tPantau +
+    '<button class="ps-tb" id="pf-scan" onclick="pfScanUlang()"><svg class=ik><use href=#ik-refresh></use></svg>Scan semua iklannya</button>' +
+    '<button class="ps-tb" data-u="' + esc(pfAdLibHalaman(pid)) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg>Ad Library</button>' +
+    (pg.profil ? '<button class="ps-tb" data-u="' + esc(pg.profil) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg>Halaman Facebook</button>' : '') +
+    '</div></div></div><div id="pf-progres" class="ps-progres" style="display:none"></div>';
+  if(d.kosong){
+    box.innerHTML = h + '<div class="pf-catatan kuning"><b>Pengiklan ini belum ada di arsip INTAI.</b> Klik <b>Scan semua iklannya</b>: INTAI akan mengambil semua iklan halaman ini dari Meta Ad Library lalu menyusun profilnya.</div>';
+    return;
+  }
+  h += d.scan_halaman
+    ? '<div class="pf-catatan">Cakupan: <b>semua iklan halaman</b> · scan halaman ' + d.scan_halaman + '× · terakhir ' + pfRelatif(d.scan_halaman_terakhir) + '. Angka di bawah dari arsip INTAI (' + pfAngka(R.total) + ' iklan pernah terlihat).</div>'
+    : '<div class="pf-catatan kuning"><b>Profil sebagian.</b> Pengiklan ini baru terlihat lewat scan kata kunci (' + pfAngka(R.total) + ' iklan yang cocok kata kunci). Klik <b>Scan semua iklannya</b> untuk profil lengkap.</div>';
+  if(!d.p2_siap) h += '<div class="pf-catatan kuning">Tombol Pantau &amp; feed perubahan aktif setelah <code>SUPABASE-PESAING.sql</code> dijalankan di Supabase.</div>';
+  const tua = R.tertua || {};
+  const blj = R.belanja || {};
+  h += '<div class="kpi-row">' +
+    '<div class="kpi"><div class="lbl">Iklan aktif 🟢</div><div class="v">' + pfAngka(R.aktif) + '</div><span class="sub">dari ' + pfAngka(R.total) + ' terarsip · ' + pfAngka(R.mati) + ' mati</span></div>' +
+    '<div class="kpi"><div class="lbl">Iklan tertua aktif 🟢</div><div class="v">' + (R.umur_max ? R.umur_max + '<small style="font-size:14px"> hr</small>' : '—') + '</div><span class="sub" title="' + esc(tua.hook || "") + '">' + esc(tua.hook || "—") + '</span></div>' +
+    '<div class="kpi"><div class="lbl">Iklan baru 30 hari 🟢</div><div class="v">' + pfAngka(R.baru_30h) + '</div><span class="sub">menurut tanggal mulai Meta</span></div>' +
+    '<div class="kpi"><div class="lbl">Est. belanja/bln 🟠</div><div class="v teks">' + (blj.max ? fmtHarga(blj.min) + '–' + fmtHarga(blj.max) : '—') + '</div><span class="sub">model, dari ' + pfAngka(blj.n) + ' iklan aktif · bukan data Meta</span></div>' +
+    '</div>';
+  // kolom kiri
+  const pb = R.per_bulan || [], maksB = Math.max(1, Math.max.apply(null, pb.map(function(b){ return b.n; })));
+  const BLN = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+  let kiri = '<div class="kartu"><div class="judul-kartu"><b>Tempo materi baru</b><span class="pf-sumber">🟢 tanggal mulai Meta · per bulan</span></div><div class="pf-batang">' +
+    pb.map(function(b){ return '<div class="b' + (b.n ? '' : ' nol') + '"><b>' + b.n + '</b><i style="height:' + Math.max(3, Math.round(b.n / maksB * 100)) + '%"></i><span>' + BLN[Number(b.bulan.slice(5)) - 1] + '</span></div>'; }).join("") +
+    '</div><div class="arsip-cat">Jumlah iklan (aktif maupun mati) yang mulai tayang tiap bulan, dari iklan yang ada di arsip.</div></div>';
+  const rw = d.riwayat || [];
+  if(rw.length >= 2){
+    const mk = Math.max(1, Math.max.apply(null, rw.map(function(x){ return x.aktif || 0; })));
+    kiri += '<div class="kartu"><div class="judul-kartu"><b>Iklan aktif per cek</b><span class="pf-sumber">🔵 dari ' + rw.length + ' scan halaman</span></div><div class="pf-batang">' +
+      rw.slice(-12).map(function(x){ return '<div class="b"><b>' + (x.aktif || 0) + '</b><i style="height:' + Math.max(3, Math.round((x.aktif || 0) / mk * 100)) + '%"></i><span>' + pfTgl(x.waktu).replace(/ \d{4}$/, "") + '</span></div>'; }).join("") +
+      '</div></div>';
+  }
+  const tabel = '<div class="kartu" style="margin-top:14px"><div class="judul-kartu"><b>Semua iklan (' + pfAngka(d.iklan_total) + ')</b><span class="pf-filter">' +
+    '<button class="on" data-f="semua" onclick="pfFilter(\'semua\')">Semua</button><button data-f="aktif" onclick="pfFilter(\'aktif\')">Aktif</button><button data-f="mati" onclick="pfFilter(\'mati\')">Mati</button></span></div>' +
+    '<div id="pf-daftar">' + pfBarisIklan() + '</div></div>';
+  // kolom kanan
+  const ev = d.peristiwa || [];
+  let kanan = '<div class="kartu"><div class="judul-kartu"><b>Perubahan terdeteksi</b><span>' + ev.length + '</span></div>' +
+    (ev.length ? ev.slice(0, 15).map(function(e){ return itemPeristiwa(e, false); }).join("")
+      : '<div class="pf-kosong">' + (d.p2_siap ? 'Belum ada perubahan tercatat. Perubahan terlihat setelah pengiklan ini di-scan <b>lagi</b>' + (d.dipantau ? '.' : '. <b>Pantau</b> agar mudah dicek rutin.') : 'Aktif setelah SUPABASE-PESAING.sql dijalankan.') + '</div>') + '</div>';
+  kanan += '<div class="kartu"><div class="judul-kartu"><b>Pola iklan</b><span class="pf-sumber">🔵 hitungan · iklan ' + (R.basis === "aktif" ? "aktif" : "terarsip") + '</span></div>' +
+    pfDist("Format", R.format) + pfDist("Tujuan (funnel)", R.funnel) + pfDist("Status sinyal", R.status) + '</div>';
+  const dm = R.durasi_mati || {};
+  kiri += '<div class="kartu"><div class="judul-kartu"><b>Kebiasaan uji iklan</b><span class="pf-sumber">🟢 tanggal Meta · 🔵 hitungan</span></div>' +
+    (dm.n >= 3
+      ? '<div class="pf-angka3"><div><b>' + dm.median + '</b><span>median hari tayang iklan mati</span></div><div><b>' + Math.round(dm.cepat / dm.n * 100) + '%</b><span>dimatikan ≤7 hari (gagal uji)</span></div><div><b>' + Math.round(dm.tahan / dm.n * 100) + '%</b><span>bertahan ≥30 hari</span></div></div>' +
+        '<div class="arsip-cat">Dari ' + dm.n + ' iklan mati bertanggal lengkap. Banyak yang mati cepat = pengiklan rajin menguji materi.</div>'
+      : '<div class="pf-kosong">Belum cukup iklan mati bertanggal (' + pfAngka(dm.n) + ' dari minimal 3). ' + (dm.tanpa_tanggal ? dm.tanpa_tanggal + ' iklan mati terarsip sebelum v1.1 belum punya tanggal berakhir; terisi saat terlihat lagi.' : '') + '</div>') + '</div>';
+  const hg = R.harga || {};
+  const chips = function(obj, klik){
+    const it = Object.entries(obj || {});
+    return it.length ? '<div class="pf-chips">' + it.map(function(kv){
+      return klik ? '<span class="pf-chip klik" data-q="' + esc(kv[0]) + '" onclick="ke(\'/meta?q=\' + encodeURIComponent(this.dataset.q))" title="Scan niche ini">' + esc(kv[0]) + '<small>' + kv[1] + '</small></span>'
+                  : '<span class="pf-chip">' + esc(kv[0]) + '<small>' + kv[1] + '</small></span>';
+    }).join("") + '</div>' : '<div class="pf-kosong">—</div>';
+  };
+  kanan += '<div class="kartu"><div class="judul-kartu"><b>Harga, tujuan &amp; niche</b><span class="pf-sumber">dari iklan</span></div>' +
+    (hg.n ? '<div class="pf-angka3" style="margin-bottom:12px"><div><b>' + fmtHarga(hg.min) + '</b><span>harga terendah</span></div><div><b>' + fmtHarga(hg.median) + '</b><span>median (' + hg.n + ' iklan)</span></div><div><b>' + fmtHarga(hg.max) + '</b><span>tertinggi</span></div></div>' : '<div class="pf-kosong" style="margin-bottom:8px">Harga tidak terbaca dari iklan aktif.</div>') +
+    '<div class="pf-dist"><div class="jd">Niche tempat muncul (klik untuk scan)</div>' + chips(R.niche, true) + '</div>' +
+    '<div class="pf-dist"><div class="jd">Domain tujuan</div>' + chips(R.domain, false) + '</div>' +
+    '<div class="pf-dist"><div class="jd">Tombol CTA</div>' + chips(R.cta, false) + '</div></div>';
+  box.innerHTML = h + '<div class="dash-grid pf-grid"><div class="kol">' + kiri + '</div><div class="kol">' + kanan + '</div></div>' + tabel +
+    '<footer><div>INTAI v1.1 · profil dari arsip scan · 🟢 data Meta · 🔵 hitungan INTAI · 🟠 model</div><div>Belanja iklan komersial tidak dirilis Meta — angka 🟠 adalah perkiraan</div></footer>';
+}
+function pfKembali(){
+  if(history.length > 1) history.back(); else ke("/pesaing");
+}
+async function pfTogglePantau(){
+  const d = PF.data; if(!d) return;
+  const btn = document.getElementById("pf-pantau"); if(btn) btn.disabled = true;
+  const nama = (d.pengiklan && d.pengiklan.nama) || "";
+  const r = await ubahPantau(d.dipantau ? "hapus" : "tambah", d.page_id, nama);
+  if(!r.ok){ toast("Gagal: " + esc(r.error || "")); if(btn) btn.disabled = false; return; }
+  toast(r.dipantau ? "<b>" + esc(nama || d.page_id) + "</b> dipantau. Lihat di menu <b>Pesaing Dipantau</b>." : "Berhenti memantau.");
+  muatProfil(d.page_id);
+}
+async function pfScanUlang(){
+  if(PF.sibuk){ toast("Masih ada scan berjalan."); return; }
+  const pid = PF.pid; PF.sibuk = true;
+  const btn = document.getElementById("pf-scan"); if(btn) btn.disabled = true;
+  pfProgres("pf-progres", "Mengambil semua iklan halaman ini dari Meta Ad Library… (±20–40 dtk)");
+  const h = await scanHalamanDiam(pid);
+  if(h.ok) pfProgres("pf-progres", "Menyimpan ke arsip & membandingkan perubahan…");
+  const st = h.ok ? await tungguArsip() : null;
+  pfProgres("pf-progres", "");
+  PF.sibuk = false;
+  if(!h.ok){ toast("Scan gagal: " + esc(h.error)); if(btn) btn.disabled = false; return; }
+  toast("Selesai: " + h.aktif + " iklan aktif" + (st && st.peristiwa_terakhir ? " · <b>" + st.peristiwa_terakhir + " perubahan</b> baru tercatat" : "") + ".");
+  if(PF.pid === pid && document.getElementById("view-pengiklan").style.display !== "none") muatProfil(pid);
+}
+
 /* ================= ROUTER SPA (v0.7): dashboard <-> scan dalam satu halaman ================= */
-const VIEWS = ["dashboard", "meta", "shopee", "tiktok"];   // v0.9: urutan = urutan tombol sidebar
+const VIEWS = ["dashboard", "meta", "pesaing", "shopee", "tiktok", "pengiklan"];   // v0.9: urutan = urutan tombol sidebar (pengiklan: tanpa tombol)
 function viewDariPath(p){
   p = String(p || "/").replace(/\/+$/, "");
-  for(const v of ["meta", "shopee", "tiktok"]){ if(p === "/" + v) return v; }
+  const mP = /^\/pengiklan\/(\d{1,40})$/.exec(p);
+  if(mP){ PF.pid = mP[1]; return "pengiklan"; }
+  for(const v of ["meta", "pesaing", "shopee", "tiktok"]){ if(p === "/" + v) return v; }
   return "dashboard";
 }
 function tampilView(v, push){
@@ -2504,18 +2981,21 @@ function tampilView(v, push){
     const el = document.getElementById("view-" + n);
     if(el) el.style.display = (n === v) ? "" : "none";
   });
-  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : "INTAI — Dashboard";
+  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
     const items = nav.querySelectorAll(".sb-item");
-    const idx = VIEWS.indexOf(v);
+    const idx = VIEWS.indexOf(v === "pengiklan" ? "pesaing" : v);
     items.forEach(function(b, i){ b.classList.toggle("on", i === idx); });
   }
   if(window.__kalibrasiPil) requestAnimationFrame(function(){ window.__kalibrasiPil(); });
   if(v === "dashboard" && typeof muatRingkasan === "function") muatRingkasan();
   if(v === "dashboard" && typeof muatArsip === "function") muatArsip();
+  if(v === "pesaing") muatPesaing();
+  if(v === "pengiklan") muatProfil(PF.pid);
   if(push !== false){
-    try{ history.pushState({v: v}, "", v === "dashboard" ? "/dashboard" : "/" + v); }catch(e){}
+    const url = v === "dashboard" ? "/dashboard" : v === "pengiklan" ? "/pengiklan/" + PF.pid : "/" + v;
+    try{ history.pushState({v: v}, "", url); }catch(e){}
   }
   window.scrollTo(0, 0);
 }
@@ -2553,6 +3033,10 @@ function ke(url){
       if(mi >= 0) m = u.slice(mi + 5).split("&")[0];
       if(q) isiScanDari(q, m);
     }
+  } else if(u.indexOf("/pesaing") === 0){
+    tampilView("pesaing");
+  } else if(u.indexOf("/pengiklan/") === 0){
+    bukaProfil(u.slice(11));
   } else if(u.indexOf("/shopee") === 0){
     tampilView("shopee");
   } else if(u.indexOf("/tiktok") === 0){
@@ -2572,5 +3056,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4944e6ebba74536',t:'MTc5MTc4OTI1Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49478811857008f',t:'MTc5MTc5MDk3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
