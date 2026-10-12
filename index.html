@@ -707,6 +707,15 @@
 .view-modul .mk-kini code{background:#fff;border:1px solid var(--line);border-radius:7px;padding:1px 7px;font-size:11.5px;font-family:inherit;font-weight:800}
 .view-modul .mk-aksi{margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .view-modul .mk-foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:10.5px;color:var(--faint);font-weight:650}
+
+/* ===== v1.0 P1: kartu arsip ===== */
+.arsip-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.arsip-sel{background:#FBFAF7;border:1px solid var(--line);border-radius:13px;padding:10px 12px}
+.arsip-sel b{display:block;font-size:20px;font-weight:800;letter-spacing:-.6px;color:var(--ink);line-height:1.2}
+.arsip-sel span{font-size:10.5px;color:var(--muted);font-weight:700}
+.arsip-cat{font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.65}
+.arsip-peringatan{font-size:11px;line-height:1.65;background:var(--emas-soft);border:1px solid #E8D9B8;color:#7A5410;border-radius:12px;padding:10px 12px;margin-top:4px}
+.arsip-peringatan code{background:#fff;border-radius:6px;padding:1px 6px;font-weight:800;font-family:inherit}
 </style>
 </head>
 <body>
@@ -738,7 +747,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v0.9<br>Shopee &amp; TikTok: disiapkan</div>
+    <div class="sb-foot">Mesin Meta aktif · v1.0<br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
 
   <main class="isi-utama">
@@ -785,6 +794,11 @@
           <div class="status-baris"><span>Scan Shopee</span><span class="badge soon"><span class="titik"></span> Mesin disiapkan</span></div>
           <div class="status-baris"><span>Scan TikTok</span><span class="badge soon"><span class="titik"></span> Mesin disiapkan</span></div>
         </div>
+        <!-- v1.0 P1: arsip data yang tumbuh -->
+        <div class="kartu anim d3" id="kartu-arsip">
+          <div class="judul-kartu"><b>Arsip data INTAI</b><span id="arsip-sumber">memuat…</span></div>
+          <div id="arsip-isi"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+        </div>
         <div class="kartu anim d4">
           <div class="judul-kartu"><b>Cara pakai kilat</b><span>4 langkah</span></div>
           <div class="langkah"><div class="no">1</div><div><b>Pilih niche</b><span>Ketik kata kunci produk — misal: rak sepatu.</span></div></div>
@@ -796,7 +810,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v0.9 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v1.0 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -992,7 +1006,7 @@
   </div>
 </div>
 
-<div class="foot">INTAI v0.9 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI v1.0 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -1037,7 +1051,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v0.9 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI v1.0 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
 
@@ -1061,7 +1075,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v0.9 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI v1.0 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
   </main>
@@ -2448,6 +2462,34 @@ document.getElementById("bq2").addEventListener("keydown", e => { if(e.key === "
 
 
 
+/* ===== v1.0 P1: statistik arsip (database yang tumbuh) ===== */
+async function muatArsip(){
+  const isi = document.getElementById("arsip-isi"), sb = document.getElementById("arsip-sumber");
+  if(!isi) return;
+  let d = null;
+  try{ const r = await fetch("/api/arsip"); d = await r.json(); }catch(e){}
+  if(!d || !d.ok){ isi.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Arsip tidak terbaca.</div>'; if(sb) sb.textContent = "—"; return; }
+  if(sb) sb.textContent = d.sumber === "supabase" ? "Supabase" : "lokal";
+  if(!d.siap){
+    isi.innerHTML = '<div class="arsip-peringatan"><b>Tabel arsip belum dibuat.</b> Jalankan <code>SUPABASE-ARSIP.sql</code> sekali di Supabase (SQL Editor → Run). Scan tetap berjalan normal; data mulai terkumpul setelah tabel ada.</div>';
+    return;
+  }
+  const f = n => Number(n || 0).toLocaleString("id-ID");
+  let sejak = "";
+  if(d.sejak){ try{ sejak = new Date(d.sejak).toLocaleDateString("id-ID", {day:"numeric", month:"short", year:"numeric"}); }catch(e){} }
+  const st = d.status_terakhir || {};
+  isi.innerHTML =
+    '<div class="arsip-grid">' +
+      '<div class="arsip-sel"><b>' + f(d.iklan) + '</b><span>iklan terarsip · ' + f(d.iklan_aktif) + ' aktif</span></div>' +
+      '<div class="arsip-sel"><b>' + f(d.pengiklan) + '</b><span>pengiklan</span></div>' +
+      '<div class="arsip-sel"><b>' + f(d.niche) + '</b><span>niche</span></div>' +
+      '<div class="arsip-sel"><b>' + f(d.snapshot) + '</b><span>potret scan</span></div>' +
+    '</div>' +
+    '<div class="arsip-cat">' + (d.iklan ? 'Tumbuh sejak <b>' + esc(sejak || "—") + '</b> · tiap scan menambah data.' : 'Masih kosong — scan berikutnya mulai mengisi arsip.') +
+    ' Bahan untuk profil pengiklan, peringkat niche &amp; grafik tren.</div>' +
+    (st.terakhir_ok === false ? '<div class="arsip-peringatan" style="margin-top:8px">Simpan arsip terakhir gagal: ' + esc(String(st.terakhir_galat || "").slice(0, 160)) + '</div>' : '');
+}
+
 /* ================= ROUTER SPA (v0.7): dashboard <-> scan dalam satu halaman ================= */
 const VIEWS = ["dashboard", "meta", "shopee", "tiktok"];   // v0.9: urutan = urutan tombol sidebar
 function viewDariPath(p){
@@ -2471,6 +2513,7 @@ function tampilView(v, push){
   }
   if(window.__kalibrasiPil) requestAnimationFrame(function(){ window.__kalibrasiPil(); });
   if(v === "dashboard" && typeof muatRingkasan === "function") muatRingkasan();
+  if(v === "dashboard" && typeof muatArsip === "function") muatArsip();
   if(push !== false){
     try{ history.pushState({v: v}, "", v === "dashboard" ? "/dashboard" : "/" + v); }catch(e){}
   }
@@ -2529,5 +2572,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49416408dc7e141',t:'MTc5MTc4Njk1MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4944e6ebba74536',t:'MTc5MTc4OTI1Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
