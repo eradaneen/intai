@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.3"
+VERSI = "1.4"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -42,7 +42,7 @@ lock = threading.RLock()   # reentrant: jalankan_scan dipanggil di bawah lock, c
 img_cache = {}
 url_cache = {}
 AKUN_DB = {}    # email -> {"nama": str, "hash": sha256}
-TOKENS = {}     # token -> email
+TOKENS = {}     # v1.4: tidak dipakai lagi (sesi = token bertanda tangan, lihat buat_sesi)
 RIWAYAT = []    # [{kata, mode, waktu, jumlah, baru, hilang}]
 LAST_SEEN = {}  # (kata, mode) -> {archive_id: {"h": halaman, "hr": harga_min}} utk delta & "sejak scan terakhir"
 
@@ -2121,7 +2121,7 @@ def status_iklan(umur, skor, jual=None):
     return "UJI"
 
 
-def jalankan_scan(nilai, mode="cari"):
+def jalankan_scan(nilai, mode="cari", pemilik=None):
     """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
     s = mesin.buka_sesi()
     if mode == "halaman":
@@ -2449,10 +2449,16 @@ def jalankan_scan(nilai, mode="cari"):
         aid = str((x.get("detail") or {}).get("archive_id") or "")
         if aid:
             indeks_kini[aid] = {"h": x.get("halaman"), "hr": x.get("harga_min") or 0}
-    try:
-        sejak_lalu = catat_scan(label, mode, len(rows_hidup), indeks_kini)
-    except Exception:
-        sejak_lalu = None
+    # v1.4: dicatat ke riwayat tiap pemilik (scan manual = 1 akun; scan otomatis = semua akun yg memintanya)
+    daftar_pemilik = [pemilik] if isinstance(pemilik, str) else [p for p in (pemilik or []) if p]
+    sejak_lalu = None
+    for i_pm, pm in enumerate(daftar_pemilik or [""]):
+        try:
+            sl = catat_scan(label, mode, len(rows_hidup), indeks_kini, pm)
+        except Exception:
+            sl = None
+        if i_pm == 0:
+            sejak_lalu = sl
     # v1.0 P1: arsipkan semua iklan + pengiklan + potret niche (latar, best-effort)
     ARSIP_STATUS["antri"] = ARSIP_STATUS.get("antri", 0) + 1
     threading.Thread(target=arsipkan_scan, daemon=True, name="arsip",
@@ -2577,7 +2583,7 @@ def simpan_data():
         d = {
             "versi": VERSI,
             "riwayat": RIWAYAT,
-            "last_seen": [{"kata": k[0], "mode": k[1], "ids": v}
+            "last_seen": [{"pemilik": k[0], "kata": k[1], "mode": k[2], "ids": v}
                           for k, v in LAST_SEEN.items()],
             "akun": AKUN_DB,
         }
@@ -2604,7 +2610,7 @@ def muat_data():
             RIWAYAT.extend(lokal.get("riwayat") or [])
             for e in lokal.get("last_seen") or []:
                 try:
-                    LAST_SEEN[(e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
+                    LAST_SEEN[(e.get("pemilik") or "", e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
                 except Exception:
                     pass
             for email, a in (lokal.get("akun") or {}).items():
@@ -2617,25 +2623,32 @@ def muat_data():
 
     # --- riwayat ---
     ok, rows = supa("GET", "intai_riwayat",
-                    params="?select=kata,mode,waktu,jumlah,baru,hilang&order=id.desc&limit=500")
+                    params="?select=pemilik,kata,mode,waktu,jumlah,baru,hilang&order=id.desc&limit=1000")
+    if not ok:   # v1.4: kolom pemilik belum ada (SUPABASE-AKUN.sql belum dijalankan)
+        ok, rows = supa("GET", "intai_riwayat",
+                        params="?select=kata,mode,waktu,jumlah,baru,hilang&order=id.desc&limit=1000")
     if ok and isinstance(rows, list) and rows:
         with lock:
             RIWAYAT.clear()
-            for r in reversed(rows):  # v1.2: 500 TERBARU (dulu id.asc → setelah >1000 baris yg termuat malah yg terlama)
-                RIWAYAT.append({k: r.get(k) for k in ("kata", "mode", "waktu", "jumlah", "baru", "hilang")})
+            for r in reversed(rows):  # v1.2: TERBARU (dulu id.asc → setelah >1000 baris yg termuat malah yg terlama)
+                b = {k: r.get(k) for k in ("kata", "mode", "waktu", "jumlah", "baru", "hilang")}
+                b["pemilik"] = r.get("pemilik") or ""
+                RIWAYAT.append(b)
     else:
         terapkan_lokal()
         if lokal.get("riwayat"):
             supa("POST", "intai_riwayat", payload=lokal["riwayat"])  # seed massal
 
     # --- last_seen ---
-    ok, ls = supa("GET", "intai_last_seen", params="?select=kata,mode,ids&limit=1000")
+    ok, ls = supa("GET", "intai_last_seen", params="?select=pemilik,kata,mode,ids&limit=1000")
+    if not ok:
+        ok, ls = supa("GET", "intai_last_seen", params="?select=kata,mode,ids&limit=1000")
     if ok and isinstance(ls, list) and ls:
         with lock:
             LAST_SEEN.clear()
             for e in ls:
                 try:
-                    LAST_SEEN[(e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
+                    LAST_SEEN[(e.get("pemilik") or "", e["kata"], e["mode"])] = ke_indeks(e.get("ids"))
                 except Exception:
                     pass
     elif lokal.get("last_seen"):
@@ -2671,18 +2684,18 @@ def jantung_terowongan():
         time.sleep(20)
 
 
-def catat_scan(label, mode, jumlah, indeks):
+def catat_scan(label, mode, jumlah, indeks, pemilik=""):
     """Catat hasil scan ke riwayat mesin (sumber data dashboard /api/ringkasan).
     delta baru/hilang dihitung dari perbandingan archive_id vs scan sebelumnya
     dengan kata/mode yang sama. v0.8: indeks = {archive_id: {"h", "hr"}} →
     return `sejak_lalu` (nama yg baru/hilang + harga yg berubah) atau None (scan pertama)."""
     indeks = ke_indeks(indeks)
     with lock:
-        kunci = (label, mode)
+        kunci = (pemilik, label, mode)   # v1.4: "sejak scan terakhir" = scan terakhir AKUN INI
         prev = LAST_SEEN.get(kunci)
         waktu_lalu = jumlah_lalu = None
         for r in reversed(RIWAYAT):
-            if r.get("kata") == label and r.get("mode") == mode:
+            if r.get("kata") == label and r.get("mode") == mode and (r.get("pemilik") or "") == pemilik:
                 waktu_lalu, jumlah_lalu = r.get("waktu"), r.get("jumlah")
                 break
         sejak_lalu = None
@@ -2709,16 +2722,18 @@ def catat_scan(label, mode, jumlah, indeks):
         RIWAYAT.append({
             "kata": label, "mode": mode,
             "waktu": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M") + " UTC",
-            "jumlah": jumlah, "baru": baru, "hilang": hilang,
+            "jumlah": jumlah, "baru": baru, "hilang": hilang, "pemilik": pemilik,
         })
-        if len(RIWAYAT) > 500:
-            del RIWAYAT[:len(RIWAYAT) - 500]
+        waktu_ini = RIWAYAT[-1]["waktu"]
+        if len(RIWAYAT) > 5000:
+            del RIWAYAT[:len(RIWAYAT) - 5000]
     simpan_data()
     if supa_aktif():
-        supa("POST", "intai_riwayat", payload={
-            "kata": label, "mode": mode, "waktu": RIWAYAT[-1]["waktu"] if RIWAYAT else "",
-            "jumlah": jumlah, "baru": baru, "hilang": hilang})
-        supa("POST", "intai_last_seen", payload={"kata": label, "mode": mode, "ids": indeks},
+        pm = {"pemilik": pemilik} if akun_siap() else {}
+        supa("POST", "intai_riwayat", payload=dict({
+            "kata": label, "mode": mode, "waktu": waktu_ini,
+            "jumlah": jumlah, "baru": baru, "hilang": hilang}, **pm))
+        supa("POST", "intai_last_seen", payload=dict({"kata": label, "mode": mode, "ids": indeks}, **pm),
              prefer="return=minimal,resolution=merge-duplicates")
     return sejak_lalu
 
@@ -2916,8 +2931,10 @@ def _simpan_arsip_lokal(iklan, pengiklan, snap, kini, peristiwa=None, pid_scan=N
     if peristiwa:
         ARSIP_LOKAL["peristiwa"].extend(peristiwa)
         ARSIP_LOKAL["peristiwa"] = ARSIP_LOKAL["peristiwa"][-5000:]
-    if pid_scan and pid_scan in ARSIP_LOKAL["pantau"]:
-        ARSIP_LOKAL["pantau"][pid_scan]["terakhir_cek"] = kini
+    if pid_scan:
+        for v_pn in ARSIP_LOKAL["pantau"].values():
+            if str(v_pn.get("page_id")) == pid_scan:
+                v_pn["terakhir_cek"] = kini
     if len(ARSIP_LOKAL["iklan"]) > ARSIP_MAKS_LOKAL:  # buang yg paling lama tak terlihat
         urut = sorted(ARSIP_LOKAL["iklan"].items(), key=lambda kv: kv[1].get("terakhir_terlihat") or "")
         ARSIP_LOKAL["iklan"] = dict(urut[-ARSIP_MAKS_LOKAL:])
@@ -3115,7 +3132,7 @@ def statistik_arsip():
                  "niche": len({x.get("niche") for x in sn if x.get("mode") != "halaman"}),
                  "p2_siap": True, "pantau": len(ARSIP_LOKAL["pantau"]), "peristiwa": len(ARSIP_LOKAL["peristiwa"])}
     try:
-        d["jadwal"] = jadwal_ringkas()
+        d["jadwal"] = None   # v1.4: diisi per akun di handler (/api/arsip)
     except Exception:
         d["jadwal"] = {"siap": False}
     d["status_terakhir"] = dict(ARSIP_STATUS)
@@ -3156,6 +3173,24 @@ def _galeri_semua():
                 rows, ok = [dict(v) for v in ARSIP_LOKAL["iklan"].values()], True
         GALERI_CACHE.update({"t": time.time(), "versi": versi, "rows": rows, "ok": ok})
         return ok, rows
+
+
+def pantauan_status(ids_teks):
+    """v1.3.1 Pantauan: status terbaru per archive_id dari arsip (pakai cache galeri, maks 200 id)."""
+    ids = [re.sub(r"\D", "", x)[:40] for x in str(ids_teks or "").split(",")]
+    ids = [x for x in dict.fromkeys(ids) if x][:200]
+    if not ids:
+        return {"ok": True, "iklan": {}, "tidak_ada": []}
+    ok, rows = _galeri_semua()
+    hari = _hari_ini()
+    cari = set(ids)
+    peta = {}
+    for r in rows:
+        k = str(r.get("archive_id") or "")
+        if k in cari:
+            peta[k] = r
+    return {"ok": bool(ok), "iklan": {i: _galeri_baris(peta[i], hari) for i in ids if i in peta},
+            "tidak_ada": [i for i in ids if i not in peta]}
 
 
 def _hari_ini():
@@ -3313,9 +3348,12 @@ def galeri_csv(p):
 # Antrean + hasil disimpan per item (intai_setelan) → server tidur di tengah jalan = dilanjutkan tick berikutnya.
 JADWAL_KUNCI = (os.environ.get("JADWAL_KUNCI") or "").strip()   # opsional: bila diisi, tick wajib ?kunci=
 WIB = timezone(timedelta(hours=7))
-NICHE_HARIAN_MAKS = 10
-JADWAL_BAWAAN = {"aktif": False, "jam": 5, "niche": [], "pesaing": True}
-JADWAL = {"cfg": None, "status": None, "thread": None, "siap": None, "t_siap": 0.0}
+NICHE_HARIAN_MAKS = 3    # v1.4: per akun
+JADWAL_BAWAAN = {"aktif": False, "niche": [], "pesaing": True}
+# v1.4: 1 antrean global per hari = gabungan niche + pesaing SEMUA akun yg aktif (tanpa dobel);
+# tiap item mencatat pemiliknya ("u") → riwayat & tampilan per akun. Jam mulai = 1 utk semua akun
+# (pemicu cron dipasang pemilik server), dibaca dari env JADWAL_JAM / setelan lama "jadwal".jam / 5.
+JADWAL = {"cfgs": None, "jam": 5, "status": None, "thread": None, "siap": None, "t_siap": 0.0}
 kunci_jadwal = threading.RLock()
 
 
@@ -3356,7 +3394,22 @@ def setelan_tulis(kunci, nilai):
         return _tulis_arsip_lokal()[0]
 
 
-def _rapikan_cfg(c):
+def setelan_awalan(awalan):
+    """Semua setelan yg kuncinya diawali `awalan` → (ok, {kunci: nilai})."""
+    if supa_aktif():
+        if not setelan_siap():
+            return False, {}
+        ok, r = supa("GET", "intai_setelan", params=f"?select=kunci,nilai&kunci=like.{quote(awalan)}*&limit=5000")
+        if not ok or not isinstance(r, list):
+            return False, {}
+        return True, {x.get("kunci"): x.get("nilai") for x in r}
+    with kunci_arsip:
+        _muat_arsip_lokal()
+        return True, {k: v for k, v in ARSIP_LOKAL["setelan"].items() if str(k).startswith(awalan)}
+
+
+def _rapikan_cfg(c, ketat=False):
+    """ketat=True (saat simpan): >3 niche ditolak. Saat baca setelan lama: dipotong, sisanya dilaporkan."""
     c = c if isinstance(c, dict) else {}
     niche, lihat = [], set()
     for n in (c.get("niche") or []):
@@ -3364,49 +3417,95 @@ def _rapikan_cfg(c):
         if n and n.lower() not in lihat and not re.fullmatch(r"halaman\s+\d+", n, re.I):
             lihat.add(n.lower())
             niche.append(n)
-    jam = _int(c.get("jam"), 5)
-    return {"aktif": bool(c.get("aktif")), "jam": jam if (jam is not None and 0 <= jam <= 23) else 5,
-            "niche": niche[:NICHE_HARIAN_MAKS], "pesaing": c.get("pesaing", True) is not False}
+    if ketat and len(niche) > NICHE_HARIAN_MAKS:
+        return None
+    return {"aktif": bool(c.get("aktif")), "niche": niche[:NICHE_HARIAN_MAKS],
+            "niche_lebih": niche[NICHE_HARIAN_MAKS:], "pesaing": c.get("pesaing", True) is not False}
 
 
 def _muat_jadwal():
     with kunci_jadwal:
-        if JADWAL["cfg"] is None:
-            ok, v = setelan_baca("jadwal")
+        if JADWAL["cfgs"] is None:
+            ok, semua = setelan_awalan("jadwal:")
             if ok:
+                JADWAL["cfgs"] = {k.split(":", 1)[1]: _rapikan_cfg(v) for k, v in semua.items() if k and ":" in k}
+                _, lama = setelan_baca("jadwal")   # setelan global v1.3 → hanya jam-nya yg dipakai
+                jam = _int(os.environ.get("JADWAL_JAM"), None)
+                if jam is None and isinstance(lama, dict):
+                    jam = _int(lama.get("jam"), None)
+                JADWAL["jam"] = jam if (jam is not None and 0 <= jam <= 23) else 5
                 ok2, st = setelan_baca("jadwal_status")
-                JADWAL["cfg"] = _rapikan_cfg(v if isinstance(v, dict) else JADWAL_BAWAAN)
                 JADWAL["status"] = st if (ok2 and isinstance(st, dict)) else {}
-        return JADWAL["cfg"] is not None
+        return JADWAL["cfgs"] is not None
 
 
-def _sisa(st):
+def _cfg_akun(email):
+    return dict((JADWAL["cfgs"] or {}).get(email) or _rapikan_cfg(JADWAL_BAWAAN))
+
+
+def _sisa(st, email=None):
     h = st.get("hasil") or {}
     sisa = [it for it in (st.get("antrian") or [])
-            if not (h.get(it["k"]) or {}).get("ok") and (h.get(it["k"]) or {}).get("coba", 0) < 2]
+            if not (h.get(it["k"]) or {}).get("ok") and (h.get(it["k"]) or {}).get("coba", 0) < 2
+            and (email is None or email in (it.get("u") or []))]
     sisa.sort(key=lambda it: (h.get(it["k"]) or {}).get("coba", 0))   # yg gagal sekali dicoba ulang di akhir
     return sisa
 
 
-def _daftar_pesaing_ringkas():
+def _pesaing_semua():
+    """{email: [{page_id, nama}]} — 1 query utk semua akun."""
+    out = {}
     if supa_aktif():
-        if not p2_siap():
-            return []
-        ok, r = supa("GET", "intai_pantau", params="?select=page_id,nama&order=ditambah.asc&limit=100")
-        return r if ok and isinstance(r, list) else []
+        if not (p2_siap() and akun_siap()):
+            return out
+        ok, r = supa("GET", "intai_pantau", params="?select=pemilik,page_id,nama&order=ditambah.asc&limit=5000")
+        for p in (r if ok and isinstance(r, list) else []):
+            out.setdefault(p.get("pemilik") or "", []).append(p)
+        return out
     with kunci_arsip:
         _muat_arsip_lokal()
-        return [{"page_id": k, "nama": v.get("nama")} for k, v in ARSIP_LOKAL["pantau"].items()]
+        for v in ARSIP_LOKAL["pantau"].values():
+            out.setdefault(v.get("pemilik") or "", []).append({"page_id": v.get("page_id"), "nama": v.get("nama")})
+    return out
 
 
-def _bangun_antrian(cfg):
+def _daftar_pesaing_ringkas(email):
+    return [p for p in _pesaing_semua().get(email, []) if p.get("page_id")]
+
+
+def _item_akun(email, cfg, pesaing_semua):
     q = [{"k": "cari:" + n.lower(), "mode": "cari", "q": n, "nama": n} for n in cfg["niche"]]
     if cfg["pesaing"]:
-        for p in _daftar_pesaing_ringkas():
+        for p in pesaing_semua.get(email, []):
             pid = re.sub(r"\D", "", str(p.get("page_id") or ""))
             if pid:
                 q.append({"k": "halaman:" + pid, "mode": "halaman", "q": pid, "nama": p.get("nama") or ("Halaman " + pid)})
     return q
+
+
+def _gabung_antrian(st, peserta, pesaing_semua):
+    """Tambahkan item milik `peserta` ke antrean hari ini (niche dulu, lalu pesaing). Return jumlah item baru."""
+    antrian = st.setdefault("antrian", [])
+    per_k = {it["k"]: it for it in antrian}
+    baru_niche, baru_hal = [], []
+    for email, cfg in peserta.items():
+        for it in _item_akun(email, cfg, pesaing_semua):
+            lama = per_k.get(it["k"])
+            if lama:
+                if email not in lama.setdefault("u", []):
+                    lama["u"].append(email)
+                continue
+            it["u"] = [email]
+            per_k[it["k"]] = it
+            (baru_niche if it["mode"] == "cari" else baru_hal).append(it)
+    # niche baru disisipkan sebelum item halaman yg belum diproses → niche semua akun didahulukan
+    h = st.get("hasil") or {}
+    if baru_niche:
+        i = next((n for n, it in enumerate(antrian) if it["mode"] == "halaman" and not (h.get(it["k"]) or {}).get("waktu")),
+                 len(antrian))
+        antrian[i:i] = baru_niche
+    antrian.extend(baru_hal)
+    return len(baru_niche) + len(baru_hal)
 
 
 def _pekerja_jadwal():
@@ -3418,12 +3517,13 @@ def _pekerja_jadwal():
                 st["akhir"] = _iso_kini()
                 st["item_kini"] = None
                 setelan_tulis("jadwal_status", st)
+                JADWAL["thread"] = None   # dilepas DI DALAM kunci → tick berikutnya pasti memulai pekerja baru
                 return
             it = sisa[0]
-            st["item_kini"] = it["nama"]
+            st["item_kini"] = it["k"]
         try:
             with lock:   # kunci yang sama dengan /scan → tidak pernah dua scan bersamaan
-                h = jalankan_scan(it["q"], it["mode"])
+                h = jalankan_scan(it["q"], it["mode"], pemilik=list(it.get("u") or []))
         except Exception as e:
             h = {"ok": False, "error": str(e)[:160]}
         with kunci_jadwal:
@@ -3435,93 +3535,135 @@ def _pekerja_jadwal():
                 "waktu": _iso_kini(), "coba": lama.get("coba", 0) + 1,
             }
             setelan_tulis("jadwal_status", st)
-        time.sleep(4)   # sopan ke Meta Ad Library
+            masih = bool(_sisa(st))
+        if masih:
+            time.sleep(4)   # sopan ke Meta Ad Library
 
 
-def jadwal_tick(paksa=False, pemicu="cron"):
-    """Cepat (< 1 dtk): putuskan mulai / lanjut / tidak, lalu jalankan di thread latar."""
+def jadwal_tick(paksa=False, pemicu="cron", email=None):
+    """Cepat: putuskan mulai / tambah / lanjut / tidak, lalu jalankan di thread latar.
+    Cron: semua akun yg aktif. paksa ("Jalankan sekarang"): hanya antrean akun `email`."""
     if not _muat_jadwal():
         return {"ok": False, "siap": False, "pesan": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql"}
+    pesaing_semua = _pesaing_semua()
     with kunci_jadwal:
-        t = JADWAL["thread"]
-        if t and t.is_alive():
-            return {"ok": True, "aksi": "berjalan", "pesan": "Putaran sedang berjalan"}
-        cfg, st = JADWAL["cfg"], JADWAL["status"] or {}
         kini = datetime.now(WIB)
         hari = kini.strftime("%Y-%m-%d")
-        if paksa:   # tombol "Jalankan sekarang": lanjutkan sisa putaran hari ini bila ada, selain itu putaran baru
-            aksi = "lanjut" if (st.get("tanggal") == hari and _sisa(st)) else "mulai"
-        elif not cfg["aktif"]:
-            return {"ok": True, "aksi": "nonaktif", "pesan": "Scan otomatis nonaktif"}
-        elif kini.hour < cfg["jam"]:
-            return {"ok": True, "aksi": "menunggu", "pesan": f"Menunggu jam {cfg['jam']:02d}:00 WIB"}
-        elif st.get("tanggal") != hari:
-            aksi = "mulai"
-        elif _sisa(st):
-            aksi = "lanjut"
+        st = JADWAL["status"] or {}
+        if paksa:
+            peserta = {email: _cfg_akun(email)} if email else {}
         else:
-            return {"ok": True, "aksi": "selesai", "pesan": "Putaran hari ini sudah selesai"}
-        if aksi == "mulai":
-            antrian = _bangun_antrian(cfg)
-            JADWAL["status"] = {"tanggal": hari, "pemicu": pemicu, "mulai": _iso_kini(),
-                                "akhir": None if antrian else _iso_kini(),
-                                "antrian": antrian, "hasil": {}, "item_kini": None}
-            setelan_tulis("jadwal_status", JADWAL["status"])
-            if not antrian:
+            aktif = {e: c for e, c in (JADWAL["cfgs"] or {}).items() if c.get("aktif")}
+            if not aktif:
+                return {"ok": True, "aksi": "nonaktif", "pesan": "Scan otomatis nonaktif di semua akun"}
+            if kini.hour < JADWAL["jam"]:
+                return {"ok": True, "aksi": "menunggu", "pesan": f"Menunggu jam {JADWAL['jam']:02d}:00 WIB"}
+            peserta = aktif
+        hari_baru = st.get("tanggal") != hari
+        if hari_baru:
+            st = {"tanggal": hari, "pemicu": pemicu, "mulai": _iso_kini(), "akhir": None,
+                  "antrian": [], "hasil": {}, "item_kini": None}
+            JADWAL["status"] = st
+        n_baru = _gabung_antrian(st, peserta, pesaing_semua)
+        if n_baru and not hari_baru:
+            st["akhir"] = None
+        if paksa and email:   # gagal kemarin/tadi boleh dicoba lagi saat diminta manual
+            for it in st["antrian"]:
+                r = st["hasil"].get(it["k"])
+                if email in it.get("u", []) and r and not r.get("ok") and r.get("coba", 0) >= 2:
+                    r["coba"] = 1
+        t = JADWAL["thread"]
+        berjalan = bool(t and t.is_alive())
+        sisa_semua = _sisa(st)
+        sisa_saya = len(_sisa(st, email)) if email else len(sisa_semua)
+        if hari_baru or n_baru or paksa:
+            if not sisa_semua:
+                st["akhir"] = st.get("akhir") or _iso_kini()
+            setelan_tulis("jadwal_status", st)
+        if berjalan:
+            return {"ok": True, "aksi": "berjalan", "antrian": sisa_saya,
+                    "pesan": "Putaran sedang berjalan" + (f" - {n_baru} scan ditambahkan" if n_baru else "")}
+        if not sisa_semua:
+            if not st["antrian"] or (email and not any(email in it.get("u", []) for it in st["antrian"])):
                 return {"ok": True, "aksi": "kosong", "pesan": "Antrean kosong - isi niche harian atau pantau pesaing"}
+            return {"ok": True, "aksi": "selesai", "pesan": "Putaran hari ini sudah selesai"}
         t = threading.Thread(target=_pekerja_jadwal, daemon=True, name="jadwal")
         JADWAL["thread"] = t
         t.start()
-        return {"ok": True, "aksi": aksi, "pesan": ("Putaran dimulai" if aksi == "mulai" else "Putaran dilanjutkan"),
-                "antrian": len(_sisa(JADWAL["status"]))}
+        aksi = "mulai" if hari_baru else ("tambah" if n_baru else "lanjut")
+        return {"ok": True, "aksi": aksi, "antrian": sisa_saya,
+                "pesan": {"mulai": "Putaran dimulai", "tambah": "Scan ditambahkan ke putaran hari ini",
+                          "lanjut": "Putaran dilanjutkan"}[aksi]}
 
 
-def jadwal_ringkas():
+def jadwal_ringkas(email):
     if not _muat_jadwal():
         return {"siap": False}
     with kunci_jadwal:
-        cfg, st = JADWAL["cfg"], JADWAL["status"] or {}
+        cfg, st = _cfg_akun(email), JADWAL["status"] or {}
         h = st.get("hasil") or {}
+        milik = [it for it in (st.get("antrian") or []) if email in (it.get("u") or [])]
         t = JADWAL["thread"]
-        return {"siap": True, "aktif": cfg["aktif"], "jam": cfg["jam"], "tanggal": st.get("tanggal"),
-                "total": len(st.get("antrian") or []), "ok": sum(1 for v in h.values() if v.get("ok")),
-                "berjalan": bool(t and t.is_alive()), "akhir": st.get("akhir")}
+        return {"siap": True, "aktif": cfg["aktif"], "jam": JADWAL["jam"], "tanggal": st.get("tanggal") if milik else None,
+                "total": len(milik), "ok": sum(1 for it in milik if (h.get(it["k"]) or {}).get("ok")),
+                "berjalan": bool(t and t.is_alive()) and bool(_sisa(st, email)), "akhir": st.get("akhir")}
 
 
-def jadwal_publik():
+def jadwal_publik(email):
     if not _muat_jadwal():
         return {"ok": True, "siap": False}
-    pesaing = _daftar_pesaing_ringkas()
+    pesaing = _daftar_pesaing_ringkas(email)
     with kunci_jadwal:
-        cfg, st = dict(JADWAL["cfg"]), JADWAL["status"] or {}
+        cfg, st = _cfg_akun(email), JADWAL["status"] or {}
         t = JADWAL["thread"]
-        berjalan = bool(t and t.is_alive())
+        berjalan_global = bool(t and t.is_alive())
         h = st.get("hasil") or {}
-        items = [dict({"nama": it["nama"], "mode": it["mode"]}, **(h.get(it["k"]) or {})) for it in (st.get("antrian") or [])]
-        sisa = len(_sisa(st)) if st else 0
+        milik = [it for it in (st.get("antrian") or []) if email in (it.get("u") or [])]
+        items = [dict({"nama": it["nama"], "mode": it["mode"]}, **(h.get(it["k"]) or {})) for it in milik]
+        sisa = len(_sisa(st, email)) if st else 0
+        berjalan = berjalan_global and sisa > 0
+        kini_k = st.get("item_kini") if berjalan_global else None
+        kini_it = next((it for it in milik if it["k"] == kini_k), None)
+        antre_lain = len([it for it in _sisa(st) if email not in (it.get("u") or [])]) if berjalan else 0
+    cfg_pub = {k: cfg[k] for k in ("aktif", "niche", "pesaing")}
+    cfg_pub["jam"] = JADWAL["jam"]
     return {
-        "ok": True, "siap": True, "cfg": cfg, "berjalan": berjalan, "kunci_wajib": bool(JADWAL_KUNCI),
+        "ok": True, "siap": True, "cfg": cfg_pub, "niche_lebih": cfg.get("niche_lebih") or [],
+        "berjalan": berjalan, "kunci_wajib": bool(JADWAL_KUNCI), "jam_global": True,
         "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"), "n_pesaing": len(pesaing),
         "niche_maks": NICHE_HARIAN_MAKS,
-        "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"),
-                    "akhir": st.get("akhir"), "item_kini": st.get("item_kini") if berjalan else None,
+        "putaran": {"tanggal": st.get("tanggal") if milik else None, "pemicu": st.get("pemicu"),
+                    "mulai": st.get("mulai"), "akhir": st.get("akhir"),
+                    "item_kini": kini_it["nama"] if kini_it else None, "antre_lain": antre_lain,
                     "total": len(items), "ok": sum(1 for i in items if i.get("ok")),
-                    "sisa": sisa, "terputus": bool(st.get("antrian")) and not berjalan and sisa > 0,
+                    "sisa": sisa, "terputus": bool(milik) and not berjalan_global and sisa > 0,
                     "items": items},
     }
 
 
-def jadwal_simpan(d):
+def jadwal_simpan(email, d):
     if not _muat_jadwal():
         return {"ok": False, "error": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql di Supabase"}
-    cfg = _rapikan_cfg(d)
-    if not setelan_tulis("jadwal", cfg):
+    cfg = _rapikan_cfg(d, ketat=True)
+    if cfg is None:
+        return {"ok": False, "error": f"Maksimal {NICHE_HARIAN_MAKS} niche harian per akun"}
+    simpan = {k: cfg[k] for k in ("aktif", "niche", "pesaing")}
+    if not setelan_tulis("jadwal:" + email, simpan):
         return {"ok": False, "error": "Gagal menyimpan setelan"}
     with kunci_jadwal:
-        JADWAL["cfg"] = cfg
+        JADWAL["cfgs"][email] = cfg
     _ARSIP_CACHE["t"] = 0.0
-    return dict(jadwal_publik(), ok=True)
+    return dict(jadwal_publik(email), ok=True)
 
+
+def niche_akun(email):
+    """Niche (huruf kecil) yang pernah di-scan akun ini + niche harian-nya → filter Tren Harian."""
+    with lock:
+        s = {str(r.get("kata") or "").lower() for r in RIWAYAT if r.get("pemilik") == email and r.get("mode") != "halaman"}
+    if _muat_jadwal():
+        with kunci_jadwal:
+            s |= {n.lower() for n in _cfg_akun(email)["niche"]}
+    return s
 
 KOLOM_TREN = ("waktu,jumlah,aktif,mati,relevan,pengiklan,baru_7h,menang,umur_median,"
               "harga_median,harga_titik,belanja_min,belanja_max")
@@ -3534,7 +3676,7 @@ def _hari_wib(w):
         return str(w or "")[:10]
 
 
-def tren_niche(niche=""):
+def tren_niche(niche="", email=None):
     """Tanpa niche → daftar niche (kata kunci) beserta jumlah hari data. Dengan niche → 1 titik per hari
     (potret TERAKHIR hari itu, WIB) dari intai_snapshot. Angka = sampel scan, bukan total pasar."""
     niche = str(niche or "").strip()[:120]
@@ -3562,6 +3704,9 @@ def tren_niche(niche=""):
             e["hari"].add(_hari_wib(x.get("waktu")))
             e["terakhir"] = max(e["terakhir"], str(x.get("waktu") or ""))
         daftar = [dict(e, hari=len(e["hari"])) for e in g.values()]
+        if email is not None:   # v1.4: Tren Harian pribadi = niche yg pernah di-scan / dijadwalkan akun ini
+            punya = niche_akun(email)
+            daftar = [e for e in daftar if str(e["niche"]).lower() in punya]
         daftar.sort(key=lambda e: e["terakhir"], reverse=True)
         return {"ok": True, "siap": True, "daftar": daftar}
     per_hari = {}
@@ -3653,7 +3798,7 @@ def _baris_profil(r, hari):
     }
 
 
-def profil_pengiklan(pid):
+def profil_pengiklan(pid, email=""):
     pid = re.sub(r"\D", "", str(pid or ""))[:40]
     if not pid:
         return {"ok": False, "error": "page_id tidak valid"}
@@ -3669,7 +3814,8 @@ def profil_pengiklan(pid):
         if p2:
             ok, r = supa("GET", "intai_peristiwa", params=f"?select=*&page_id=eq.{pid}&order=waktu.desc&limit=60")
             ev = r if ok and isinstance(r, list) else []
-            ok, r = supa("GET", "intai_pantau", params=f"?select=page_id&page_id=eq.{pid}")
+            ok, r = supa("GET", "intai_pantau", params=f"?select=page_id&page_id=eq.{pid}&pemilik=eq.{quote(email)}") \
+                if akun_siap() else (False, None)
             dipantau = bool(ok and isinstance(r, list) and r)
         ok, sn = supa("GET", "intai_snapshot",
                       params=f"?select=waktu,aktif,mati,jumlah&niche=eq.{quote('halaman ' + pid)}&order=waktu.asc&limit=500")
@@ -3682,7 +3828,7 @@ def profil_pengiklan(pid):
             pg = ARSIP_LOKAL["pengiklan"].get(pid)
             ik = [dict(v) for v in ARSIP_LOKAL["iklan"].values() if str(v.get("page_id")) == pid]
             ev = [dict(e) for e in reversed(ARSIP_LOKAL["peristiwa"]) if str(e.get("page_id")) == pid][:60]
-            dipantau = pid in ARSIP_LOKAL["pantau"]
+            dipantau = f"{email}|{pid}" in ARSIP_LOKAL["pantau"]
             sn = [s_ for s_ in ARSIP_LOKAL["snapshot"] if s_.get("niche") == "halaman " + pid]
         p2, sumber = True, "lokal"
     hari = datetime.now(timezone.utc).date()
@@ -3697,12 +3843,14 @@ def profil_pengiklan(pid):
     }
 
 
-def daftar_pantau():
+def daftar_pantau(email):
     batas = datetime.fromtimestamp(time.time() - 7 * 86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     if supa_aktif():
         if not p2_siap():
             return {"ok": True, "siap": False, "sumber": "supabase"}
-        ok, pn = supa("GET", "intai_pantau", params="?select=*&order=ditambah.desc&limit=100")
+        if not akun_siap():
+            return {"ok": True, "siap": False, "sumber": "supabase", "pesan": PESAN_AKUN_SQL}
+        ok, pn = supa("GET", "intai_pantau", params=f"?select=*&pemilik=eq.{quote(email)}&order=ditambah.desc&limit=100")
         if not ok or not isinstance(pn, list):
             return {"ok": True, "siap": False, "sumber": "supabase"}
         pids = [str(p.get("page_id")) for p in pn]
@@ -3721,7 +3869,8 @@ def daftar_pantau():
     else:
         with kunci_arsip:
             _muat_arsip_lokal()
-            pn = sorted((dict(v) for v in ARSIP_LOKAL["pantau"].values()), key=lambda p: p.get("ditambah") or "", reverse=True)
+            pn = sorted((dict(v) for v in ARSIP_LOKAL["pantau"].values() if v.get("pemilik") == email),
+                        key=lambda p: p.get("ditambah") or "", reverse=True)
             pids = [str(p.get("page_id")) for p in pn]
             pg = {p: ARSIP_LOKAL["pengiklan"].get(p) or {} for p in pids}
             hit = {p: (0, 0) for p in pids}
@@ -3747,13 +3896,14 @@ def daftar_pantau():
     return {"ok": True, "siap": True, "sumber": sumber, "maks": PANTAU_MAKS, "daftar": daftar}
 
 
-def peristiwa_feed(lingkup="pantau", batas_n=60):
+def peristiwa_feed(lingkup="pantau", batas_n=60, email=""):
     batas_n = max(1, min(int(batas_n or 60), 200))
     if supa_aktif():
         if not p2_siap():
             return {"ok": True, "siap": False, "feed": []}
         if lingkup == "pantau":
-            ok, pn = supa("GET", "intai_pantau", params="?select=page_id&limit=100")
+            ok, pn = supa("GET", "intai_pantau", params=f"?select=page_id&pemilik=eq.{quote(email)}&limit=100") \
+                if akun_siap() else (False, None)
             pids = [str(p.get("page_id")) for p in pn] if ok and isinstance(pn, list) else []
             ok, r = _supa_in("intai_peristiwa", "page_id", pids, "*", f"&order=waktu.desc&limit={batas_n}") if pids else (True, [])
         else:
@@ -3762,13 +3912,13 @@ def peristiwa_feed(lingkup="pantau", batas_n=60):
     else:
         with kunci_arsip:
             _muat_arsip_lokal()
-            pids = set(ARSIP_LOKAL["pantau"])
+            pids = {str(v.get("page_id")) for v in ARSIP_LOKAL["pantau"].values() if v.get("pemilik") == email}
             r = [dict(e) for e in ARSIP_LOKAL["peristiwa"] if lingkup != "pantau" or str(e.get("page_id")) in pids]
     r.sort(key=lambda e: str(e.get("waktu") or ""), reverse=True)
     return {"ok": True, "siap": True, "lingkup": lingkup, "feed": r[:batas_n]}
 
 
-def ubah_pantau(aksi, pid, nama=""):
+def ubah_pantau(email, aksi, pid, nama=""):
     pid = re.sub(r"\D", "", str(pid or ""))[:40]
     if not pid:
         return {"ok": False, "error": "page_id tidak valid"}
@@ -3776,13 +3926,16 @@ def ubah_pantau(aksi, pid, nama=""):
     if supa_aktif():
         if not p2_siap():
             return {"ok": False, "error": "Tabel pantau belum dibuat — jalankan SUPABASE-PESAING.sql di Supabase"}
+        if not akun_siap():
+            return {"ok": False, "error": PESAN_AKUN_SQL}
+        qe = quote(email)
         if aksi == "hapus":
-            ok, d = supa("DELETE", "intai_pantau", params=f"?page_id=eq.{pid}")
+            ok, d = supa("DELETE", "intai_pantau", params=f"?pemilik=eq.{qe}&page_id=eq.{pid}")
         else:
-            _, ada = supa("GET", "intai_pantau", params=f"?select=page_id&page_id=eq.{pid}")
-            if not ada and (supa_hitung("intai_pantau") or 0) >= PANTAU_MAKS:
+            _, ada = supa("GET", "intai_pantau", params=f"?select=page_id&pemilik=eq.{qe}&page_id=eq.{pid}")
+            if not ada and (supa_hitung("intai_pantau", f"&pemilik=eq.{qe}") or 0) >= PANTAU_MAKS:
                 return {"ok": False, "error": f"Maksimal {PANTAU_MAKS} pesaing dipantau — hapus salah satu dulu"}
-            ok, d = supa("POST", "intai_pantau", payload={"page_id": pid, "nama": nama},
+            ok, d = supa("POST", "intai_pantau", payload={"pemilik": email, "page_id": pid, "nama": nama},
                          prefer="return=minimal,resolution=merge-duplicates")
         if not ok:
             return {"ok": False, "error": "Gagal menyimpan: " + str(d)[:140]}
@@ -3790,13 +3943,14 @@ def ubah_pantau(aksi, pid, nama=""):
         with kunci_arsip:
             _muat_arsip_lokal()
             pn = ARSIP_LOKAL["pantau"]
+            kk = f"{email}|{pid}"
             if aksi == "hapus":
-                pn.pop(pid, None)
+                pn.pop(kk, None)
             else:
-                if pid not in pn and len(pn) >= PANTAU_MAKS:
+                if kk not in pn and sum(1 for v in pn.values() if v.get("pemilik") == email) >= PANTAU_MAKS:
                     return {"ok": False, "error": f"Maksimal {PANTAU_MAKS} pesaing dipantau — hapus salah satu dulu"}
-                lama = pn.get(pid) or {}
-                pn[pid] = {"page_id": pid, "nama": nama or lama.get("nama"),
+                lama = pn.get(kk) or {}
+                pn[kk] = {"pemilik": email, "page_id": pid, "nama": nama or lama.get("nama"),
                            "ditambah": lama.get("ditambah") or _iso_kini(), "terakhir_cek": lama.get("terakhir_cek")}
             ok, galat = _tulis_arsip_lokal()
         if not ok:
@@ -3805,20 +3959,36 @@ def ubah_pantau(aksi, pid, nama=""):
     return {"ok": True, "page_id": pid, "dipantau": aksi != "hapus"}
 
 
-def ringkasan_api():
+def jumlah_pantau(email):
+    if supa_aktif():
+        return (supa_hitung("intai_pantau", f"&pemilik=eq.{quote(email)}") or 0) if akun_siap() else 0
+    with kunci_arsip:
+        _muat_arsip_lokal()
+        return sum(1 for v in ARSIP_LOKAL["pantau"].values() if v.get("pemilik") == email)
+
+
+def ringkasan_api(email):
     """Struktur persis kontrak dashboard: niche/total_scan/total_iklan/delta/
-    terakhir/daftar[{kata,mode,scan[]}] (total_iklan = jumlah scan TERAKHIR per niche)."""
+    terakhir/daftar[{kata,mode,scan[]}] (total_iklan = jumlah scan TERAKHIR per niche). v1.4: hanya riwayat akun ini."""
+    rw = None
+    if supa_aktif() and akun_siap():   # langsung dari Supabase → tak terpotong oleh riwayat akun lain di memori
+        ok, r = supa("GET", "intai_riwayat", params=f"?select=kata,mode,waktu,jumlah,baru,hilang"
+                                                    f"&pemilik=eq.{quote(email)}&order=id.desc&limit=1000")
+        if ok and isinstance(r, list):
+            rw = list(reversed(r))
     with lock:
+        if rw is None:
+            rw = [r for r in RIWAYAT if (r.get("pemilik") or "") == email]
         grup = {}
-        for r in RIWAYAT:
+        for r in rw:
             g = grup.setdefault(r["kata"], {"kata": r["kata"], "mode": r["mode"], "scan": []})
             g["mode"] = r["mode"]
             g["scan"].append({k: r[k] for k in ("waktu", "jumlah", "baru", "hilang")})
         daftar = list(grup.values())
         total_iklan = sum(g["scan"][-1]["jumlah"] for g in daftar)
-        terakhir = dict(RIWAYAT[-1]) if RIWAYAT else None
+        terakhir = dict(rw[-1]) if rw else None
         return {
-            "ok": True, "niche": len(daftar), "total_scan": len(RIWAYAT),
+            "ok": True, "niche": len(daftar), "total_scan": len(rw),
             "total_iklan": total_iklan,
             "delta": terakhir["jumlah"] if terakhir else 0,
             "terakhir": terakhir, "daftar": daftar,
@@ -3837,23 +4007,236 @@ def muat_halaman():
     return HTML
 
 
+# ======================= AKUN v1.4: sesi persisten + data per akun =======================
+# Sesi = token bertanda tangan HMAC (email + kedaluwarsa) → tetap sah walau Render restart/tidur.
+# Dikirim lewat header X-Intai-Sesi (dari localStorage) + cookie HttpOnly (cadangan utk tautan langsung).
+SESI_HARI = 30
+SESI_COOKIE = "intai_sesi"
+
+
+def _rahasia_sesi():
+    r = (os.environ.get("INTAI_RAHASIA") or "").strip()
+    if r:
+        return r.encode("utf-8")
+    if SUPA_KEY:
+        return hashlib.sha256(("intai-sesi|" + SUPA_KEY).encode("utf-8")).digest()
+    jalur = os.path.join(BASE_DIR, ".intai_rahasia")
+    try:
+        with open(jalur, "r", encoding="utf-8") as f:
+            r = f.read().strip()
+    except Exception:
+        r = ""
+    if len(r) < 32:
+        r = secrets.token_hex(32)
+        try:
+            with open(jalur, "w", encoding="utf-8") as f:
+                f.write(r)
+        except Exception:
+            pass
+    return r.encode("utf-8")
+
+
+SESI_RAHASIA = _rahasia_sesi()
+
+
+def _b64u(b):
+    return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
+
+
+def buat_sesi(email):
+    isi = _b64u(email.encode("utf-8")) + "." + str(int(time.time()) + SESI_HARI * 86400)
+    return "s1." + isi + "." + hmac.new(SESI_RAHASIA, isi.encode("ascii"), hashlib.sha256).hexdigest()[:48]
+
+
+def baca_sesi(tok):
+    """email bila token sah, belum kedaluwarsa, dan akunnya masih ada — selain itu None."""
+    try:
+        tok = str(tok or "").strip()
+        if not tok.startswith("s1."):
+            return None
+        _, b, exp, sig = tok.split(".", 3)
+        isi = b + "." + exp
+        if not hmac.compare_digest(sig, hmac.new(SESI_RAHASIA, isi.encode("ascii"), hashlib.sha256).hexdigest()[:48]):
+            return None
+        if int(exp) < time.time():
+            return None
+        email = base64.urlsafe_b64decode(b + "=" * (-len(b) % 4)).decode("utf-8")
+        with lock:
+            return email if email in AKUN_DB else None
+    except Exception:
+        return None
+
+
+AKUN_SIAP = {"v": None, "t": 0.0}
+
+
+def akun_siap():
+    """Kolom pemilik + tabel intai_ekspor sudah dibuat (SUPABASE-AKUN.sql)? Lokal selalu siap."""
+    if not supa_aktif():
+        return True
+    if AKUN_SIAP["v"] or (AKUN_SIAP["v"] is False and time.time() - AKUN_SIAP["t"] < 60):
+        return bool(AKUN_SIAP["v"])
+    ok1, _ = supa("GET", "intai_riwayat", params="?select=pemilik&limit=1")
+    ok2, _ = supa("GET", "intai_ekspor", params="?select=id&limit=1")
+    ok3, _ = supa("GET", "intai_pantau", params="?select=pemilik&limit=1") if p2_siap() else (True, None)
+    AKUN_SIAP.update({"v": bool(ok1 and ok2 and ok3), "t": time.time()})
+    return AKUN_SIAP["v"]
+
+
+PESAN_AKUN_SQL = "Database belum disiapkan untuk akun - jalankan SUPABASE-AKUN.sql sekali di Supabase (SQL Editor)"
+
+
+# ---- ⭐ Pantauan per akun (1 baris setelan per akun: bintang:<email>) ----
+BINTANG_MAKS = 300
+
+
+def bintang_baca(email):
+    ok, v = setelan_baca("bintang:" + email)
+    if not ok:
+        return {"ok": True, "siap": False, "daftar": []}
+    return {"ok": True, "siap": True, "daftar": v if isinstance(v, list) else []}
+
+
+def bintang_tulis(email, daftar):
+    if not isinstance(daftar, list):
+        return {"ok": False, "error": "format salah"}
+    bersih = []
+    for e in daftar[:BINTANG_MAKS]:
+        if isinstance(e, dict) and len(json.dumps(e, ensure_ascii=False)) <= 6000:
+            bersih.append(e)
+    if not setelan_tulis("bintang:" + email, bersih):
+        return {"ok": False, "error": "Gagal menyimpan Pantauan (tabel setelan belum siap?)"}
+    return {"ok": True, "n": len(bersih)}
+
+
+# ---- Penampung Ekspor CSV per akun (Supabase: intai_ekspor · lokal: setelan ekspor:<email>) ----
+EKSPOR_MAKS = 20
+EKSPOR_BYTE_MAKS = 3_000_000
+
+
+def _ekspor_id(v):
+    return re.sub(r"[^A-Za-z0-9_.:-]", "", str(v or ""))[:80]
+
+
+def ekspor_baca(email):
+    if supa_aktif():
+        if not akun_siap():
+            return {"ok": True, "siap": False, "pesan": PESAN_AKUN_SQL, "daftar": []}
+        ok, r = supa("GET", "intai_ekspor",
+                     params=f"?select=data&pemilik=eq.{quote(email)}&order=waktu.desc&limit={EKSPOR_MAKS}")
+        if not ok or not isinstance(r, list):
+            return {"ok": True, "siap": False, "daftar": []}
+        return {"ok": True, "siap": True, "daftar": [x.get("data") for x in r if isinstance(x.get("data"), dict)]}
+    ok, v = setelan_baca("ekspor:" + email)
+    return {"ok": True, "siap": True, "daftar": v if isinstance(v, list) else []}
+
+
+def ekspor_ubah(email, d):
+    aksi = str(d.get("aksi") or "")
+    if supa_aktif() and not akun_siap():
+        return {"ok": False, "error": PESAN_AKUN_SQL}
+    if aksi == "simpan":
+        e = d.get("entri")
+        if not isinstance(e, dict) or not _ekspor_id(e.get("id")):
+            return {"ok": False, "error": "entri tidak valid"}
+        if len(json.dumps(e, ensure_ascii=False)) > EKSPOR_BYTE_MAKS:
+            return {"ok": False, "error": "Ekspor terlalu besar untuk disimpan (maks ±3 MB) - persempit filter"}
+        eid = _ekspor_id(e.get("id"))
+        if supa_aktif():
+            filt = f"?pemilik=eq.{quote(email)}&id=eq.{quote(eid)}"
+            _, ada = supa("GET", "intai_ekspor", params="?select=id&" + filt[1:])
+            if ada:   # perbarui isi saja (mis. tanda "sudah diunduh") → urutan/waktu tetap
+                ok, g = supa("PATCH", "intai_ekspor", payload={"data": e}, params=filt)
+                return {"ok": bool(ok)} if ok else {"ok": False, "error": "Gagal memperbarui ekspor: " + str(g)[:120]}
+            w = str(e.get("waktu") or "")
+            w = w[:19] + "Z" if re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.*", w) else _iso_kini()   # urutan asli (ekspor pindahan)
+            ok, g = supa("POST", "intai_ekspor", payload={"id": eid, "pemilik": email, "waktu": w, "data": e},
+                         prefer="return=minimal,resolution=merge-duplicates")
+            if not ok:
+                return {"ok": False, "error": "Gagal menyimpan ekspor: " + str(g)[:120]}
+            ok, r = supa("GET", "intai_ekspor", params=f"?select=id&pemilik=eq.{quote(email)}&order=waktu.desc"
+                                                       f"&offset={EKSPOR_MAKS}&limit=100")
+            for x in (r if ok and isinstance(r, list) else []):
+                supa("DELETE", "intai_ekspor", params=f"?pemilik=eq.{quote(email)}&id=eq.{quote(str(x.get('id')))}")
+            return {"ok": True}
+        _, v = setelan_baca("ekspor:" + email)
+        daftar = [x for x in (v if isinstance(v, list) else []) if isinstance(x, dict) and x.get("id") != e.get("id")]
+        lama = next((x for x in (v or []) if isinstance(x, dict) and x.get("id") == e.get("id")), None)
+        if lama is not None:   # perbarui di tempat (mis. tanda "sudah diunduh") tanpa mengubah urutan
+            daftar = [e if (isinstance(x, dict) and x.get("id") == e.get("id")) else x for x in (v or []) if isinstance(x, dict)]
+        else:
+            daftar.insert(0, e)
+        return {"ok": bool(setelan_tulis("ekspor:" + email, daftar[:EKSPOR_MAKS]))}
+    if aksi in ("hapus", "hapus_semua"):
+        ids = [] if aksi == "hapus_semua" else [_ekspor_id(i) for i in (d.get("ids") or []) if _ekspor_id(i)]
+        if supa_aktif():
+            if aksi == "hapus_semua":
+                ok, _ = supa("DELETE", "intai_ekspor", params=f"?pemilik=eq.{quote(email)}")
+            else:
+                ok = True
+                for i in ids:
+                    ok, _ = supa("DELETE", "intai_ekspor", params=f"?pemilik=eq.{quote(email)}&id=eq.{quote(i)}")
+            return {"ok": bool(ok)}
+        _, v = setelan_baca("ekspor:" + email)
+        daftar = [] if aksi == "hapus_semua" else [x for x in (v if isinstance(v, list) else [])
+                                                   if isinstance(x, dict) and _ekspor_id(x.get("id")) not in ids]
+        return {"ok": bool(setelan_tulis("ekspor:" + email, daftar))}
+    return {"ok": False, "error": "aksi tidak dikenal"}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a):
         pass
 
-    def tulis(self, kode, isi, tipe):
+    def tulis(self, kode, isi, tipe, ekstra=None):
+        isi = isi if isinstance(isi, bytes) else isi.encode("utf-8")
+        gz = len(isi) > 20000 and "gzip" in (self.headers.get("Accept-Encoding") or "") and tipe.startswith("application/json")
+        if gz:
+            import gzip
+            isi = gzip.compress(isi, 5)
         self.send_response(kode)
         self.send_header("Content-Type", tipe)
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")  # preview iframe (origin null)
+        if gz:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(isi)))
+        for k, v in (ekstra or []):
+            self.send_header(k, v)
         self.end_headers()
-        self.wfile.write(isi if isinstance(isi, bytes) else isi.encode("utf-8"))
+        self.wfile.write(isi)
+
+    # ---- v1.4: sesi ----
+    def email_sesi(self):
+        tok = self.headers.get("X-Intai-Sesi") or ""
+        if not tok:
+            m = re.search(r"(?:^|;\s*)" + SESI_COOKIE + r"=([^;]+)", self.headers.get("Cookie") or "")
+            tok = unquote(m.group(1)) if m else ""
+        return baca_sesi(tok)
+
+    def cookie_sesi(self, tok, umur):
+        https = (self.headers.get("X-Forwarded-Proto") or "").lower() == "https"
+        return ("Set-Cookie", f"{SESI_COOKIE}={tok}; Path=/; Max-Age={umur}; HttpOnly; "
+                              + ("SameSite=None; Secure" if https else "SameSite=Lax"))
+
+    def gerbang(self, path, publik):
+        """Semua /api/* & /scan wajib masuk, kecuali `publik`. Return False bila sudah dijawab 401."""
+        self.email = None
+        if (path.startswith("/api/") or path == "/scan") and path not in publik:
+            self.email = self.email_sesi()
+            if not self.email:
+                self.tulis(401, json.dumps({"ok": False, "masuk": False, "error": "Silakan masuk dulu"}), "application/json")
+                return False
+        return True
+
+    def json_ok(self, obj):
+        self.tulis(200, json.dumps(obj, ensure_ascii=False, default=str), "application/json")
 
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Intai-Sesi")
         self.end_headers()
 
     def baca_json(self):
@@ -3865,32 +4248,47 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri") \
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri", "/ekspor") \
                 or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
+        elif not self.gerbang(u.path, ("/api/versi", "/api/me", "/api/jadwal/tick")):
+            return
         elif u.path == "/api/versi":
             self.tulis(200, json.dumps({"ok": True, "v": VERSI}), "application/json")
         elif u.path == "/api/me":
-            tok = parse_qs(u.query).get("token", [""])[0]
+            email = self.email_sesi() or baca_sesi(parse_qs(u.query).get("token", [""])[0])
             with lock:
-                email = TOKENS.get(tok)
                 akun = AKUN_DB.get(email) if email else None
             if akun:
-                self.tulis(200, json.dumps({"ok": True, "nama": akun["nama"], "email": email}),
-                           "application/json")
+                self.tulis(200, json.dumps({"ok": True, "nama": akun["nama"], "email": email,
+                                            "akun_siap": akun_siap()}), "application/json")
             else:
                 self.tulis(200, json.dumps({"ok": False}), "application/json")
         elif u.path == "/api/arsip":
-            self.tulis(200, json.dumps(statistik_arsip(), ensure_ascii=False), "application/json")
+            d = dict(statistik_arsip())
+            try:
+                d["jadwal"] = jadwal_ringkas(self.email)
+            except Exception:
+                d["jadwal"] = {"siap": False}
+            if d.get("p2_siap"):
+                d["pantau"] = jumlah_pantau(self.email)
+            self.json_ok(d)
         elif u.path == "/api/arsip/status":
             self.tulis(200, json.dumps(dict(ARSIP_STATUS, ok=True), ensure_ascii=False), "application/json")
         elif u.path == "/api/pengiklan":
             pid = parse_qs(u.query).get("id", [""])[0]
-            self.tulis(200, json.dumps(profil_pengiklan(pid), ensure_ascii=False), "application/json")
+            self.tulis(200, json.dumps(profil_pengiklan(pid, self.email), ensure_ascii=False), "application/json")
+        elif u.path == "/api/iklan/status":
+            ids = parse_qs(u.query).get("ids", [""])[0]
+            self.tulis(200, json.dumps(pantauan_status(ids), ensure_ascii=False, default=str), "application/json")
         elif u.path == "/api/pantau":
-            self.tulis(200, json.dumps(daftar_pantau(), ensure_ascii=False), "application/json")
+            self.tulis(200, json.dumps(daftar_pantau(self.email), ensure_ascii=False), "application/json")
+        elif u.path == "/api/bintang":
+            self.json_ok(bintang_baca(self.email))
+        elif u.path == "/api/ekspor":
+            self.json_ok(ekspor_baca(self.email))
         elif u.path == "/api/jadwal":
-            self.tulis(200, json.dumps(jadwal_publik(), ensure_ascii=False), "application/json")
+            self.tulis(200, json.dumps(jadwal_publik(self.email), ensure_ascii=False), "application/json")
         elif u.path == "/api/jadwal/tick":
             kunci = parse_qs(u.query).get("kunci", [""])[0]
             if JADWAL_KUNCI and not hmac.compare_digest(kunci.encode(), JADWAL_KUNCI.encode()):
@@ -3911,15 +4309,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(isi)
         elif u.path == "/api/tren":
-            self.tulis(200, json.dumps(tren_niche(parse_qs(u.query).get("niche", [""])[0]), ensure_ascii=False),
+            self.tulis(200, json.dumps(tren_niche(parse_qs(u.query).get("niche", [""])[0], self.email), ensure_ascii=False),
                        "application/json")
         elif u.path == "/api/peristiwa":
             qs = parse_qs(u.query)
             self.tulis(200, json.dumps(peristiwa_feed(qs.get("lingkup", ["pantau"])[0],
-                                                      _int(qs.get("limit", ["60"])[0], 60)),
+                                                      _int(qs.get("limit", ["60"])[0], 60), self.email),
                                        ensure_ascii=False), "application/json")
         elif u.path == "/api/ringkasan":
-            self.tulis(200, json.dumps(ringkasan_api(), ensure_ascii=False), "application/json")
+            self.tulis(200, json.dumps(ringkasan_api(self.email), ensure_ascii=False), "application/json")
         elif u.path == "/scan":
             qs = parse_qs(u.query)
             nilai = qs.get("q", [""])[0].strip()
@@ -3930,7 +4328,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with lock:
                 try:
-                    hasil = jalankan_scan(nilai, mode)
+                    hasil = jalankan_scan(nilai, mode, pemilik=self.email)
                 except Exception as e:
                     hasil = {"ok": False, "error": str(e)}
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
@@ -3977,6 +4375,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
+        if not self.gerbang(u.path, ("/api/login", "/api/register", "/api/logout")):
+            return
         if u.path == "/api/login":
             d = self.baca_json()
             email = str(d.get("email") or "").strip().lower()
@@ -3985,10 +4385,8 @@ class Handler(BaseHTTPRequestHandler):
                 akun = dict(AKUN_DB.get(email) or {})
             oke, upgrade = cek_pw(pw, akun.get("hash")) if akun else (False, False)  # hashing di luar lock
             if oke:
-                with lock:
-                    tok = secrets.token_hex(16)
-                    TOKENS[tok] = email
-                    nama = akun["nama"]
+                tok = buat_sesi(email)
+                nama = akun["nama"]
                 if upgrade:  # akun v0.7 (sha256) → otomatis naik ke PBKDF2 saat login
                     h_baru = hash_pw(pw)
                     with lock:
@@ -4000,7 +4398,7 @@ class Handler(BaseHTTPRequestHandler):
                              prefer="return=minimal,resolution=merge-duplicates")
             if oke:
                 self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
-                           "application/json")
+                           "application/json", [self.cookie_sesi(tok, SESI_HARI * 86400)])
             else:
                 self.tulis(200, json.dumps({"ok": False, "error": "Email atau password salah"}),
                            "application/json")
@@ -4020,31 +4418,31 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 h_pw = hash_pw(pw)  # sekali saja (salt acak → tiap panggilan beda)
                 AKUN_DB[email] = {"nama": nama, "hash": h_pw}
-                tok = secrets.token_hex(16)
-                TOKENS[tok] = email
+            tok = buat_sesi(email)
             simpan_data()
             if supa_aktif():
                 supa("POST", "intai_akun",
                      payload={"email": email, "nama": nama, "hash": h_pw},
                      prefer="return=minimal,resolution=merge-duplicates")
             self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
-                       "application/json")
+                       "application/json", [self.cookie_sesi(tok, SESI_HARI * 86400)])
         elif u.path == "/api/jadwal":
             d = self.baca_json()
             if str(d.get("aksi") or "") == "jalan":
-                hasil = jadwal_tick(paksa=True, pemicu="manual")
+                hasil = jadwal_tick(paksa=True, pemicu="manual", email=self.email)
             else:
-                hasil = jadwal_simpan(d)
+                hasil = jadwal_simpan(self.email, d)
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
         elif u.path == "/api/pantau":
             d = self.baca_json()
-            hasil = ubah_pantau(str(d.get("aksi") or "tambah"), d.get("page_id"), d.get("nama") or "")
+            hasil = ubah_pantau(self.email, str(d.get("aksi") or "tambah"), d.get("page_id"), d.get("nama") or "")
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
+        elif u.path == "/api/bintang":
+            self.json_ok(bintang_tulis(self.email, self.baca_json().get("daftar")))
+        elif u.path == "/api/ekspor":
+            self.json_ok(ekspor_ubah(self.email, self.baca_json()))
         elif u.path == "/api/logout":
-            d = self.baca_json()
-            with lock:
-                TOKENS.pop(str(d.get("token") or ""), None)
-            self.tulis(200, json.dumps({"ok": True}), "application/json")
+            self.tulis(200, json.dumps({"ok": True}), "application/json", [self.cookie_sesi("", 0)])
         else:
             self.tulis(404, json.dumps({"ok": False, "error": "Tidak ditemukan"}), "application/json")
 
