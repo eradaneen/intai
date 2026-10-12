@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "0.8.2"
+VERSI = "0.9"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -2779,7 +2779,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta"):
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok"):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif u.path == "/api/versi":
             self.tulis(200, json.dumps({"ok": True, "v": VERSI}), "application/json")

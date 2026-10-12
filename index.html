@@ -681,6 +681,32 @@
 #view-meta .banding-kartu{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff}
 #view-meta .banding-top{font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
 @media (max-width:760px){#view-meta .ringkas-grafik-row,#view-meta .banding-grid{grid-template-columns:1fr}}
+
+/* ===== v0.9 Tahap 3: ikon garis (sprite) + modul Shopee/TikTok ===== */
+.ik{width:1.08em;height:1.08em;display:inline-block;vertical-align:-.17em;margin-right:.12em;flex:0 0 auto;
+  fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+#view-meta .judul-bagian .jt .ik,#view-meta .side-judul .ik,#view-meta .chart .k .ik,#view-meta .ringkas-grafik .k .ik,
+#view-meta .banding-kartu .k .ik,#view-meta #banding-mati .k .ik,#view-meta .bar-detail .jd .ik,.modal-judul .ik,
+.brief-ov .jd .ik,#view-meta .sejak-lalu .ik{color:var(--accent)}
+#view-meta .side-btn .ik{color:var(--accent);margin-right:.3em}
+.chip .ik{width:1em;height:1em;vertical-align:-.15em}
+.view-modul{max-width:760px;margin:0 auto;padding:34px 28px 60px}
+.view-modul .mk{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:36px 34px 30px;box-shadow:var(--shadow);text-align:center;animation:muncul .55s var(--ease) both}
+.view-modul .mk-ikon{width:76px;height:76px;border-radius:22px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center}
+.view-modul .mk-ikon .ik{width:38px;height:38px;margin:0;stroke-width:1.9}
+.view-modul .mk-badge{display:inline-flex;align-items:center;gap:7px;background:var(--emas-soft);color:var(--warn);border:1px solid #E8D9B8;border-radius:999px;padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px}
+.view-modul .mk-badge i{width:7px;height:7px;border-radius:50%;background:var(--emas);animation:denyut 2s infinite}
+.view-modul h1{font-size:26px;letter-spacing:-.8px;margin-bottom:10px;color:var(--ink)}
+.view-modul .mk-sub{font-size:13.5px;color:var(--muted);line-height:1.8;max-width:500px;margin:0 auto 6px}
+.view-modul .mk-list{text-align:left;max-width:500px;margin:22px auto 6px;display:flex;flex-direction:column;gap:10px}
+.view-modul .mk-b{background:#FBFAF7;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-size:12.5px;color:var(--muted);line-height:1.75;display:flex;gap:12px;align-items:flex-start}
+.view-modul .mk-b .ik{width:18px;height:18px;margin-top:2px;color:var(--accent)}
+.view-modul .mk-b b{color:var(--ink)}
+.view-modul .mk-kini{margin:22px auto 0;max-width:500px;text-align:left;background:var(--soft);border-radius:16px;padding:16px 18px;font-size:12.5px;line-height:1.75;color:var(--ink)}
+.view-modul .mk-kini .k{font-size:10px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+.view-modul .mk-kini code{background:#fff;border:1px solid var(--line);border-radius:7px;padding:1px 7px;font-size:11.5px;font-family:inherit;font-weight:800}
+.view-modul .mk-aksi{margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.view-modul .mk-foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:10.5px;color:var(--faint);font-weight:650}
 </style>
 </head>
 <body>
@@ -689,6 +715,8 @@
   Aplikasi yang hidup: <b>alamat publik INTAI yang aktif</b> (diberikan di chat) atau <b>panel preview proses “INTAI Hub (dashboard + scan)” · port 8765</b> — di laptop: jalankan <b>python intai_app.py</b> lalu buka <b>localhost:8765</b>.
   <span onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:12px;cursor:pointer;font-weight:900;font-size:14px">✕</span>
 </div>
+<!-- v0.9: sprite ikon -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="ik-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/></symbol><symbol id="ik-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></symbol><symbol id="ik-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol><symbol id="ik-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="ik-sliders" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></symbol><symbol id="ik-star" viewBox="0 0 24 24"><path d="M12 2.8l2.85 5.78 6.38.93-4.62 4.5 1.09 6.35L12 17.36l-5.7 3 1.09-6.35-4.62-4.5 6.38-.93z"/></symbol><symbol id="ik-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol><symbol id="ik-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="ik-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol><symbol id="ik-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol><symbol id="ik-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol><symbol id="ik-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="ik-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="ik-clapper" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol><symbol id="ik-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol><symbol id="ik-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol><symbol id="ik-copy" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol><symbol id="ik-down" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></symbol><symbol id="ik-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol><symbol id="ik-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></symbol><symbol id="ik-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="ik-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol><symbol id="ik-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></symbol><symbol id="ik-music" viewBox="0 0 24 24"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></symbol><symbol id="ik-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol><symbol id="ik-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8 12 2.7 2.7L16 9.4"/></symbol><symbol id="ik-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></symbol></svg>
 <div class="shell">
 
   <aside class="sb">
@@ -703,14 +731,14 @@
     <nav class="sb-nav" id="sb-nav">
     <button class="sb-item on" style="animation-delay:80ms" onclick="ke('/dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Dashboard</button>
     <button class="sb-item" style="animation-delay:140ms" onclick="ke('/meta')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Scan Meta Ad Library</button>
-    <button class="sb-item" style="animation-delay:200ms" onclick="toast('Mesin Scan Shopee sedang disiapkan — belum tersedia di v0.6.')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Scan Shopee</button>
-    <button class="sb-item" style="animation-delay:260ms" onclick="toast('Mesin Scan TikTok sedang disiapkan — belum tersedia di v0.6.')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>Scan TikTok</button>
+    <button class="sb-item" style="animation-delay:200ms" onclick="ke('/shopee')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Scan Shopee</button>
+    <button class="sb-item" style="animation-delay:260ms" onclick="ke('/tiktok')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>Scan TikTok</button>
     </nav>
 
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v0.8.1<br>Riwayat tersimpan di mesin ini</div>
+    <div class="sb-foot">Mesin Meta aktif · v0.9<br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
 
   <main class="isi-utama">
@@ -747,8 +775,8 @@
           <div class="judul-kartu"><b>Pilih platform</b><span>3 mesin</span></div>
           <div class="plat-stack">
             <button class="btn" onclick="ke('/meta')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Buka Scan Meta</button>
-            <button class="btn2" onclick="toast('Mesin Scan Shopee sedang disiapkan — belum tersedia di v0.6.')">Scan Shopee — mesin disiapkan</button>
-            <button class="btn2" onclick="toast('Mesin Scan TikTok sedang disiapkan — belum tersedia di v0.6.')">Scan TikTok — mesin disiapkan</button>
+            <button class="btn2" onclick="ke('/shopee')">Scan Shopee — mesin disiapkan</button>
+            <button class="btn2" onclick="ke('/tiktok')">Scan TikTok — mesin disiapkan</button>
           </div>
         </div>
         <div class="kartu anim d3">
@@ -768,7 +796,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v0.8.1 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v0.9 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -790,9 +818,9 @@
       <div class="sub">Ketik satu niche → dapatkan 10 produk teratas, peta harga, estimasi ekonomi, dan resep jualan. Data publik, dianalisis untuk seller Indonesia.</div>
 
       <div class="modebar">
-        <button class="mode on" id="md-cari" onclick="setMode('cari')">🔍 Kata Kunci</button>
-        <button class="mode" id="md-halaman" onclick="setMode('halaman')">🎯 Intip Kompetitor</button>
-        <button class="mode" id="md-banding" onclick="setMode('banding')">⚖️ Banding Niche</button>
+        <button class="mode on" id="md-cari" onclick="setMode('cari')"><svg class=ik><use href=#ik-search></use></svg> Kata Kunci</button>
+        <button class="mode" id="md-halaman" onclick="setMode('halaman')"><svg class=ik><use href=#ik-target></use></svg> Intip Kompetitor</button>
+        <button class="mode" id="md-banding" onclick="setMode('banding')"><svg class=ik><use href=#ik-scale></use></svg> Banding Niche</button>
       </div>
       <div class="scanbar bandingbar" id="form-banding" style="display:none">
         <input id="bq1" type="text" placeholder="Niche A… (contoh: madu)" autocomplete="off">
@@ -816,11 +844,11 @@
     </div>
 
     <aside class="hero-side">
-      <div class="side-judul">⚡ Aksi Cepat</div>
-      <button class="side-btn" onclick="eksporCSV()"><span>⬇ Ekspor CSV</span><small>unduh semua hasil scan</small></button>
-      <button class="side-btn" onclick="toggleFilterBar();const fb=document.getElementById('filterbar');fb.style.display='flex';fb.scrollIntoView({behavior:'smooth',block:'center'})"><span>⚙ Filter Lanjutan</span><small>rentang umur · harga · format</small></button>
-      <button class="side-btn" onclick="lihatPantauan()"><span>⭐ Pantauan (<span id="jml-pantauan">0</span>)</span><small>produk yang kamu bintangi</small></button>
-      <button class="side-btn" id="btn-kolom" onclick="toggleKolom()"><span>▦ Tampilan: Ringkas</span><small>atur jumlah kolom tabel</small></button>
+      <div class="side-judul"><svg class=ik><use href=#ik-zap></use></svg> Aksi Cepat</div>
+      <button class="side-btn" onclick="eksporCSV()"><span><svg class=ik><use href=#ik-download></use></svg> Ekspor CSV</span><small>unduh semua hasil scan</small></button>
+      <button class="side-btn" onclick="toggleFilterBar();const fb=document.getElementById('filterbar');fb.style.display='flex';fb.scrollIntoView({behavior:'smooth',block:'center'})"><span><svg class=ik><use href=#ik-sliders></use></svg> Filter Lanjutan</span><small>rentang umur · harga · format</small></button>
+      <button class="side-btn" onclick="lihatPantauan()"><span><svg class=ik><use href=#ik-star></use></svg> Pantauan (<span id="jml-pantauan">0</span>)</span><small>produk yang kamu bintangi</small></button>
+      <button class="side-btn" id="btn-kolom" onclick="toggleKolom()"><span><svg class=ik><use href=#ik-grid></use></svg> Tampilan: Ringkas</span><small>atur jumlah kolom tabel</small></button>
       <div class="side-note">Semua aksi terkumpul di sini supaya area kerja tetap bersih — fokus ke data, bukan nyari tombol.</div>
     </aside>
   </div>
@@ -841,7 +869,7 @@
 <div id="panel-banding" style="display:none">
   <div class="judul-bagian">
     <span class="eb">BANDING</span>
-    <span class="jt">⚖️ Banding Niche</span>
+    <span class="jt"><svg class=ik><use href=#ik-scale></use></svg> Banding Niche</span>
     <span class="ket">Dua scan berurutan (±1,5 menit) → adu momentum, ketahanan, turnover & uang iklan</span>
   </div>
   <div class="hint" id="status-banding">Isi dua niche di atas, lalu tekan ADU.</div>
@@ -868,7 +896,7 @@
 
   <div class="judul-bagian">
     <span class="eb">LANGKAH 1</span>
-    <span class="jt">🥇 10 Produk Ads Teratas</span>
+    <span class="jt"><svg class=ik><use href=#ik-trophy></use></svg> 10 Produk Ads Teratas</span>
     <span class="ket">Ranking acuan jualan: penjualan × omzet × lama aktif · klik untuk detail</span>
   </div>
   <div id="top10"></div>
@@ -876,7 +904,7 @@
 
   <div class="judul-bagian">
     <span class="eb">LANGKAH 2</span>
-    <span class="jt">📊 Grafik Niche</span>
+    <span class="jt"><svg class=ik><use href=#ik-chart></use></svg> Grafik Niche</span>
     <span class="ket">Medan jualan, format, waktu, dan CTA yang dipakai pasar</span>
   </div>
   <div class="baris">
@@ -884,21 +912,21 @@
     <div class="chart"><div class="k">Format Iklan</div><div id="ch-format"></div></div>
   </div>
   <div class="baris">
-    <div class="chart"><div class="k">📅 Kapan Iklan Dimulai</div><div id="ch-bulan"></div></div>
-    <div class="chart"><div class="k">🎯 CTA yang Dipakai</div><div id="ch-cta"></div></div>
+    <div class="chart"><div class="k"><svg class=ik><use href=#ik-calendar></use></svg> Kapan Iklan Dimulai</div><div id="ch-bulan"></div></div>
+    <div class="chart"><div class="k"><svg class=ik><use href=#ik-target></use></svg> CTA yang Dipakai</div><div id="ch-cta"></div></div>
   </div>
   <div id="banding-mati" style="display:none"></div>
 
   <div class="judul-bagian">
     <span class="eb">LANGKAH 3</span>
-    <span class="jt">🧠 Rak Angle</span>
+    <span class="jt"><svg class=ik><use href=#ik-bulb></use></svg> Rak Angle</span>
     <span class="ket">Hook kembar dikelompokkan — makin banyak iklan memakai, makin terbukti · klik kartu untuk lihat iklannya</span>
   </div>
   <div class="chart" style="margin-top:0"><div id="ch-hook"></div></div>
 
   <div class="judul-bagian">
     <span class="eb">LANGKAH 4</span>
-    <span class="jt">📋 Data Iklan Lengkap</span>
+    <span class="jt"><svg class=ik><use href=#ik-clipboard></use></svg> Data Iklan Lengkap</span>
     <span class="ket">Sortable · klik baris = detail penuh · tab status untuk fokus cepat</span>
   </div>
   <div class="toolbar">
@@ -912,10 +940,10 @@
     <button class="chip2" data-f="LP/Website" onclick="setFilter('LP/Website',this)">LP/Website</button>
     <button class="chip2" data-f="Tanpa tautan" onclick="setFilter('Tanpa tautan',this)">Tanpa tautan</button>
     <span style="width:1px;height:18px;background:var(--line);margin:0 5px"></span>
-    <button class="chip2" id="ch-mati" onclick="toggleMati()" title="Tampilkan iklan yang sudah berhenti tayang — bahan evaluasi anti-pattern">🪦 Iklan mati (<span id="ct-mati">0</span>)</button>
-    <button class="chip2 on" id="ch-lepas" onclick="toggleLepas()" title="Sembunyikan iklan yang tidak nyambung dengan kata kunci">🚫 Sembunyikan niche luar</button>
-    <button class="chip2" data-f="Baru" onclick="setFilter('Baru',this)" title="Hanya iklan yang mulai ≤7 hari — sinyal awal">🔥 Baru ≤7h</button>
-    <button class="chip2" onclick="toggleFilterBar()" title="Filter lanjutan: rentang umur, harga, format">⚙ Filter</button>
+    <button class="chip2" id="ch-mati" onclick="toggleMati()" title="Tampilkan iklan yang sudah berhenti tayang — bahan evaluasi anti-pattern"><svg class=ik><use href=#ik-down></use></svg> Iklan mati (<span id="ct-mati">0</span>)</button>
+    <button class="chip2 on" id="ch-lepas" onclick="toggleLepas()" title="Sembunyikan iklan yang tidak nyambung dengan kata kunci"><svg class=ik><use href=#ik-eyeoff></use></svg> Sembunyikan niche luar</button>
+    <button class="chip2" data-f="Baru" onclick="setFilter('Baru',this)" title="Hanya iklan yang mulai ≤7 hari — sinyal awal"><svg class=ik><use href=#ik-fire></use></svg> Baru ≤7h</button>
+    <button class="chip2" onclick="toggleFilterBar()" title="Filter lanjutan: rentang umur, harga, format"><svg class=ik><use href=#ik-sliders></use></svg> Filter</button>
     <input class="cari" id="cari" type="text" placeholder="Cari di hasil..." oninput="render()">
     <div style="margin-left:auto;font-size:11px;color:var(--muted)" id="countinfo"></div>
   </div>
@@ -964,7 +992,7 @@
   </div>
 </div>
 
-<div class="foot">INTAI v0.8.1 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI v0.9 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -974,7 +1002,7 @@
 <div id="halaman-iklan"><div class="wrap-halaman" id="isi-halaman-iklan"></div></div>
 <div class="modal-bg" id="mbg" onclick="if(event.target===this)tutupModal()">
   <div class="modal">
-    <div class="modal-judul">🔗 Link</div>
+    <div class="modal-judul"><svg class=ik><use href=#ik-link></use></svg> Link</div>
     <div class="urlbox besar" id="murl"></div>
     <div class="modal-aksi">
       <button class="tombol" onclick="salin(document.getElementById('murl').textContent)">Salin Link</button>
@@ -987,6 +1015,54 @@
 
 </div>
 
+    </div>
+
+    <!-- v0.9: modul Shopee (mesin disiapkan, tanpa data) -->
+    <div id="view-shopee" class="view-modul" style="display:none">
+      <div class="mk">
+        <div class="mk-ikon" style="background:#FDEBE5;color:#D9472B"><svg class=ik><use href=#ik-bag></use></svg></div>
+        <div class="mk-badge"><i></i> Mesin disiapkan</div>
+        <h1>Scan Shopee — sedang dibangun</h1>
+        <div class="mk-sub">Halaman ini sudah jadi rumah modul Shopee. Yang belum ada adalah mesin pengambil datanya — dan INTAI <b>tidak</b> akan memasang data palsu sebagai penggantinya.</div>
+        <div class="mk-list">
+          <div class="mk-b"><svg class=ik><use href=#ik-box></use></svg><div><b>Struktur modul siap.</b> Nanti di sini: ranking produk, harga, dan pola jualan Shopee — format yang sama dengan modul Meta.</div></div>
+          <div class="mk-b"><svg class=ik><use href=#ik-shield></use></svg><div><b>Riset jalur data sedang berjalan.</b> Shopee menjaga halamannya dengan anti-bot ketat; INTAI hanya akan memakai jalur yang sah dan stabil.</div></div>
+          <div class="mk-b"><svg class=ik><use href=#ik-check></use></svg><div><b>Prinsip: jujur.</b> Selama mesinnya belum jadi, statusnya tetap "disiapkan" — bukan demo berisi angka karangan.</div></div>
+        </div>
+        <div class="mk-kini">
+          <div class="k">Yang sudah bisa dipakai sekarang</div>
+          Banyak iklan Meta mengarah ke Shopee (shopee.co.id / shope.ee). Scan kata kunci di <b>Scan Meta</b>, lalu klik chip <code>Marketplace</code> di atas tabel — terlihat siapa saja yang mengirim iklannya ke marketplace, lengkap dengan umur iklan, status, dan skor.
+        </div>
+        <div class="mk-aksi">
+          <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
+          <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
+        </div>
+        <div class="mk-foot"><div>INTAI v0.9 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+      </div>
+    </div>
+
+    <!-- v0.9: modul TikTok (mesin disiapkan, tanpa data) -->
+    <div id="view-tiktok" class="view-modul" style="display:none">
+      <div class="mk">
+        <div class="mk-ikon" style="background:#E7F1F2;color:#14262A"><svg class=ik><use href=#ik-music></use></svg></div>
+        <div class="mk-badge"><i></i> Mesin disiapkan</div>
+        <h1>Scan TikTok — sedang dibangun</h1>
+        <div class="mk-sub">Halaman ini sudah jadi rumah modul TikTok. Yang belum ada adalah mesin pengambil datanya — dan INTAI <b>tidak</b> akan memasang data palsu sebagai penggantinya.</div>
+        <div class="mk-list">
+          <div class="mk-b"><svg class=ik><use href=#ik-box></use></svg><div><b>Struktur modul siap.</b> Nanti di sini: ranking produk, harga, dan pola jualan TikTok — format yang sama dengan modul Meta.</div></div>
+          <div class="mk-b"><svg class=ik><use href=#ik-shield></use></svg><div><b>Riset jalur data sedang berjalan.</b> TikTok menjaga halamannya dengan anti-bot ketat; INTAI hanya akan memakai jalur yang sah dan stabil.</div></div>
+          <div class="mk-b"><svg class=ik><use href=#ik-check></use></svg><div><b>Prinsip: jujur.</b> Selama mesinnya belum jadi, statusnya tetap "disiapkan" — bukan demo berisi angka karangan.</div></div>
+        </div>
+        <div class="mk-kini">
+          <div class="k">Yang sudah bisa dipakai sekarang</div>
+          Banyak iklan Meta mengarah ke TikTok Shop, Shopee, dan Tokopedia. Scan kata kunci di <b>Scan Meta</b>, lalu klik chip <code>Marketplace</code> di atas tabel — terlihat siapa saja yang mengirim iklannya ke marketplace, lengkap dengan umur iklan, status, dan skor.
+        </div>
+        <div class="mk-aksi">
+          <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
+          <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
+        </div>
+        <div class="mk-foot"><div>INTAI v0.9 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+      </div>
     </div>
   </main>
 </div>
@@ -1162,7 +1238,8 @@ function initPilNavigasi(){
   const wrap = document.getElementById("sb-nav");
   if(!wrap) return;
   const items = Array.prototype.slice.call(wrap.querySelectorAll(".sb-item"));
-  const aktif = wrap.querySelector(".sb-item.on") || items[0];
+  /* v0.9: item aktif dibaca ulang tiap kali (dulu dikunci saat muat → pil nyangkut di Dashboard setelah pindah view SPA) */
+  function aktifKini(){ return wrap.querySelector(".sb-item.on") || items[0]; }
   const pil = document.createElement("div");
   pil.className = "sb-pill";
   wrap.prepend(pil);
@@ -1184,13 +1261,13 @@ function initPilNavigasi(){
   items.forEach(function(el){
     el.addEventListener("mouseenter", function(){ pindahKe(el); });
   });
-  wrap.addEventListener("mouseleave", function(){ pindahKe(aktif); });
+  wrap.addEventListener("mouseleave", function(){ pindahKe(aktifKini()); });
   pil.style.top = "0px"; pil.style.height = "0px";
   setTimeout(function(){
     pil.style.opacity = "1";
-    pindahKe(aktif);
+    pindahKe(aktifKini());
   }, REDUCED ? 0 : 430);
-  window.__kalibrasiPil = function(){ pindahKe(aktif, true); };
+  window.__kalibrasiPil = function(){ pindahKe(aktifKini(), true); };
 }
 /* ===== data dashboard dari riwayat scan mesin (nyata) ===== */
 
@@ -1664,8 +1741,8 @@ function detailHTML(x){
   if(d.link_url) h += '<button class="tombol" data-u="' + esc(d.link_url) + '" onclick="buka(this.dataset.u)">Buka Tujuan Iklan</button>' +
     '<button class="tombol2" data-u="' + esc(d.link_url) + '" onclick="salin(this.dataset.u)">Salin Link</button>';
   if(d.archive_id) h += '<button class="tombol2" data-u="' + esc("https://www.facebook.com/ads/library/?id=" + d.archive_id) + '" onclick="buka(this.dataset.u)">Buka di Ad Library</button>';
-  if(d.page_id) h += '<button class="tombol" onclick="event.stopPropagation();bukaIklanPenuh(' + esc(String(x._id)) + ')">📇 Buka Halaman Detail Iklan (penuh)</button>' +
-    '<button class="tombol2" onclick="event.stopPropagation();intipHalaman(\'' + esc(String(d.page_id)) + '\')">🎯 Semua iklan halaman ini (mode kompetitor)</button>';
+  if(d.page_id) h += '<button class="tombol" onclick="event.stopPropagation();bukaIklanPenuh(' + esc(String(x._id)) + ')"><svg class=ik><use href=#ik-file></use></svg> Buka Halaman Detail Iklan (penuh)</button>' +
+    '<button class="tombol2" onclick="event.stopPropagation();intipHalaman(\'' + esc(String(d.page_id)) + '\')"><svg class=ik><use href=#ik-target></use></svg> Semua iklan halaman ini (mode kompetitor)</button>';
   h += '</div>';
 
   // KARTU
@@ -1705,7 +1782,8 @@ function toggleKolom(){
   const w = document.querySelector(".tabelwrap");
   w.classList.toggle("lengkap");
   const btn = document.getElementById("btn-kolom");
-  btn.textContent = w.classList.contains("lengkap") ? "▦ Tampilan: Lengkap" : "▦ Tampilan: Ringkas";
+  const lbl = btn.querySelector("span") || btn;   /* v0.9: hanya label — dulu textContent menghapus <small> & ikon */
+  lbl.innerHTML = '<svg class=ik><use href=#ik-grid></use></svg> Tampilan: ' + (w.classList.contains("lengkap") ? "Lengkap" : "Ringkas");
 }
 function setFilter(f, el){
   FILTER = f;
@@ -1783,9 +1861,9 @@ function render(){
         '<span data-bintang="' + id + '" onclick="event.stopPropagation();togglePantauan(' + id + ')" title="Bintangi — simpan ke Pantauan (tersimpan di browser)" style="cursor:pointer;margin-right:4px;font-size:13px;color:' + (dipantau(x) ? '#B7791F' : '#CBD5E1') + '">' + (dipantau(x) ? '★' : '☆') + '</span>' +
         esc(x.halaman) +
         ' ' + statusChip(x.status) +
-        (x.aktif === false ? ' <span class="chip" style="color:#6E7C78;border-color:#D8D0C0;background:#F1EDE4" title="Iklan sudah berhenti tayang — bahan evaluasi anti-pattern">🪦 MATI</span>' : '') +
-        (x.umur <= 3 ? ' <span class="chip" style="color:#B5443A;border-color:#E8C4BE;background:#F6E7E3">⚡ PANAS</span>' :
-         x.umur <= 7 ? ' <span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA">🔥 BARU</span>' : '') +
+        (x.aktif === false ? ' <span class="chip" style="color:#6E7C78;border-color:#D8D0C0;background:#F1EDE4" title="Iklan sudah berhenti tayang — bahan evaluasi anti-pattern"><svg class=ik><use href=#ik-down></use></svg> MATI</span>' : '') +
+        (x.umur <= 3 ? ' <span class="chip" style="color:#B5443A;border-color:#E8C4BE;background:#F6E7E3"><svg class=ik><use href=#ik-zap></use></svg> PANAS</span>' :
+         x.umur <= 7 ? ' <span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA"><svg class=ik><use href=#ik-fire></use></svg> BARU</span>' : '') +
         '</div><div class="cup2">' + esc(bersih(x.teks).slice(0,60)) + '</div></td>' +
       '<td class="col-extra"><span class="chip" style="color:' + wr + ';border-color:' + wr + '33;background:' + wr + '12" title="Nilai kecocokan dgn kata kunci: ' + rel.nilai + '/100">' + esc(rel.label) + ' ' + rel.nilai + '</span></td>' +
       '<td><span class="skor2">' + x.skor + '</span></td>' +
@@ -1808,7 +1886,7 @@ function render(){
       if(bukaSekarang && !wadah.dataset.filled){
         wadah.dataset.filled = "1";
         wadah.innerHTML = '<div class="bar-detail"><span class="jd">Detail Lengkap — ' + esc(DATA[id].halaman) + '</span>' +
-          '<button class="tombol2" onclick="event.stopPropagation();rakitNaskah(' + id + ')">🧬 Rakit Naskah Video</button>' +
+          '<button class="tombol2" onclick="event.stopPropagation();rakitNaskah(' + id + ')"><svg class=ik><use href=#ik-clapper></use></svg> Rakit Naskah Video</button>' +
           '<button class="tombol2" onclick="event.stopPropagation();tutupDetail(' + id + ')">✕ Tutup Detail</button></div>' +
           detailHTML(DATA[id]);
       }
@@ -1880,7 +1958,7 @@ function rakitNaskah(id){
     "\n5. BAHAN KLAIM: " + label +
     "\n(🟠 kerangka brief dari data — untuk memandu tim kreatif, bukan naskah AI jadi)";
   const html =
-    '<div class="bar-detail"><span class="jd">🧬 Perakit Naskah Video — ' + esc(x.halaman) + '</span>' +
+    '<div class="bar-detail"><span class="jd"><svg class=ik><use href=#ik-clapper></use></svg> Perakit Naskah Video — ' + esc(x.halaman) + '</span>' +
     '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
     '<div class="note" style="margin:8px 0"><b>🟠 Pita Model:</b> kerangka brief yang dirakit otomatis dari DATA iklan ini + pola hook juara niche — panduan untuk tim kreatif, bukan naskah jadi dari AI generatif.</div>' +
     '<div class="sel"><div class="k">1 · Hook — 3 sudut</div><div class="v" style="white-space:pre-line">' +
@@ -1889,7 +1967,7 @@ function rakitNaskah(id){
     '<div class="sel"><div class="k">3 · Visual</div><div class="v" style="white-space:pre-line">' + esc(visual.join("\n")) + '</div></div>' +
     '<div class="sel"><div class="k">4 · Angle & CTA</div><div class="v">' + esc((d.angle || "—")) + ' · CTA: ' + esc(x.cta || "—") + '</div></div>' +
     '<div class="sel"><div class="k">5 · Bahan Klaim (data pendukung)</div><div class="v">' + esc(label) + '</div></div>' +
-    '<button class="tombol2" style="margin:10px 0" data-t="' + esc(briefTeks) + '" onclick="salin(this.dataset.t)">📋 Salin brief</button>';
+    '<button class="tombol2" style="margin:10px 0" data-t="' + esc(briefTeks) + '" onclick="salin(this.dataset.t)"><svg class=ik><use href=#ik-copy></use></svg> Salin brief</button>';
   let ov = document.querySelector(".brief-ov");
   if(ov) ov.remove();
   ov = document.createElement("div");
@@ -1958,9 +2036,9 @@ function lihatPantauan(){
   ov.style.cssText = "position:fixed;inset:0;z-index:520;background:rgba(15,23,42,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px";
   ov.addEventListener("click", e => { if(e.target === ov) ov.remove(); });
   ov.innerHTML = '<div class="modal" style="max-width:680px;width:100%;max-height:82vh;overflow:auto">' +
-    '<div class="bar-detail"><span class="jd">⭐ Pantauan — ' + list.length + ' produk</span>' +
+    '<div class="bar-detail"><span class="jd"><svg class=ik><use href=#ik-star></use></svg> Pantauan — ' + list.length + ' produk</span>' +
     '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
-    '<div style="margin:8px 0"><button class="tombol2" onclick="eksporPantauan()">⬇ Ekspor CSV Pantauan</button></div>' +
+    '<div style="margin:8px 0"><button class="tombol2" onclick="eksporPantauan()"><svg class=ik><use href=#ik-download></use></svg> Ekspor CSV Pantauan</button></div>' +
     isi + '</div>';
   document.body.appendChild(ov);
 }
@@ -1983,7 +2061,7 @@ function toggleTop(i){
   const p = (window.TP || [])[i];
   if(!p) return;
   const isi =
-    '<div class="resep">🧾 <b>Resep jualan:</b> Jual <b>' + esc((p.nama || "").slice(0, 45)) + '</b> — kreatif ' + esc(p.format) + ' · harga ' + (p.harga_min ? fmtHarga(p.harga_min) + '–' + fmtHarga(p.harga_max) : '—') + ' · funnel ' + esc(p.funnel) + ' (' + esc(p.cta || "—") + ') · ' + (p.harga_min && p.unit ? 'est. ' + p.unit[0] + '–' + p.unit[1] + ' unit/bln · ' : '') + 'iklan semodel yang cuan bertahan ' + p.umur + '+ hari</div>' +
+    '<div class="resep"><svg class=ik><use href=#ik-receipt></use></svg> <b>Resep jualan:</b> Jual <b>' + esc((p.nama || "").slice(0, 45)) + '</b> — kreatif ' + esc(p.format) + ' · harga ' + (p.harga_min ? fmtHarga(p.harga_min) + '–' + fmtHarga(p.harga_max) : '—') + ' · funnel ' + esc(p.funnel) + ' (' + esc(p.cta || "—") + ') · ' + (p.harga_min && p.unit ? 'est. ' + p.unit[0] + '–' + p.unit[1] + ' unit/bln · ' : '') + 'iklan semodel yang cuan bertahan ' + p.umur + '+ hari</div>' +
     '<div class="subjudul">Iklan dalam grup ini (' + p.ads.length + ') — klik untuk bedah detail</div>' +
     (p.ads || []).map(a => '<div class="tp-ad" onclick="bukaIklanDariModal(' + a.idx + ')">▶ Iklan · ' + esc(a.format) + ' · ' + a.umur + ' hari aktif · skor ' + a.skor + ' · skor jual ' + (a.skor_jual || 0) + '</div>').join("");
   let ov = document.querySelector(".brief-ov");
@@ -1993,7 +2071,7 @@ function toggleTop(i){
   ov.style.cssText = "position:fixed;inset:0;z-index:520;background:rgba(34,48,46,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px";
   ov.addEventListener("click", e => { if(e.target === ov) ov.remove(); });
   ov.innerHTML = '<div class="modal" style="max-width:560px;width:100%;max-height:82vh;overflow:auto">' +
-    '<div class="bar-detail"><span class="jd">🧾 ' + esc((p.nama || "").slice(0, 50)) + '</span>' +
+    '<div class="bar-detail"><span class="jd"><svg class=ik><use href=#ik-receipt></use></svg> ' + esc((p.nama || "").slice(0, 50)) + '</span>' +
     '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
     isi + '</div>';
   document.body.appendChild(ov);
@@ -2013,7 +2091,7 @@ function toggleHook(i){
   ov.style.cssText = "position:fixed;inset:0;z-index:520;background:rgba(34,48,46,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px";
   ov.addEventListener("click", e => { if(e.target === ov) ov.remove(); });
   ov.innerHTML = '<div class="modal" style="max-width:560px;width:100%;max-height:82vh;overflow:auto">' +
-    '<div class="bar-detail"><span class="jd">🧠 Hook: “' + esc((hk.hook || "").slice(0, 60)) + '”</span>' +
+    '<div class="bar-detail"><span class="jd"><svg class=ik><use href=#ik-bulb></use></svg> Hook: “' + esc((hk.hook || "").slice(0, 60)) + '”</span>' +
     '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
     '<div class="hint" style="margin:8px 0">Hook ini dipakai <b>' + hk.jml + ' iklan</b> dari ' + (hk.halaman || []).length +
     ' pengiklan — makin banyak dipakai, makin terbukti di niche ini.</div>' + isi + '</div>';
@@ -2098,9 +2176,9 @@ function renderBanding(d1, d2){
             : '🤝 Seimbang — keduanya punya kelebihan. Pilih yang paling cocok dengan modal & kemampuan produksimu.') +
       ' <span style="color:var(--muted);font-size:11.5px">(sinyal pasar, bukan jaminan laku)</span></div>' +
     '<div class="banding-grid">' +
-      '<div class="banding-kartu"><div class="k">⚔️ Adu 4 dimensi</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
+      '<div class="banding-kartu"><div class="k"><svg class=ik><use href=#ik-scale></use></svg> Adu 4 dimensi</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
         vonis.map(v => baris(v.nama, v.ta, v.tb, v.p)).join("") + '</tbody></table></div>' +
-      '<div class="banding-kartu"><div class="k">🧬 Profil niche</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
+      '<div class="banding-kartu"><div class="k"><svg class=ik><use href=#ik-chart></use></svg> Profil niche</div><table class="ringkas-tabel">' + kepala + '<tbody>' +
         baris("Iklan aktif (nyambung)", A.aktif, B.aktif, 0) +
         baris("Pengiklan unik", A.pengiklan, B.pengiklan, 0) +
         baris("Iklan mati terpantau", A.mati, B.mati, 0) +
@@ -2111,8 +2189,8 @@ function renderBanding(d1, d2){
       '</tbody></table></div>' +
     '</div>' +
     '<div class="banding-grid" style="margin-top:12px">' +
-      '<div class="banding-kartu"><div class="k">🏆 Pemenang top · ' + esc(A.kata) + '</div>' + kartuTop(A) + '</div>' +
-      '<div class="banding-kartu"><div class="k">🏆 Pemenang top · ' + esc(B.kata) + '</div>' + kartuTop(B) + '</div>' +
+      '<div class="banding-kartu"><div class="k"><svg class=ik><use href=#ik-trophy></use></svg> Pemenang top · ' + esc(A.kata) + '</div>' + kartuTop(A) + '</div>' +
+      '<div class="banding-kartu"><div class="k"><svg class=ik><use href=#ik-trophy></use></svg> Pemenang top · ' + esc(B.kata) + '</div>' + kartuTop(B) + '</div>' +
     '</div>' +
     '<div class="hint" style="margin-top:10px">💡 Mau bedah salah satunya? Pilih mode 🔍 Kata Kunci lalu scan niche itu.</div>';
 }
@@ -2127,7 +2205,7 @@ function bukaIklanPenuh(idx){
   if(!x) return;
   const wadah = document.getElementById("isi-halaman-iklan");
   wadah.innerHTML =
-    '<div class="bar-detail"><span class="jd">📇 Halaman Detail Iklan — ' + esc(x.halaman) + '</span>' +
+    '<div class="bar-detail"><span class="jd"><svg class=ik><use href=#ik-file></use></svg> Halaman Detail Iklan — ' + esc(x.halaman) + '</span>' +
     '<button class="tombol2" onclick="tutupHalamanIklan()">← Kembali (Esc)</button></div>' +
     '<div style="margin:10px 0"><span class="chip" style="color:#3E4B48;border-color:#D8D0C0;background:#FBFAF7">Skor Cuan ' + x.skor + '</span> ' +
     '<span class="chip" style="color:#B7791F;border-color:#E8D9B8;background:var(--soft)">Skor Jual ' + (x.jual || 0) + '</span> ' +
@@ -2238,7 +2316,7 @@ async function scan(){
       };
       const A = stat(hidup), B = stat(mati);
       const br = (k, va, vb) => '<tr><td class="rk-k">' + k + '</td><td class="rk-v">' + va + '</td><td class="rk-c">' + vb + '</td></tr>';
-      el.innerHTML = '<div class="k">🪦 Yang Bertahan vs Yang Tumbang — pelajaran anti-pattern</div>' +
+      el.innerHTML = '<div class="k"><svg class=ik><use href=#ik-down></use></svg> Yang Bertahan vs Yang Tumbang — pelajaran anti-pattern</div>' +
         '<div class="ringkas-scroll"><table class="ringkas-tabel"><thead><tr><th>Metrik</th><th>🟢 Masih tayang (' + A.jml + ')</th><th>🪦 Sudah mati (' + B.jml + ')</th></tr></thead><tbody>' +
         br("Umur median", A.umur + " hari", B.umur + " hari" + (B.jml ? " (lalu berhenti)" : "")) +
         br("Format dominan", esc(A.format), esc(B.format)) +
@@ -2329,8 +2407,8 @@ async function scan(){
       rr.map(r => '<tr><td class="rk-k">' + r[0] + '</td><td class="rk-v">' + r[1] + '</td><td class="rk-c">' + r[2] + '</td></tr>').join("") +
       '</tbody></table></div>' +
       '<div class="ringkas-grafik-row">' +
-        '<div class="ringkas-grafik"><div class="k">📊 Sebaran umur iklan aktif</div><div id="ch-ring-umur"></div></div>' +
-        '<div class="ringkas-grafik"><div class="k">🏆 Status keputusan</div><div id="ch-ring-status"></div></div>' +
+        '<div class="ringkas-grafik"><div class="k"><svg class=ik><use href=#ik-chart></use></svg> Sebaran umur iklan aktif</div><div id="ch-ring-umur"></div></div>' +
+        '<div class="ringkas-grafik"><div class="k"><svg class=ik><use href=#ik-trophy></use></svg> Status keputusan</div><div id="ch-ring-status"></div></div>' +
       '</div>';
     hitungChart(ub, "ch-ring-umur");
     hitungChart(stt, "ch-ring-status");
@@ -2340,7 +2418,7 @@ async function scan(){
       const nm = arr => (arr && arr.length) ? " (" + esc(arr.slice(0, 3).join(", ")) + (arr.length > 3 ? ", …" : "") + ")" : "";
       const hd = (sl.harga_detail || []).map(h => esc(h.h || "?") + ": " + fmtHarga(h.lama) + " → " + fmtHarga(h.baru)).join(" · ");
       document.getElementById("isi-ringkasan").insertAdjacentHTML("beforeend",
-        '<div class="sejak-lalu"><b>🔁 Sejak scan terakhir' + (sl.waktu_lalu ? ' <span style="font-weight:600;color:var(--muted)">(' + esc(sl.waktu_lalu) + (sl.scan_lalu != null ? ' · ' + sl.scan_lalu + ' iklan' : '') + ')</span>' : '') + ':</b>' +
+        '<div class="sejak-lalu"><b><svg class=ik><use href=#ik-refresh></use></svg> Sejak scan terakhir' + (sl.waktu_lalu ? ' <span style="font-weight:600;color:var(--muted)">(' + esc(sl.waktu_lalu) + (sl.scan_lalu != null ? ' · ' + sl.scan_lalu + ' iklan' : '') + ')</span>' : '') + ':</b>' +
         '<span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA">+' + sl.baru + ' iklan baru' + nm(sl.baru_nama) + '</span>' +
         '<span class="chip" style="color:#6E7C78;border-color:#D8D0C0;background:#F1EDE4">−' + sl.hilang + ' berhenti / tak muncul' + nm(sl.hilang_nama) + '</span>' +
         '<span class="chip" style="color:#B7791F;border-color:#E8D9B8;background:var(--soft)"' + (hd ? ' title="' + hd + '"' : '') + '>💲 ' + sl.harga_berubah + ' ganti harga</span>' +
@@ -2371,27 +2449,35 @@ document.getElementById("bq2").addEventListener("keydown", e => { if(e.key === "
 
 
 /* ================= ROUTER SPA (v0.7): dashboard <-> scan dalam satu halaman ================= */
+const VIEWS = ["dashboard", "meta", "shopee", "tiktok"];   // v0.9: urutan = urutan tombol sidebar
+function viewDariPath(p){
+  p = String(p || "/").replace(/\/+$/, "");
+  for(const v of ["meta", "shopee", "tiktok"]){ if(p === "/" + v) return v; }
+  return "dashboard";
+}
 function tampilView(v, push){
-  const dash = document.getElementById("view-dashboard");
-  const meta = document.getElementById("view-meta");
-  if(!dash || !meta) return;
-  dash.style.display = (v === "dashboard") ? "" : "none";
-  meta.style.display = (v === "meta") ? "" : "none";
+  if(VIEWS.indexOf(v) < 0) v = "dashboard";
+  if(!document.getElementById("view-dashboard") || !document.getElementById("view-meta")) return;
+  VIEWS.forEach(function(n){
+    const el = document.getElementById("view-" + n);
+    if(el) el.style.display = (n === v) ? "" : "none";
+  });
+  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
     const items = nav.querySelectorAll(".sb-item");
-    const idx = (v === "meta") ? 1 : 0;
+    const idx = VIEWS.indexOf(v);
     items.forEach(function(b, i){ b.classList.toggle("on", i === idx); });
   }
-  if(window.__kalibrasiPil) window.__kalibrasiPil();
+  if(window.__kalibrasiPil) requestAnimationFrame(function(){ window.__kalibrasiPil(); });
   if(v === "dashboard" && typeof muatRingkasan === "function") muatRingkasan();
   if(push !== false){
-    try{ history.pushState({v: v}, "", v === "meta" ? "/meta" : "/dashboard"); }catch(e){}
+    try{ history.pushState({v: v}, "", v === "dashboard" ? "/dashboard" : "/" + v); }catch(e){}
   }
   window.scrollTo(0, 0);
 }
 window.addEventListener("popstate", function(){
-  tampilView(location.pathname === "/meta" ? "meta" : "dashboard", false);
+  tampilView(viewDariPath(location.pathname), false);
 });
 function isiScanDari(q, m){
   const mHal = /^halaman\s+(\d+)$/i.exec(q || "");
@@ -2424,6 +2510,10 @@ function ke(url){
       if(mi >= 0) m = u.slice(mi + 5).split("&")[0];
       if(q) isiScanDari(q, m);
     }
+  } else if(u.indexOf("/shopee") === 0){
+    tampilView("shopee");
+  } else if(u.indexOf("/tiktok") === 0){
+    tampilView("tiktok");
   } else if(u === "/" || u.indexOf("/dashboard") === 0){
     tampilView("dashboard");
   } else {
@@ -2431,7 +2521,7 @@ function ke(url){
   }
 }
 (function ruteAwal(){
-  tampilView(location.pathname === "/meta" ? "meta" : "dashboard", false);
+  tampilView(viewDariPath(location.pathname), false);
   try{
     const p = new URLSearchParams(location.search);
     const q = (p.get("q") || "").trim();
@@ -2439,5 +2529,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a493efb8aee6f46d',t:'MTc5MTc4NTM3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49416408dc7e141',t:'MTc5MTc4Njk1MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
