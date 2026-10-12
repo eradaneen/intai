@@ -225,7 +225,8 @@
   .bs{flex:1;max-width:46px;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
   .bs .b{width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#DAF1DE,#8EB69B);min-height:6px;transition:.2s}
   .bs:hover .b{filter:brightness(1.1)}
-  .bs .lb{font-size:8px;font-weight:800;color:#8EB69B;white-space:nowrap;letter-spacing:.2px}
+  .bs{min-width:0}
+  .bs .lb{font-size:8.5px;font-weight:800;color:#8EB69B;white-space:nowrap;letter-spacing:.2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:center}   /* v1.4.2: "…" bukan potong mati */
   .bs .tip{position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:#fff;color:#0B2B26;border-radius:999px;padding:3px 10px;font-size:9px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.3);white-space:nowrap;z-index:3}
   .bs .tip::after{content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#fff;border-radius:2px}
   .chart-kosong{color:#8EB69B;font-size:11.5px;font-weight:700;padding:34px 6px;text-align:center}
@@ -265,11 +266,14 @@
   .sb-logo{display:flex;align-items:center;gap:11px;color:#fff;font-size:18px;font-weight:800;letter-spacing:-.3px;padding:2px 8px 16px}
   .sb-logo .logo-mark{width:38px;height:38px;border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.25)}
   .sb-logo small{display:block;font-size:8.5px;font-weight:700;color:#8EB69B;letter-spacing:1.2px;text-transform:uppercase}
-  .sb-user{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);border-radius:16px;padding:13px;display:flex;align-items:center;gap:11px;margin-bottom:8px}
-  .sb-user .av{width:40px;height:40px;border-radius:50%;border:2px solid var(--emas);background:linear-gradient(135deg,#163832,#235347);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex:0 0 auto}
-  .sb-user b{display:block;font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
-  .sb-user span{display:block;font-size:9.5px;color:#8EB69B;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
-  .sb-user .keluar{margin-left:auto;border:0;background:rgba(255,255,255,.12);color:#F2F7F4;border-radius:999px;padding:5px 10px;font-size:9px;font-weight:800;font-family:inherit;cursor:pointer;flex:0 0 auto}
+  .sb-user{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);border-radius:16px;padding:12px 10px 12px 12px;display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .sb-user .av{width:38px;height:38px;border-radius:50%;border:2px solid var(--emas);background:linear-gradient(135deg,#163832,#235347);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex:0 0 auto}
+  .sb-user .tx{flex:1 1 auto;min-width:0}   /* v1.4.2: kolom nama/email boleh menyusut → Keluar tidak terdorong keluar kartu */
+  .sb-user b{display:block;font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .sb-user .tx span{display:block;font-size:9.5px;color:#8EB69B;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .sb-user .keluar{margin-left:auto;border:0;background:rgba(255,255,255,.12);color:#F2F7F4;border-radius:50%;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;font-family:inherit;cursor:pointer;flex:0 0 auto;transition:background .2s, transform .2s}
+  .sb-user .keluar svg{width:15px;height:15px}
+  .sb-user .keluar:active{transform:scale(.94)}
   .sb-user .keluar:hover{background:rgba(181,68,58,.85)}
   .sb-user .mini{display:flex;gap:6px;width:100%}
   .sb-user .mini button{flex:1;border:0;border-radius:999px;padding:8px 6px;font-size:10px;font-weight:800;font-family:inherit;cursor:pointer}
@@ -601,6 +605,8 @@
 #view-meta .cf {height:100%;background:linear-gradient(90deg,var(--accent),#2E8B7C);border-radius:999px;transition:width .5s var(--ease)}
 #view-meta .cn {width:36px;font-size:10px;font-weight:800;color:var(--ink);text-align:right;flex-shrink:0}
 #view-meta .sbar {display:flex;align-items:center;gap:10px;padding:4.5px 0}
+#view-meta .skorbox .sbar {flex:1 1 280px;min-width:0}   /* v1.4.2: dulu lebar trek 0 → batang skor tak terlihat */
+#view-meta .skorbox .slab {width:auto;min-width:72px;text-align:left}
 #view-meta .slab {width:110px;font-size:10.5px;font-weight:750;color:var(--muted);text-align:right;flex-shrink:0}
 #view-meta .strack {flex:1;height:13px;background:#E6F2E9;border-radius:999px;overflow:hidden}
 #view-meta .sfill {height:100%;background:linear-gradient(90deg,var(--accent),#2E8B7C);border-radius:999px;transition:width .5s var(--ease)}
@@ -667,7 +673,12 @@
     font-size:11px;color:#2F4A43;line-height:1.75;margin:8px 0;
   }
 #view-meta .kartu2 img {width:62px;height:62px;object-fit:cover;border-radius:10px;float:right;margin-left:10px;border:1px solid var(--line2)}
-#view-meta .skor-judul {font-size:12px;font-weight:800;color:var(--ink)}
+#view-meta .skor-judul {font-size:12.5px;font-weight:800;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex:1 1 100%;padding:10px 14px;border-radius:14px;background:#F6FBF7;border:1px solid var(--line2)}   /* v1.4.2: judul & angka terpisah jelas */
+#view-meta .skor-judul .lbl{display:flex;flex-direction:column;gap:2px;min-width:0}
+#view-meta .skor-judul .lbl small{font-size:10.5px;font-weight:650;color:var(--faint);letter-spacing:.1px}
+#view-meta .skor-judul .angka{white-space:nowrap;flex:0 0 auto}
+#view-meta .skor-judul .angka small{font-size:11px;font-weight:750;color:var(--faint);letter-spacing:0}
 #view-meta .angka {font-size:19px;font-weight:900;color:var(--accent);letter-spacing:-.5px}
 #view-meta .besar {font-size:15px;font-weight:850}
 #view-meta .resep {background:#F6FBF7;border:1px dashed var(--line);border-radius:13px;padding:12px 16px;font-size:12px;line-height:1.8;color:#2F4A43;margin-top:9px}
@@ -977,8 +988,14 @@
 
 /* ===== v1.3 P5: galeri iklan (scoped) ===== */
 #view-galeri{--line2:rgba(11,43,38,.06);--accent2:#163832;--accent-soft:#DAF1DE}
-#view-galeri .gl-preset{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
-#view-galeri .gl-pchip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:7px 13px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+#view-galeri .gl-preset{display:flex;gap:6px;flex-wrap:nowrap;margin:0 0 12px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+  padding:1px 1px 3px;scroll-padding:0 24px;-webkit-overflow-scrolling:touch}   /* v1.4.2: satu baris utuh (geser bila sempit), tak terbelah */
+#view-galeri .gl-preset::-webkit-scrollbar{display:none}
+#view-galeri .gl-preset.ada-kanan{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent)}
+#view-galeri .gl-preset.ada-kiri{-webkit-mask-image:linear-gradient(90deg,transparent,#000 46px);mask-image:linear-gradient(90deg,transparent,#000 46px)}
+#view-galeri .gl-preset.ada-kiri.ada-kanan{-webkit-mask-image:linear-gradient(90deg,transparent,#000 46px,#000 calc(100% - 46px),transparent);mask-image:linear-gradient(90deg,transparent,#000 46px,#000 calc(100% - 46px),transparent)}
+#view-galeri .gl-pchip{flex:0 0 auto;white-space:nowrap}
+#view-galeri .gl-pchip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 #view-galeri .gl-pchip i{font-style:normal;font-size:10.5px;color:var(--faint);font-weight:800;background:#F1F8F2;border-radius:999px;padding:1px 7px}
 #view-galeri .gl-pchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 #view-galeri .gl-pchip.on i{background:rgba(255,255,255,.18);color:#fff}
@@ -1004,6 +1021,7 @@
 #view-galeri .gl-umur b{color:var(--ink)}
 #view-galeri .gl-dot{width:7px;height:7px;border-radius:50%;background:#B5443A;flex:0 0 auto}
 #view-galeri .gl-dot.on{background:#2F7D64;box-shadow:0 0 0 3px rgba(47,125,100,.15)}
+.tpl-kosong{color:var(--faint,#7A938A);font-style:italic;font-weight:600}
 #view-galeri .gl-hook{font-size:12.5px;line-height:1.5;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:56px}
 #view-galeri .gl-peng{font-size:11.5px;font-weight:800;color:var(--accent);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #view-galeri .gl-peng:hover{text-decoration:underline}
@@ -1076,6 +1094,65 @@
 .pt-aksi{display:flex;gap:5px;flex:0 0 auto}
 .pt-kosong{text-align:center;color:#557069;font-size:12.5px;line-height:1.8;padding:30px 10px}
 @media (max-width:640px){.pt-item{flex-wrap:wrap}.pt-aksi{width:100%;justify-content:flex-end}}
+/* ===== v1.4.2: TATA LETAK HP & TABLET (<=1024px) — menu laci, satu kolom, huruf terbaca ===== */
+.hp-bar,.sb-tirai,.sb-tutup{display:none}
+@media (max-width:1024px){
+  .shell{display:block}
+  .hp-bar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:40;margin:0 0 6px;padding:10px 14px;
+    background:#0B2B26;color:#F2F7F4;border-radius:0 0 20px 20px;box-shadow:0 10px 24px -14px rgba(5,31,32,.55)}
+  .hp-menu{width:40px;height:40px;border-radius:12px;border:1.5px solid rgba(142,182,155,.55);background:transparent;color:#DAF1DE;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+  .hp-menu svg{width:20px;height:20px}
+  .hp-menu:active{transform:scale(.95)}
+  .hp-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;letter-spacing:-.2px}
+  .hp-logo .logo-mark{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;
+    background:linear-gradient(135deg,#235347,#8EB69B);color:#fff}
+  .hp-judul{margin-left:auto;font-size:12.5px;font-weight:750;color:#8EB69B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45vw}
+  .sb{position:fixed;top:10px;left:10px;bottom:10px;margin:0;height:auto!important;width:min(290px,86vw);z-index:60;
+    transform:translateX(calc(-100% - 20px));transition:transform .32s cubic-bezier(.22,1,.36,1);animation:none;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .shell.sb-buka .sb{transform:none}
+  .sb-tirai{display:block;position:fixed;inset:0;z-index:55;background:rgba(5,31,32,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+  .shell.sb-buka .sb-tirai{opacity:1;pointer-events:auto}
+  html.kunci-gulir{overflow:hidden}
+  .sb-logo{position:relative}
+  .sb-tutup{display:flex;margin-left:auto;width:34px;height:34px;border-radius:10px;border:0;background:rgba(255,255,255,.08);color:#DAF1DE;align-items:center;justify-content:center;cursor:pointer}
+  .sb-tutup svg{width:16px;height:16px}
+  /* pil menu di laci: kapsul utuh di dalam panel (kanvas di sebelahnya = tirai, bukan halaman) */
+  .sb-pill{right:6px;border-radius:999px}
+  .sb-pill::before,.sb-pill::after{display:none}
+  .isi-utama{padding:0 14px 44px;max-width:none}
+  .dash-grid > *,.kol > *,.kpi-row > *{min-width:0}
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .dash-grid{grid-template-columns:1fr}
+  .arsip-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  /* huruf minimum terbaca di HP */
+  .kpi .lbl,.judul-kartu span,.row-riwayat .wkt,.pill-delta,.row-riwayat .pill-delta,.sb-seksi,.sb-foot,.sb-scan-item .c,
+  .sb-user .tx span,.sb-logo small,.pt-chip,.pt-img span,.status-baris small{font-size:11px}
+  .langkah span,.pt-meta,.pt-teks,.sb-kosong{font-size:12px}
+  .langkah b,.status-baris,.row-riwayat .nm,.sb-scan-item{font-size:13px}
+  .kpi{padding:14px 14px 12px}
+  .kpi .v{font-size:25px}
+  .kartu{padding:16px 15px}
+  .judul-kartu b{font-size:14.5px}
+  .bs .lb{font-size:10px}
+  .bs .tip{font-size:10.5px}
+  .sb-item{font-size:14px}
+  .arsip-grid{grid-template-columns:1fr}
+  /* hero scan: tab platform 3 kolom rata, ikon di atas label → tak melebar keluar layar */
+  .hero-scan{padding:22px 16px 20px;border-radius:24px;margin:14px 0}
+  .hero-scan h1{font-size:25px}
+  .hs-tabs{display:flex;width:100%;box-sizing:border-box;border-radius:18px}
+  .hs-ind{border-radius:14px}
+  .hs-tab{flex:1 1 0;min-width:0;flex-direction:column;gap:4px;padding:9px 4px;font-size:12px;line-height:1.2;text-align:center;border-radius:14px}
+  .hs-st{font-size:9.5px;padding:2px 7px;letter-spacing:.3px}
+  .hs-form{padding:6px 6px 6px 14px;border-radius:16px}
+  .hs-form input{font-size:16px;padding:11px 2px}
+  .hs-btn{padding:12px 15px;border-radius:12px}
+  .hs-btn svg{display:none}
+  .hs-bawah .lbl{width:100%}
+}
 </style>
 </head>
 <body>
@@ -1087,11 +1164,18 @@
 <!-- v0.9: sprite ikon -->
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><symbol id="ik-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/></symbol><symbol id="ik-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></symbol><symbol id="ik-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol><symbol id="ik-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol><symbol id="ik-sliders" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></symbol><symbol id="ik-star" viewBox="0 0 24 24"><path d="M12 2.8l2.85 5.78 6.38.93-4.62 4.5 1.09 6.35L12 17.36l-5.7 3 1.09-6.35-4.62-4.5 6.38-.93z"/></symbol><symbol id="ik-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol><symbol id="ik-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="ik-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol><symbol id="ik-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol><symbol id="ik-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol><symbol id="ik-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="ik-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="ik-clapper" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol><symbol id="ik-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol><symbol id="ik-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol><symbol id="ik-copy" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol><symbol id="ik-down" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></symbol><symbol id="ik-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol><symbol id="ik-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></symbol><symbol id="ik-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol><symbol id="ik-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol><symbol id="ik-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></symbol><symbol id="ik-music" viewBox="0 0 24 24"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></symbol><symbol id="ik-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol><symbol id="ik-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8 12 2.7 2.7L16 9.4"/></symbol><symbol id="ik-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol><symbol id="ik-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="ik-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="ik-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="ik-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></symbol></svg>
 <div class="shell">
+  <header class="hp-bar" id="hp-bar">
+    <button class="hp-menu" id="hp-menu" onclick="sbBuka(true)" aria-label="Buka menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+    <div class="hp-logo"><span class="logo-mark">◆</span>INTAI</div>
+    <span class="hp-judul" id="hp-judul">Dashboard</span>
+  </header>
+  <div class="sb-tirai" onclick="sbBuka(false)"></div>
 
   <aside class="sb">
     <div class="sb-logo">
       <div class="logo-mark">◆</div>
       <div>INTAI<small>Intelijen Jualan</small></div>
+      <button class="sb-tutup" onclick="sbBuka(false)" aria-label="Tutup menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
 
     <div class="sb-user" id="sb-user"></div>
@@ -1450,7 +1534,7 @@
           <h1>Galeri Iklan</h1>
           <div class="sub2">Semua iklan yang pernah terarsip, lintas niche dan pesaing, bertambah otomatis tiap scan. Pilih preset untuk langsung menemukan polanya.</div>
         </div>
-        <div class="gl-kepala-aksi"><button class="btn2" onclick="lihatPantauan()" title="Iklan yang kamu bintangi"><svg class=ik><use href=#ik-star></use></svg>Pantauan (<span class="jml-pantauan">0</span>)</button>
+        <div class="gl-kepala-aksi"><button class="btn2" onclick="lihatPantauan()" title="Iklan yang kamu bintangi"><svg class=ik><use href=#ik-star></use></svg><span>Pantauan (<span class="jml-pantauan">0</span>)</span></button>
         <button class="btn2" onclick="unduhGaleri()" title="Sesuai filter & preset yang tampil — ditampung di menu Ekspor CSV (sidebar)"><svg class=ik><use href=#ik-download></use></svg>Ekspor CSV</button></div>
       </div>
       <div class="gl-preset" id="gl-preset"></div>
@@ -1727,8 +1811,8 @@ function gambarAkun(){
     const nm = AKUN.nama || AKUN.email;
     const awal = (nm || "?").trim().charAt(0).toUpperCase();
     el.innerHTML = '<span class="av">' + esc(awal) + '</span>' +
-      '<div><b>' + esc(AKUN.nama || "-") + '</b><span>' + esc(AKUN.email || "") + '</span></div>' +
-      '<button class="keluar" onclick="keluar()">Keluar</button>';
+      '<div class="tx" title="' + esc((AKUN.nama || "") + " · " + (AKUN.email || "")) + '"><b>' + esc(AKUN.nama || "-") + '</b><span>' + esc(AKUN.email || "") + '</span></div>' +
+      '<button class="keluar" onclick="keluar()" title="Keluar" aria-label="Keluar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg></button>';
   } else {
     el.innerHTML = '<div class="mini"><button class="m1" onclick="bukaAuth(\'daftar\')">Daftar</button>' +
       '<button class="m2" onclick="bukaAuth(\'masuk\')">Masuk</button></div>';
@@ -1940,8 +2024,8 @@ function isiChipHero(daftar){
   } else {
     el.innerHTML = '<span class="lbl">Terakhir dipantau</span>' + item.map(function(n){
       const e = n.scan[n.scan.length - 1];
-      const nama = /^halaman\s+\d+$/i.test(n.kata) ? "kompetitor " + n.kata.replace(/^halaman\s+/i, "").slice(-6) : n.kata;
-      return '<button type="button" class="hs-chip" data-kata="' + esc(n.kata) + '" title="Scan ulang: ' + esc(n.kata) + '">' + esc(nama) + ' <b>' + e.jumlah + '</b></button>';
+      const nama = namaNiche(n.kata);
+      return '<button type="button" class="hs-chip" data-kata="' + esc(n.kata) + '" title="Scan ulang: ' + esc(judulNiche(n.kata)) + '">' + esc(nama) + ' <b>' + e.jumlah + '</b></button>';
     }).join("");
   }
   if(!el.dataset.pasang){
@@ -1955,10 +2039,13 @@ function isiChipHero(daftar){
 /* ===== data dashboard dari riwayat scan mesin (nyata) ===== */
 
 /* ===== SATU tampilan utk laptop & HP: desain 1180px, di-scale proporsional ===== */
+var BATAS_HP = 1024;   /* v1.4.2: <= ini = tata letak HP/tablet (menu laci, tanpa zoom) */
 function skalaLayar(){
   const DESAIN = 1180;
   const w = document.documentElement.clientWidth;
-  const k = Math.min(1, w / DESAIN);
+  /* v1.4.2: dulu seluruh app di-zoom ke 1180px → di HP 390px huruf tinggal ±1/3. Kini HP/tablet pakai tata letak sendiri. */
+  const k = w <= BATAS_HP ? 1 : Math.min(1, w / DESAIN);
+  if(w > BATAS_HP) sbBuka(false);
   const shell = document.querySelector(".shell");
   if(shell){
     shell.style.zoom = k;
@@ -1966,6 +2053,22 @@ function skalaLayar(){
     shell.style.setProperty("--sb-h", Math.max(320, Math.round(window.innerHeight / k) - 28) + "px");
   }
 }
+/* v1.4.2: menu laci di HP */
+function sbBuka(b){
+  const sh = document.querySelector(".shell");
+  if(!sh) return;
+  const buka = !!b && document.documentElement.clientWidth <= BATAS_HP;
+  if(sh.classList.contains("sb-buka") === buka) return;
+  sh.classList.toggle("sb-buka", buka);
+  document.documentElement.classList.toggle("kunci-gulir", buka);
+  const t = document.getElementById("hp-menu");
+  if(t) t.setAttribute("aria-expanded", buka ? "true" : "false");
+  if(buka && window.__kalibrasiPil) setTimeout(function(){ window.__kalibrasiPil(); }, 40);
+}
+document.addEventListener("click", function(e){
+  if(document.documentElement.clientWidth <= BATAS_HP && e.target.closest && e.target.closest(".sb .sb-item, .sb .sb-scan-item")) setTimeout(function(){ sbBuka(false); }, 160);
+});
+document.addEventListener("keydown", function(e){ if(e.key === "Escape") sbBuka(false); });
 skalaLayar();
 window.addEventListener("resize", function(){ skalaLayar(); if(window.__kalibrasiPil) window.__kalibrasiPil(); });
 window.addEventListener("load", function(){ skalaLayar(); if(window.__kalibrasiPil) window.__kalibrasiPil(); });
@@ -2008,6 +2111,21 @@ function tampilkanBertahap(){
 
 function ringkasWaktu(w){ return String(w || "").replace(" UTC","").replace("2026-",""); }
 
+/* v1.4.2: nama tampil niche — scan halaman ("halaman <ID>") memakai nama pengiklan dari arsip, bukan ID mentah.
+   Kunci asli (kata) tetap dipakai untuk scan ulang & riwayat; ini hanya label yang dilihat. */
+var NAMA_NICHE = {};
+function catatNamaNiche(kata, label){ if(kata && label) NAMA_NICHE[String(kata)] = String(label); }
+function namaNiche(kata){
+  const k = String(kata || "");
+  if(NAMA_NICHE[k]) return NAMA_NICHE[k];
+  const m = /^halaman\s+(\d+)$/i.exec(k);
+  return m ? "Pengiklan #" + m[1].slice(-6) : k;   /* nama belum pernah terlihat → ringkas, ID lengkap di tooltip */
+}
+function judulNiche(kata){
+  const m = /^halaman\s+(\d+)$/i.exec(String(kata || ""));
+  return m ? namaNiche(kata) + " · ID halaman " + m[1] : String(kata || "");
+}
+
 async function muatRingkasan(){
   let d = null;
   try{
@@ -2019,6 +2137,8 @@ async function muatRingkasan(){
     isiChipHero([]);
     return;
   }
+  (d.daftar || []).forEach(n => catatNamaNiche(n.kata, n.label));
+  if(d.terakhir) catatNamaNiche(d.terakhir.kata, d.terakhir.label);
   animAngka(document.getElementById("kpi-iklan"), d.total_iklan, 1000);
   document.getElementById("kpi-iklan-pill").textContent = "dari " + d.niche + " niche";
   animAngka(document.getElementById("kpi-scan"), d.total_scan, 900);
@@ -2030,10 +2150,10 @@ async function muatRingkasan(){
       p.textContent = "+" + d.terakhir.baru + " baru · -" + d.terakhir.hilang + " hilang";
       p.className = "pill-delta " + (d.terakhir.baru >= d.terakhir.hilang ? "ok" : "bad");
     } else {
-      p.textContent = "scan pertama " + esc(d.terakhir.kata);
+      p.textContent = "scan pertama " + namaNiche(d.terakhir.kata);
       p.className = "pill-delta net";
     }
-    document.getElementById("kpi-niche-pill").textContent = "terakhir: " + d.terakhir.kata;
+    document.getElementById("kpi-niche-pill").textContent = "terakhir: " + namaNiche(d.terakhir.kata);
   }
   animAngka(document.getElementById("kpi-niche"), d.niche, 750);
 
@@ -2044,8 +2164,8 @@ async function muatRingkasan(){
   (d.daftar || []).slice().reverse().forEach(n => {
     const e = n.scan[n.scan.length - 1];
     if(!e) return;
-    itemSb.push('<button class="sb-scan-item" data-kata="' + esc(n.kata) + '" style="animation-delay:' + (140 + itemSb.length * 70) + 'ms">' +
-      '<span class="n">' + esc(n.kata) + '</span><span class="c">' + e.jumlah + '</span></button>');
+    itemSb.push('<button class="sb-scan-item" data-kata="' + esc(n.kata) + '" title="' + esc(judulNiche(n.kata)) + '" style="animation-delay:' + (140 + itemSb.length * 70) + 'ms">' +
+      '<span class="n">' + esc(namaNiche(n.kata)) + '</span><span class="c">' + e.jumlah + '</span></button>');
   });
   if(!sbScan.dataset.pasang){
     sbScan.dataset.pasang = "1";
@@ -2061,7 +2181,7 @@ async function muatRingkasan(){
   const seri = [];
   (d.daftar || []).forEach(n => (n.scan || []).forEach(e => seri.push({jumlah: e.jumlah, kata: n.kata, waktu: e.waktu})));
   seri.sort((a,b) => (a.waktu < b.waktu ? -1 : 1));
-  const potong = seri.slice(-12);
+  const potong = seri.slice(document.documentElement.clientWidth <= 640 ? -7 : -12);   /* v1.4.2: HP → 7 batang agar label terbaca */
   const chart = document.getElementById("chart-scan");
   if(!potong.length){
     chart.innerHTML = '<div class="chart-kosong">Belum ada riwayat scan — mulai dari kotak <b>scan</b> di atas.</div>';
@@ -2069,10 +2189,10 @@ async function muatRingkasan(){
     const maks = Math.max(...potong.map(x => x.jumlah)) || 1;
     const idxPuncak = potong.reduce((best, x, i, arr) => x.jumlah > arr[best].jumlah ? i : best, 0);
     chart.innerHTML = potong.map((x, i) =>
-      '<div class="bs" title="' + esc(x.kata) + " · " + x.jumlah + " iklan · " + esc(ringkasWaktu(x.waktu)) + '">' +
-      (i === idxPuncak ? '<span class="tip">' + x.jumlah + " iklan · " + esc(x.kata) + '</span>' : "") +
+      '<div class="bs" title="' + esc(judulNiche(x.kata)) + " · " + x.jumlah + " iklan · " + esc(ringkasWaktu(x.waktu)) + '">' +
+      (i === idxPuncak ? '<span class="tip">' + x.jumlah + " iklan · " + esc(namaNiche(x.kata)) + '</span>' : "") +
       '<div class="b" data-h="' + Math.round(18 + 112 * x.jumlah / maks) + '" style="height:' + (REDUCED ? Math.round(18 + 112 * x.jumlah / maks) : 0) + 'px"></div>' +
-      '<div class="lb">' + esc(x.kata.slice(0, 9)) + '</div></div>').join("");
+      '<div class="lb">' + esc(namaNiche(x.kata)) + '</div></div>').join("");
     if(!REDUCED){
       requestAnimationFrame(() => {
         chart.querySelectorAll(".b").forEach((b, i) => {
@@ -2093,7 +2213,7 @@ async function muatRingkasan(){
       ? '<span class="pill-delta ' + (e.baru >= e.hilang ? "ok" : "bad") + '">+' + e.baru + " · -" + e.hilang + '</span>'
       : '<span class="pill-delta net">scan awal</span>';
     rows.push('<div class="row-riwayat" data-kata="' + esc(n.kata) + '" title="Klik untuk scan ulang" style="animation-delay:' + (100 + rows.length * 80) + 'ms">' +
-      '<span class="nm">' + esc(n.kata) + (n.mode === "halaman" ? ' <span style="color:var(--faint);font-weight:700">· halaman</span>' : "") + '</span>' +
+      '<span class="nm" title="' + esc(judulNiche(n.kata)) + '">' + esc(namaNiche(n.kata)) + (n.mode === "halaman" ? ' <span style="color:var(--faint);font-weight:700">· halaman</span>' : "") + '</span>' +
       '<span class="wkt">' + esc(ringkasWaktu(e.waktu)) + '</span>' + delta +
       '<span class="jml">' + e.jumlah + '</span></div>');
   });
@@ -2128,7 +2248,13 @@ initPilNavigasi();
 })();
 
 const WARN = {"CTWA/WA":"#6D4AFF","Marketplace":"#C97F00","LP/Website":"#0E7490","Tanpa tautan":"#6B7280"};
-const bersih = s => (s||"").replace(/\{\{[^}]*\}\}/g,"…").replace(/\s+/g," ");
+const bersih = s => (s||"").replace(/\{\{[^}]*\}\}/g," ").replace(/\s+/g," ").replace(/^[\s\-–—|:·,.]+|[\s\-–—|:·,]+$/g,"");  /* v1.4.2: token katalog dibuang, bukan "…" */
+/* v1.4.2: iklan katalog (DPA/DCO) sering tanpa teks tetap — Meta mengisi {{product.brand}} dkk per produk */
+function teksKosong(x){
+  const kat = x && (x.katalog || x.katalog_tpl || /^(DPA|DCO)$/i.test(String(x.format || "")));
+  return '<span class="tpl-kosong"' + (kat ? ' title="Teks iklan ini diisi otomatis oleh Meta per produk dari katalog (mis. {{product.brand}}), jadi tidak ada teks tetap."' : '') + '>' +
+    (kat ? "Iklan katalog · teks diisi otomatis per produk" : "(iklan tanpa teks)") + '</span>';
+}
 function tandai(teksEsc, cocok){
   (cocok || []).forEach(t => {
     const kata = String(t).replace(" (nama halaman)","").replace(" (tautan)","").trim();
@@ -2251,7 +2377,7 @@ document.addEventListener("keydown", e => { if(e.key === "Escape"){ const tampil
 
 function bar(nama, v, max){
   return '<div class="sbar"><span class="slab">' + nama + '</span><div class="strack"><div class="sfill" style="width:' +
-    Math.min(100, Math.round(v / max * 100)) + '%"></div></div><span class="sval">' + v.toFixed(1) + ' / ' + max + '</span></div>';
+    Math.min(100, Math.round(v / max * 100)) + '%"></div></div><span class="sval">' + v.toFixed(1).replace(".", ",") + ' / ' + max + '</span></div>';
 }
 function sel(k, v){
   const hampa = (v === null || v === undefined || v === "" || v === "None" ||
@@ -2284,7 +2410,7 @@ function detailHTML(x){
   // SKOR
   const sk = d.skor_detail;
   h += '<div class="subjudul">Skor Cuan — rincian</div><div class="skorbox">' +
-    '<div class="skor-judul"><span>Perhitungan transparan</span><span class="angka">' + sk.total.toFixed(1) + '</span></div>' +
+    '<div class="skor-judul"><span class="lbl">Total Skor Cuan<small>perhitungan transparan · skala 0–100 · 🔵 dihitung</small></span><span class="angka">' + sk.total.toFixed(1).replace(".", ",") + '<small> / 100</small></span></div>' +
     bar("Umur iklan", sk.umur, 50) + bar("Varian", sk.varian, 25) +
     bar("Funnel", sk.funnel, 15) + bar("Format", sk.video, 10) + '</div>';
 
@@ -2295,7 +2421,10 @@ function detailHTML(x){
   if(d.body)  h += '<div class="teks-body">' + tandai(esc(d.body), cocok) + '</div>';
   if(d.caption) h += '<div class="teks-cap">' + tandai(esc(d.caption), cocok) + '</div>';
   if(d.link_desc) h += '<div class="linkdesc"><b>Deskripsi link:</b> ' + tandai(esc(d.link_desc), cocok) + '</div>';
-  if(!d.title && !d.body && !d.caption) h += '<div class="hint">Tanpa teks (kemungkinan murni visual).</div>';
+  if(!d.title && !d.body && !d.caption) h += '<div class="hint">' + (d.katalog_tpl || x.katalog
+      ? "Iklan katalog: teksnya diisi otomatis oleh Meta per produk (template seperti {{product.brand}}), jadi tidak ada teks tetap yang bisa ditampilkan."
+      : "Tanpa teks (kemungkinan murni visual).") + '</div>';
+  else if(d.katalog_tpl) h += '<div class="hint">Sebagian teks iklan ini diisi otomatis per produk oleh Meta (template katalog). Bagian template disembunyikan.</div>';
 
   // INFO
   const cta = (d.cta_text || "") + (d.cta_type ? ' <span style="color:#557069;font-weight:600">(' + esc(String(d.cta_type).replace(/_/g," ")) + ')</span>' : "");
@@ -2582,7 +2711,7 @@ function render(){
         (x.aktif === false ? ' <span class="chip" style="color:#557069;border-color:#C9DFCF;background:#E6F2E9" title="Iklan sudah berhenti tayang — bahan evaluasi anti-pattern"><svg class=ik><use href=#ik-down></use></svg> MATI</span>' : '') +
         (x.umur <= 3 ? ' <span class="chip" style="color:#B5443A;border-color:#E8C4BE;background:#F6E7E3"><svg class=ik><use href=#ik-zap></use></svg> PANAS</span>' :
          x.umur <= 7 ? ' <span class="chip" style="color:#2F7D64;border-color:#BEDCD2;background:#E4F0EA"><svg class=ik><use href=#ik-fire></use></svg> BARU</span>' : '') +
-        '</div><div class="cup2">' + esc(bersih(x.teks).slice(0,60)) + '</div></td>' +
+        '</div><div class="cup2">' + (bersih(x.teks) ? esc(Array.from(bersih(x.teks)).slice(0,60).join("")) : teksKosong(x)) + '</div></td>' +
       '<td class="col-extra"><span class="chip" style="color:' + wr + ';border-color:' + wr + '33;background:' + wr + '12" title="Nilai kecocokan dgn kata kunci: ' + rel.nilai + '/100">' + esc(rel.label) + ' ' + rel.nilai + '</span></td>' +
       '<td><span class="skor2">' + x.skor + '</span></td>' +
       '<td><span class="chip" style="color:#B7791F;border-color:#E8D9B8;background:var(--soft);font-weight:900">' + (x.jual != null ? x.jual : '—') + '</span></td>' +
@@ -3170,7 +3299,7 @@ function statistikNiche(d){
   const hrg = aktif.map(x => x.harga_min).filter(v => v > 0).sort((a,b) => a-b);
   const wkt = d.waktu || {}, en = d.ekonomi_niche || {}, acn = d.acuan || {};
   return {
-    kata: d.kata, jml: rows.length, aktif: aktif.length, mati: mati.length,
+    kata: namaNiche(d.kata), jml: rows.length, aktif: aktif.length, mati: mati.length,
     pengiklan: new Set(aktif.map(x => x.halaman)).size,
     baru: wkt.baru_7hari || 0,
     momentum: aktif.length ? Math.round((wkt.baru_7hari || 0) / aktif.length * 100) : 0,
@@ -3327,6 +3456,7 @@ async function scan(){
       document.getElementById("status").textContent = "Gagal";
       return;
     }
+    if(d.label_tampil) catatNamaNiche(d.kata, d.label_tampil);
     document.getElementById("status").textContent = "Selesai dalam " + det + " detik";
     const mw = document.getElementById("meta-waktu");
     if(mw) mw.textContent = "Terakhir: " + det + " dtk · " + d.jumlah + " iklan";
@@ -3350,7 +3480,7 @@ async function scan(){
     const wkt = d.waktu || {per_bulan:{}, baru_7hari:0, panas_3hari:0};
     const en = d.ekonomi_niche || {bulanan_min:0, bulanan_max:0, median_bulanan:0};
     document.getElementById("kpis").innerHTML =
-      '<div class="kpi"><div class="k">Iklan Aktif</div><div class="v">' + d.jumlah + '</div><div class="s">' + esc(d.kata) + (d.jumlah_mati ? ' · 🪦 ' + d.jumlah_mati + ' mati' : '') + '</div></div>' +
+      '<div class="kpi"><div class="k">Iklan Aktif</div><div class="v">' + d.jumlah + '</div><div class="s">' + esc(namaNiche(d.kata)) + (d.jumlah_mati ? ' · 🪦 ' + d.jumlah_mati + ' mati' : '') + '</div></div>' +
       '<div class="kpi"><div class="k">Pengiklan Unik</div><div class="v">' + unik + '</div><div class="s">halaman berbeda</div></div>' +
       '<div class="kpi"><div class="k">Rata2 Umur</div><div class="v">' + d.rata2 + '</div><div class="s">hari tayang</div></div>' +
       '<div class="kpi"><div class="k">Tertua</div><div class="v">' + d.tertua.hari + 'h</div><div class="s">' + esc(d.tertua.nama) + '</div></div>' +
@@ -3459,7 +3589,7 @@ async function scan(){
       if(u <= 7) ub["Baru ≤7h"]++; else if(u <= 30) ub["8–30h"]++; else if(u <= 90) ub["31–90h"]++; else ub[">90h"]++;
     });
     const rr = [];
-    rr.push(["Niche " + esc(d.kata), d.jumlah + " iklan aktif", unik + " pengiklan"]);
+    rr.push([(/^halaman\s+\d+$/i.test(d.kata) ? "Pengiklan " : "Niche ") + esc(namaNiche(d.kata)), d.jumlah + " iklan aktif", unik + " pengiklan"]);
     rr.push(["Pemenang", tp[0] ? esc(tp[0].halaman) + " · ★ " + tp[0].skor_jual : "—",
       tp[0] ? (tp[0].umur + " hari bertahan" + (tp[0].terjual ? " · " + Number(tp[0].terjual).toLocaleString("id-ID") + " terjual" : "")) : "—"]);
     rr.push(["Medan dominan", acn.funnel && acn.funnel !== "—" ? esc(acn.funnel) + " · " + esc(acn.format) : "—", acn.cta ? "CTA " + esc(acn.cta) : "—"]);
@@ -3624,7 +3754,7 @@ function itemPeristiwa(e, denganNama){
   ket.push("terdeteksi " + pfRelatif(e.waktu));
   return '<div class="pf-ev"><span class="ps-bdg ' + J[1] + '">' + J[0] + '</span><div class="pf-ev-isi">' +
     (denganNama ? '<a data-pid="' + esc(e.page_id || "") + '" onclick="bukaProfil(this.dataset.pid)">' + esc(e.halaman || e.page_id || "?") + '</a> · ' : '') +
-    '<span class="pf-ev-hook">' + esc(e.hook || "(iklan tanpa teks)") + '</span><small>' + ket.join(" · ") + '</small></div>' +
+    '<span class="pf-ev-hook">' + (e.hook ? esc(e.hook) : teksKosong(e)) + '</span><small>' + ket.join(" · ") + '</small></div>' +
     (e.archive_id ? '<button class="ps-tb" title="Buka di Ad Library" data-u="' + esc(pfAdLib(e.archive_id)) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg></button>' : '') +
     '</div>';
 }
@@ -3757,7 +3887,7 @@ function pfBarisIklan(){
       const hari = r.hari ? (r.aktif ? r.hari + " hr" : "tayang " + r.hari + " hr") : "—";
       const harga = r.harga_min ? fmtHarga(r.harga_min) + (r.harga_max && r.harga_max !== r.harga_min ? "–" + fmtHarga(r.harga_max) : "") : "—";
       const sub = [r.status, r.niche ? "niche: " + r.niche : "", r.domain].filter(Boolean).map(esc).join(" · ");
-      return '<tr class="' + (r.aktif ? "" : "mati") + '"><td class="nw">' + st + '</td><td class="hook">' + esc(r.hook || "(tanpa teks)") +
+      return '<tr class="' + (r.aktif ? "" : "mati") + '"><td class="nw">' + st + '</td><td class="hook">' + (r.hook ? esc(r.hook) : teksKosong(r)) +
         (sub ? '<small>' + sub + '</small>' : '') + '</td><td class="nw">' + esc(r.format || "—") + '</td><td class="nw">' + esc(r.funnel || "—") +
         '</td><td class="nw">' + hari + '</td><td class="nw">' + harga + '</td><td class="nw">' + pfTgl(r.mulai) + '</td>' +
         '<td><button class="ps-tb" title="Buka di Ad Library" data-u="' + esc(pfAdLib(r.archive_id)) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg></button></td></tr>';
@@ -3971,11 +4101,16 @@ function trDelta(titik, m){
     '<div><small>' + titik.length + ' hari data · ' + (TR.data.scan || 0) + ' potret</small></div></div>';
 }
 function trSvg(titik, m){
-  const W = 640, H = 240, pl = 48, pr = 16, pt = 16, pb = 30;
+  /* v1.4.2: di HP kanvas lebih sempit → huruf tetap ±ukuran asli (dulu diperkecil ½); sumbu kiri selebar label terpanjang */
+  const HP = document.documentElement.clientWidth <= 640;
+  const W = HP ? 360 : 640, H = HP ? 230 : 240, pr = HP ? 10 : 16, pt = 16, pb = 30;
   const vals = titik.map(function(t){ return Number(t[m.k]); });
   let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
   if(m.hit) mn = 0;
-  if(mn === mx){ mx = mx + 1; if(!m.hit) mn = Math.max(0, mn - 1); }
+  if(mn === mx){   /* v1.4.2: nilai datar → rentang ±10% (dulu ±1 → harga "Rp55rb" berulang 5×) */
+    if(m.hit) mx = mx + 1;
+    else { const dd = Math.max(1, Math.abs(mx) * 0.1); mx = mx + dd; mn = Math.max(0, mn - dd); }
+  }
   const pad = (mx - mn) * 0.08; mx += pad; if(!m.hit) mn = Math.max(0, mn - pad);
   /* skala "bulat": 4 langkah dgn kelipatan 1/2/2,5/5 × 10^n (hitungan → langkah ≥ 1, bilangan bulat) */
   const mentah = (mx - mn) / 4, mag = Math.pow(10, Math.floor(Math.log10(mentah || 1)));
@@ -3983,6 +4118,8 @@ function trSvg(titik, m){
   if(m.hit) langkah = Math.max(1, Math.ceil(langkah));
   mn = Math.floor(mn / langkah) * langkah; mx = mn + langkah * 4;
   if(mx - langkah * 4 < 0) mn = 0;
+  const lblY = [0, 1, 2, 3, 4].map(function(i){ return String(trFmt(m, mn + (mx - mn) * i / 4)); });
+  const pl = Math.max(30, Math.round(Math.max.apply(null, lblY.map(function(t){ return t.length; })) * 6.3 + 14));
   const t0 = Date.parse(titik[0].hari + "T00:00:00Z"), t1 = Date.parse(titik[titik.length - 1].hari + "T00:00:00Z");
   const X = function(t){ return pl + (t1 === t0 ? (W - pl - pr) / 2 : (Date.parse(t.hari + "T00:00:00Z") - t0) / (t1 - t0) * (W - pl - pr)); };
   const Y = function(v){ return pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn)); };
@@ -3990,14 +4127,18 @@ function trSvg(titik, m){
   for(let i = 0; i <= 4; i++){
     const v = mn + (mx - mn) * i / 4, y = Y(v).toFixed(1);
     g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(11,43,38,.08)"/>' +
-         '<text x="' + (pl - 8) + '" y="' + (+y + 3.5) + '" text-anchor="end">' + esc(trFmt(m, v)) + '</text>';
+         (lblY.indexOf(lblY[i]) === i ? '<text x="' + (pl - 8) + '" y="' + (+y + 3.5) + '" text-anchor="end">' + esc(lblY[i]) + '</text>' : '');   /* label kembar tak diulang */
   }
   const pts = titik.map(function(t){ return [X(t), Y(Number(t[m.k]))]; });
   const garis = pts.map(function(p, i){ return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
   const area = garis + " L" + pts[pts.length - 1][0].toFixed(1) + " " + (H - pb) + " L" + pts[0][0].toFixed(1) + " " + (H - pb) + " Z";
   const nLbl = Math.min(6, titik.length), idxs = [];
   for(let i = 0; i < nLbl; i++){ const k = Math.round(i * (titik.length - 1) / Math.max(1, nLbl - 1)); if(idxs.indexOf(k) < 0) idxs.push(k); }
-  const lx = idxs.map(function(k){ return '<text x="' + pts[k][0].toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle">' + esc(trTglPendek(titik[k].hari)) + '</text>'; }).join("");
+  if(HP && idxs.length > 4){ const sisa = [idxs[0], idxs[Math.round((idxs.length - 1) / 3)], idxs[Math.round((idxs.length - 1) * 2 / 3)], idxs[idxs.length - 1]]; idxs.length = 0; sisa.forEach(function(k){ if(idxs.indexOf(k) < 0) idxs.push(k); }); }
+  const lx = idxs.map(function(k){
+    const t = trTglPendek(titik[k].hari), x = pts[k][0], sb = String(t).length * 3.2;   /* label tepi tak boleh keluar kanvas */
+    const anc = x - sb < 2 ? "start" : x + sb > W - 2 ? "end" : "middle";
+    return '<text x="' + (anc === "start" ? Math.max(2, x - 6) : anc === "end" ? Math.min(W - 2, x + 6) : x).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="' + anc + '">' + esc(t) + '</text>'; }).join("");
   const dot = pts.map(function(p, i){
     return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (titik.length > 40 ? 2.4 : 3.8) + '" fill="#fff" stroke="var(--accent)" stroke-width="2"><title>' +
       esc(trTglPendek(titik[i].hari) + ": " + trFmt(m, Number(titik[i][m.k])) + " " + m.l.toLowerCase()) + '</title></circle>';
@@ -4121,7 +4262,7 @@ function gambarPemicu(){
 
 /* ===== v1.3 P5: galeri iklan ===== */
 const GL = {p: {preset: "", cari: "", niche: "", format: "", funnel: "", aktif: "", urut: "", lepas: "", hal: 1}, data: null, t: null, muat: 0};
-const GL_URUTAN = ["tahan", "baru", "menang", "video", "harga", "wa", "gagal", "semua"];
+const GL_URUTAN = ["semua", "tahan", "baru", "menang", "video", "harga", "wa", "gagal"];   /* v1.4.2: "Semua" di depan */
 const GL_DEF = {
   tahan: "Masih aktif dan sudah tayang ≥30 hari sejak tanggal mulai di Meta 🟢. Pengiklan jarang membiarkan iklan rugi jalan selama itu, jadi ini kandidat iklan yang <b>terbukti</b>.",
   baru: "Masih aktif dan mulai tayang dalam 7 hari terakhir 🟢: angle yang <b>sedang diuji</b> pengiklan sekarang.",
@@ -4240,6 +4381,23 @@ function glIsiSelect(id, semua, faset, nilai, labelFn){
   if(nilai && !ada) h += '<option value="' + esc(nilai) + '" selected>' + esc(nilai) + ' (0)</option>';
   el.innerHTML = h;
 }
+/* v1.4.2: baris preset bisa digeser → pudar di sisi yang masih ada isinya; chip aktif digulir ke tampilan */
+function glTandaGeser(keAktif){
+  const el = document.getElementById("gl-preset");
+  if(!el) return;
+  if(!el.dataset.pasang){
+    el.dataset.pasang = "1";
+    el.addEventListener("scroll", function(){ glTandaGeser(false); }, {passive: true});
+    window.addEventListener("resize", function(){ glTandaGeser(false); });
+  }
+  if(keAktif){
+    const on = el.querySelector(".gl-pchip.on");
+    if(on && (on.offsetLeft < el.scrollLeft || on.offsetLeft + on.offsetWidth > el.scrollLeft + el.clientWidth))
+      el.scrollLeft = Math.max(0, on.offsetLeft - 24);
+  }
+  el.classList.toggle("ada-kiri", el.scrollLeft > 4);
+  el.classList.toggle("ada-kanan", el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+}
 function gambarGaleri(){
   const d = GL.data, isi = document.getElementById("gl-isi"), hal = document.getElementById("gl-hal");
   if(!d || !d.ok){ isi.innerHTML = '<div class="gl-kosong">Galeri tidak terbaca. Coba muat ulang.</div>'; hal.innerHTML = ""; return; }
@@ -4248,6 +4406,7 @@ function gambarGaleri(){
     const n = d.hitung[k] || 0;
     return '<button class="gl-pchip' + (k === d.preset ? " on" : "") + (n ? "" : " nol") + '" data-p="' + k + '" onclick="glPreset(this.dataset.p)" title="' + esc(GL_DEF[k].replace(/<[^>]+>/g, "")) + '">' + esc(d.preset_label[k]) + '<i>' + pfAngka(n) + '</i></button>';
   }).join("");
+  glTandaGeser(true);
   glIsiSelect("gl-niche", "Semua niche", d.faset.niche, GL.p.niche, function(e){ return e.label || e.v; });
   glIsiSelect("gl-format", "Semua format", d.faset.format, GL.p.format, function(e){ return GL_FMT[e.v] || e.v; });
   glIsiSelect("gl-funnel", "Semua tujuan", d.faset.funnel, GL.p.funnel);
@@ -4289,7 +4448,7 @@ function glKartu(x){
       '<div class="gl-bdg"><span style="color:' + w[0] + ';border-color:' + w[1] + '" title="Status model INTAI 🔵 · skor ' + (x.skor != null ? x.skor : "—") + '/100">' + esc(st) + (x.skor != null ? " · " + x.skor : "") + '</span><span style="color:var(--muted);border-color:var(--line)">' + esc(fmt) + '</span></div></div>' +
     '<div class="gl-badan">' +
       '<div class="gl-umur">' + umur + '</div>' +
-      '<div class="gl-hook">' + esc(x.hook || "(iklan tanpa teks)") + '</div>' +
+      '<div class="gl-hook">' + (x.hook ? esc(x.hook) : teksKosong(x)) + '</div>' +
       (x.halaman ? '<div class="gl-peng" data-pid="' + esc(x.page_id || "") + '" onclick="if(this.dataset.pid)bukaProfil(this.dataset.pid)" title="Buka profil pengiklan">' + esc(x.halaman) + '</div>' : '') +
       '<div class="gl-meta">' + meta.join("") + '</div>' +
       '<div class="gl-aksi">' + ptTombol(x.archive_id, "ptToggleGaleri(this.dataset.pt)", "ps-tb") + '<button class="ps-tb" data-u="' + esc(pfAdLib(x.archive_id)) + '" onclick="buka(this.dataset.u)" title="Buka di Meta Ad Library"><svg class=ik><use href=#ik-link></use></svg>Ad Library</button>' +
@@ -4320,6 +4479,8 @@ function tampilView(v, push){
     const items = nav.querySelectorAll(".sb-item");
     const target = (v === "pengiklan") ? "pesaing" : v; /* v1.3.1: cocokkan lewat data-v, bukan urutan tombol */
     items.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-v") === target); });
+    const hj = document.getElementById("hp-judul"), akt = nav.querySelector(".sb-item.on");
+    if(hj) hj.textContent = v === "pengiklan" ? "Profil Pengiklan" : (akt ? akt.textContent.trim() : "Dashboard");
   }
   if(window.__kalibrasiPil) requestAnimationFrame(function(){ window.__kalibrasiPil(); });
   if(v === "dashboard" && window.__kalibrasiHero) requestAnimationFrame(function(){ window.__kalibrasiHero(); });
@@ -4401,5 +4562,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4984cd6aa2fe77c',t:'MTc5MTgzMTEzMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4989aef1cf07d45',t:'MTc5MTgzNDMyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.1"
+VERSI = "1.4.2"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -1527,6 +1527,33 @@ def teks(snap, kunci):
     return v if isinstance(v, str) else str(v)
 
 
+TPL_RE = re.compile(r"\{\{[^{}]*\}\}")
+
+
+def ada_tpl(v):
+    return "{{" in str(v or "")
+
+
+def bersih_tpl(v):
+    """v1.4.2: buang token template iklan katalog Meta ({{product.brand}}, {{product.name}}, …) dari teks
+    yang DITAMPILKAN. Teks asli Meta tetap utuh di 'raw'. Kosong bila sisanya tak bermakna."""
+    t = TPL_RE.sub(" ", str(v or ""))
+    t = re.sub(r"[ \t]+", " ", t)
+    t = re.sub(r" *\n *", "\n", t).strip()
+    t = re.sub(r"^[\s\-–—|:·,.]+|[\s\-–—|:·,]+$", "", t)
+    return t if re.search(r"\w", t) else ""
+
+
+def _bersih_baris_arsip(r):
+    """Baris arsip lama (sebelum v1.4.2) bisa masih berisi {{…}} → rapikan saat dibaca + tandai katalog."""
+    if isinstance(r, dict) and (ada_tpl(r.get("hook")) or ada_tpl(r.get("teks"))):
+        for k in ("hook", "teks"):
+            if k in r:
+                r[k] = bersih_tpl(r.get(k)) or None
+        r["katalog"] = True
+    return r
+
+
 def inferensi(snap, o):
     """Perkirakan objektif & demografi dari jejak kreatif (CTA, tautan, bahasa).
     INFERENSI, bukan data targeting Meta (hanya dirilis utk iklan politik)."""
@@ -1751,7 +1778,7 @@ def rincian(o, b):
                 ci = c.get("images") or []
                 if ci and isinstance(ci[0], dict):
                     cu = ci[0].get("resized_image_url") or ci[0].get("original_image_url") or ""
-            cards.append({"title": c.get("title") or "", "body": c.get("body") or "",
+            cards.append({"title": bersih_tpl(c.get("title")), "body": bersih_tpl(c.get("body")),
                           "link": c.get("link_url") or "", "img": cu,
                           "harga": teks(c, "link_description"),
                           "video": c.get("video_hd_url") or c.get("video_sd_url") or ""})
@@ -1823,10 +1850,13 @@ def rincian(o, b):
         "report_count": o.get("report_count") or 0,
         "limited": limited,
         "page_deleted": bool(o.get("page_is_deleted") or snap.get("page_is_deleted")),
-        "title": teks(snap, "title"),
-        "body": teks(snap, "body"),
-        "caption": teks(snap, "caption"),
-        "link_desc": teks(snap, "link_description"),
+        "title": bersih_tpl(teks(snap, "title")),   # v1.4.2: tanpa {{product.brand}} dkk (asli di raw)
+        "body": bersih_tpl(teks(snap, "body")),
+        "caption": bersih_tpl(teks(snap, "caption")),
+        "link_desc": bersih_tpl(teks(snap, "link_description")),
+        "katalog_tpl": any(ada_tpl(teks(snap, k)) for k in ("title", "body", "caption", "link_description"))
+                       or any(isinstance(c, dict) and (ada_tpl(c.get("title")) or ada_tpl(c.get("body")))
+                              for c in (snap.get("cards") or [])),
         "cta_text": snap.get("cta_text") or "",
         "cta_type": str(snap.get("cta_type") or ""),
         "display_format": snap.get("display_format") or "",
@@ -2204,14 +2234,22 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
         else:
             rel = {"nilai": 100, "label": "Relevan", "cocok": []}
         # A4: bersihkan token template {{...}} & tanggal aneh
-        teks_bersih = re.sub(r"\{\{[^}]*\}\}", "…", b["teks"] or "")
-        teks_bersih = re.sub(r"\s+", " ", teks_bersih).strip()
+        teks_bersih = re.sub(r"\s+", " ", bersih_tpl(b["teks"])).strip()
+        katalog = ada_tpl(b["teks"])
+        if o and (not teks_bersih or katalog):   # v1.4.2: teks katalog kosong → cadangan dari judul/deskripsi/caption
+            snap_t = o.get("snapshot") or {}
+            katalog = katalog or any(ada_tpl(teks(snap_t, k)) for k in ("title", "body", "caption", "link_description"))
+            if not teks_bersih:
+                for k in ("title", "link_description", "caption"):
+                    teks_bersih = re.sub(r"\s+", " ", bersih_tpl(teks(snap_t, k))).strip()
+                    if teks_bersih:
+                        break
         umur, tgl = b["umur_hari"], b["tgl_mulai"]
         if umur is None or umur < 0 or umur > 3650:
             umur, tgl = 0, "?"
         out.append({
             "aktif": b.get("aktif") is not False,
-            "halaman": b["halaman"], "teks": teks_bersih, "format": b["format"],
+            "halaman": b["halaman"], "teks": teks_bersih, "katalog": katalog, "format": b["format"],
             "funnel": b["funnel"], "link": b["link"], "tgl": tgl,
             "umur": umur, "skor": b["skor"], "varian": b["varian_batch"],
             "platform": b["platform"], "foto": idx_foto.get(b["archive_id"]),
@@ -2315,7 +2353,7 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             }
         for v in (kumpul if x.get("aktif") is not False
                   and (x.get("relevansi") or {}).get("label") != "Lepas" else []):
-            label_produk = re.sub(r"\{\{[^}]*\}\}", "…", det.get("title") or x["teks"][:30] or "")
+            label_produk = bersih_tpl(det.get("title") or x["teks"][:30]) or x["halaman"]
             semua_titik.append((v, x["halaman"], label_produk))
     peta_harga = {"jumlah_titik": 0}
     if semua_titik:
@@ -2465,7 +2503,8 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
                      args=(out, label, mode, len(rows_hidup), ekonomi_niche)).start()
 
     return {
-        "ok": True, "kata": label, "jumlah": len(rows_hidup), "sejak_lalu": sejak_lalu,
+        "ok": True, "kata": label, "mode": mode, "jumlah": len(rows_hidup), "sejak_lalu": sejak_lalu,
+        "label_tampil": _nama_dari_rows(out) if mode == "halaman" else None,   # v1.4.2: nama halaman, bukan ID mentah
         "jumlah_mati": sum(1 for b in rows if b.get("aktif") is False),
         "rata2": sum(x["umur"] for x in hidup) // max(len(hidup), 1),
         "tertua": {"nama": tertua_x["halaman"], "hari": tertua_x["umur"]},
@@ -2806,7 +2845,7 @@ def baris_arsip_iklan(x, label, mode, kini):
     if not aid:
         return None
     tgl = str(x.get("tgl") or det.get("mulai") or "")
-    teks = det.get("body") or det.get("title") or x.get("teks") or ""
+    teks = det.get("body") or det.get("title") or bersih_tpl(x.get("teks")) or ""
     link = x.get("link") or det.get("link_url") or ""
     rel = x.get("relevansi") or {}
     thumb = x.get("thumb") or ""
@@ -3171,6 +3210,8 @@ def _galeri_semua():
             with kunci_arsip:
                 _muat_arsip_lokal()
                 rows, ok = [dict(v) for v in ARSIP_LOKAL["iklan"].values()], True
+        for r_ in rows:
+            _bersih_baris_arsip(r_)
         GALERI_CACHE.update({"t": time.time(), "versi": versi, "rows": rows, "ok": ok})
         return ok, rows
 
@@ -3797,7 +3838,7 @@ def ringkas_profil(rows):
 def _baris_profil(r, hari):
     aktif = r.get("aktif") is True
     return {
-        "archive_id": r.get("archive_id"), "aktif": aktif, "hook": r.get("hook"),
+        "archive_id": r.get("archive_id"), "aktif": aktif, "hook": r.get("hook"), "katalog": bool(r.get("katalog")),
         "format": r.get("format"), "funnel": r.get("funnel"), "niche": r.get("niche"),
         "mulai": r.get("mulai"), "berakhir": r.get("berakhir"),
         "hari": (_umur_kini(r, hari) if aktif else _durasi(r)),  # aktif: umur s/d hari ini · mati: lama tayang
@@ -3841,6 +3882,8 @@ def profil_pengiklan(pid, email=""):
             dipantau = f"{email}|{pid}" in ARSIP_LOKAL["pantau"]
             sn = [s_ for s_ in ARSIP_LOKAL["snapshot"] if s_.get("niche") == "halaman " + pid]
         p2, sumber = True, "lokal"
+    for r_ in list(ik) + list(ev):
+        _bersih_baris_arsip(r_)
     hari = datetime.now(timezone.utc).date()
     baris = sorted((_baris_profil(r, hari) for r in ik), key=lambda b: (not b["aktif"], -(b["hari"] or 0)))
     return {
@@ -3925,6 +3968,8 @@ def peristiwa_feed(lingkup="pantau", batas_n=60, email=""):
             pids = {str(v.get("page_id")) for v in ARSIP_LOKAL["pantau"].values() if v.get("pemilik") == email}
             r = [dict(e) for e in ARSIP_LOKAL["peristiwa"] if lingkup != "pantau" or str(e.get("page_id")) in pids]
     r.sort(key=lambda e: str(e.get("waktu") or ""), reverse=True)
+    for e_ in r[:batas_n]:
+        _bersih_baris_arsip(e_)
     return {"ok": True, "siap": True, "lingkup": lingkup, "feed": r[:batas_n]}
 
 
@@ -3977,6 +4022,45 @@ def jumlah_pantau(email):
         return sum(1 for v in ARSIP_LOKAL["pantau"].values() if v.get("pemilik") == email)
 
 
+def _nama_dari_rows(rows):
+    """Nama halaman terbanyak di hasil scan mode halaman (page_name dari Meta). None bila tak ada."""
+    c = {}
+    for r in rows or []:
+        n = str(r.get("halaman") or "").strip()
+        if n and n != "(tanpa nama)":
+            c[n] = c.get(n, 0) + 1
+    return max(c, key=c.get) if c else None
+
+
+def nama_halaman_map(pids):
+    """{page_id: nama} dari arsip pengiklan (data bersama). Best-effort: gagal → {} (UI pakai cadangan)."""
+    pids = [p for p in dict.fromkeys(str(x) for x in pids if x) if p.isdigit()]
+    if not pids:
+        return {}
+    try:
+        if supa_aktif():
+            ok, r = _supa_in("intai_pengiklan", "page_id", pids, "page_id,nama")
+            return {str(x.get("page_id")): x.get("nama") for x in (r if ok else []) if x.get("nama")}
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            pg = ARSIP_LOKAL.get("pengiklan") or {}
+            return {p: (pg.get(p) or {}).get("nama") for p in pids if (pg.get(p) or {}).get("nama")}
+    except Exception:
+        return {}
+
+
+def _beri_label_halaman(daftar, terakhir):
+    """v1.4.2: entri mode halaman ('halaman <id>') diberi label = nama pengiklan dari arsip."""
+    pid_dari = lambda k: (re.fullmatch(r"halaman\s+(\d+)", str(k or "")) or [None, None])[1]
+    pids = [pid_dari(g.get("kata")) for g in daftar] + ([pid_dari(terakhir.get("kata"))] if terakhir else [])
+    nm = nama_halaman_map([p for p in pids if p])
+    for g in daftar + ([terakhir] if terakhir else []):
+        p = pid_dari(g.get("kata"))
+        if p:
+            g["page_id"] = p
+            g["label"] = nm.get(p)
+
+
 def ringkasan_api(email):
     """Struktur persis kontrak dashboard: niche/total_scan/total_iklan/delta/
     terakhir/daftar[{kata,mode,scan[]}] (total_iklan = jumlah scan TERAKHIR per niche). v1.4: hanya riwayat akun ini."""
@@ -3997,12 +4081,13 @@ def ringkasan_api(email):
         daftar = list(grup.values())
         total_iklan = sum(g["scan"][-1]["jumlah"] for g in daftar)
         terakhir = dict(rw[-1]) if rw else None
-        return {
-            "ok": True, "niche": len(daftar), "total_scan": len(rw),
-            "total_iklan": total_iklan,
-            "delta": terakhir["jumlah"] if terakhir else 0,
-            "terakhir": terakhir, "daftar": daftar,
-        }
+    _beri_label_halaman(daftar, terakhir)   # di luar lock: bisa memanggil Supabase
+    return {
+        "ok": True, "niche": len(daftar), "total_scan": len(rw),
+        "total_iklan": total_iklan,
+        "delta": terakhir["jumlah"] if terakhir else 0,
+        "terakhir": terakhir, "daftar": daftar,
+    }
 
 
 def muat_halaman():
