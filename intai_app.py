@@ -26,7 +26,7 @@ import secrets
 import threading
 import time
 import webbrowser
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, quote, unquote
 
@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.1"
+VERSI = "1.2"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -2617,11 +2617,11 @@ def muat_data():
 
     # --- riwayat ---
     ok, rows = supa("GET", "intai_riwayat",
-                    params="?select=kata,mode,waktu,jumlah,baru,hilang&order=id.asc&limit=1000")
+                    params="?select=kata,mode,waktu,jumlah,baru,hilang&order=id.desc&limit=500")
     if ok and isinstance(rows, list) and rows:
         with lock:
             RIWAYAT.clear()
-            for r in rows:
+            for r in reversed(rows):  # v1.2: 500 TERBARU (dulu id.asc → setelah >1000 baris yg termuat malah yg terlama)
                 RIWAYAT.append({k: r.get(k) for k in ("kata", "mode", "waktu", "jumlah", "baru", "hilang")})
     else:
         terapkan_lokal()
@@ -2730,7 +2730,7 @@ def catat_scan(label, mode, jumlah, indeks):
 BERKAS_ARSIP = os.path.join(BASE_DIR, "intai_arsip.json")
 ARSIP_MAKS_LOKAL = 20000
 kunci_arsip = threading.Lock()
-ARSIP_LOKAL = {"dimuat": False, "iklan": {}, "pengiklan": {}, "snapshot": [], "peristiwa": [], "pantau": {}}
+ARSIP_LOKAL = {"dimuat": False, "iklan": {}, "pengiklan": {}, "snapshot": [], "peristiwa": [], "pantau": {}, "setelan": {}}
 ARSIP_STATUS = {"terakhir_ok": None, "terakhir_galat": "", "terakhir_waktu": None, "antri": 0, "peristiwa_terakhir": 0}
 _ARSIP_CACHE = {"t": 0.0, "data": None}
 
@@ -2884,7 +2884,7 @@ def _muat_arsip_lokal():
     try:
         with open(BERKAS_ARSIP, "r", encoding="utf-8") as f:
             d = json.load(f)
-        for k, bawaan in (("iklan", {}), ("pengiklan", {}), ("snapshot", []), ("peristiwa", []), ("pantau", {})):
+        for k, bawaan in (("iklan", {}), ("pengiklan", {}), ("snapshot", []), ("peristiwa", []), ("pantau", {}), ("setelan", {})):
             ARSIP_LOKAL[k] = d.get(k) or bawaan
     except Exception:
         pass
@@ -2893,7 +2893,7 @@ def _muat_arsip_lokal():
 def _tulis_arsip_lokal():
     try:
         with open(BERKAS_ARSIP + ".tmp", "w", encoding="utf-8") as f:
-            json.dump({k: ARSIP_LOKAL[k] for k in ("iklan", "pengiklan", "snapshot", "peristiwa", "pantau")},
+            json.dump({k: ARSIP_LOKAL[k] for k in ("iklan", "pengiklan", "snapshot", "peristiwa", "pantau", "setelan")},
                       f, ensure_ascii=False)
         os.replace(BERKAS_ARSIP + ".tmp", BERKAS_ARSIP)
         return True, ""
@@ -3114,9 +3114,277 @@ def statistik_arsip():
                  "sejak": (sn[0].get("waktu") if sn else None),
                  "niche": len({x.get("niche") for x in sn if x.get("mode") != "halaman"}),
                  "p2_siap": True, "pantau": len(ARSIP_LOKAL["pantau"]), "peristiwa": len(ARSIP_LOKAL["peristiwa"])}
+    try:
+        d["jadwal"] = jadwal_ringkas()
+    except Exception:
+        d["jadwal"] = {"siap": False}
     d["status_terakhir"] = dict(ARSIP_STATUS)
     _ARSIP_CACHE.update({"t": time.time(), "data": d})
     return d
+
+
+# ======================= JADWAL v1.2 (P4): scan otomatis harian + tren =======================
+# Render gratis tidur bila 15 mnt tanpa kunjungan → pemicu dari luar (cron-job.org) memanggil
+# /api/jadwal/tick tiap 10 mnt di jendela jam tertentu. Tick menjawab < 1 dtk; scan jalan di thread.
+# Antrean + hasil disimpan per item (intai_setelan) → server tidur di tengah jalan = dilanjutkan tick berikutnya.
+JADWAL_KUNCI = (os.environ.get("JADWAL_KUNCI") or "").strip()   # opsional: bila diisi, tick wajib ?kunci=
+WIB = timezone(timedelta(hours=7))
+NICHE_HARIAN_MAKS = 10
+JADWAL_BAWAAN = {"aktif": False, "jam": 5, "niche": [], "pesaing": True}
+JADWAL = {"cfg": None, "status": None, "thread": None, "siap": None, "t_siap": 0.0}
+kunci_jadwal = threading.RLock()
+
+
+def setelan_siap():
+    if not supa_aktif():
+        return True
+    if JADWAL["siap"] or (JADWAL["siap"] is False and time.time() - JADWAL["t_siap"] < 120):
+        return bool(JADWAL["siap"])
+    ok, _ = supa("GET", "intai_setelan", params="?select=kunci&limit=1")
+    JADWAL.update({"siap": bool(ok), "t_siap": time.time()})
+    return JADWAL["siap"]
+
+
+def setelan_baca(kunci):
+    """Return (ok, nilai|None). ok=False → tabel belum ada / galat baca."""
+    if supa_aktif():
+        if not setelan_siap():
+            return False, None
+        ok, r = supa("GET", "intai_setelan", params=f"?select=nilai&kunci=eq.{quote(kunci)}")
+        if not ok or not isinstance(r, list):
+            return False, None
+        return True, (r[0].get("nilai") if r else None)
+    with kunci_arsip:
+        _muat_arsip_lokal()
+        return True, ARSIP_LOKAL["setelan"].get(kunci)
+
+
+def setelan_tulis(kunci, nilai):
+    if supa_aktif():
+        if not setelan_siap():
+            return False
+        ok, _ = supa("POST", "intai_setelan", payload={"kunci": kunci, "nilai": nilai, "diubah": _iso_kini()},
+                     prefer="return=minimal,resolution=merge-duplicates")
+        return ok
+    with kunci_arsip:
+        _muat_arsip_lokal()
+        ARSIP_LOKAL["setelan"][kunci] = nilai
+        return _tulis_arsip_lokal()[0]
+
+
+def _rapikan_cfg(c):
+    c = c if isinstance(c, dict) else {}
+    niche, lihat = [], set()
+    for n in (c.get("niche") or []):
+        n = re.sub(r"\s+", " ", str(n or "")).strip()[:60]
+        if n and n.lower() not in lihat and not re.fullmatch(r"halaman\s+\d+", n, re.I):
+            lihat.add(n.lower())
+            niche.append(n)
+    jam = _int(c.get("jam"), 5)
+    return {"aktif": bool(c.get("aktif")), "jam": jam if (jam is not None and 0 <= jam <= 23) else 5,
+            "niche": niche[:NICHE_HARIAN_MAKS], "pesaing": c.get("pesaing", True) is not False}
+
+
+def _muat_jadwal():
+    with kunci_jadwal:
+        if JADWAL["cfg"] is None:
+            ok, v = setelan_baca("jadwal")
+            if ok:
+                ok2, st = setelan_baca("jadwal_status")
+                JADWAL["cfg"] = _rapikan_cfg(v if isinstance(v, dict) else JADWAL_BAWAAN)
+                JADWAL["status"] = st if (ok2 and isinstance(st, dict)) else {}
+        return JADWAL["cfg"] is not None
+
+
+def _sisa(st):
+    h = st.get("hasil") or {}
+    sisa = [it for it in (st.get("antrian") or [])
+            if not (h.get(it["k"]) or {}).get("ok") and (h.get(it["k"]) or {}).get("coba", 0) < 2]
+    sisa.sort(key=lambda it: (h.get(it["k"]) or {}).get("coba", 0))   # yg gagal sekali dicoba ulang di akhir
+    return sisa
+
+
+def _daftar_pesaing_ringkas():
+    if supa_aktif():
+        if not p2_siap():
+            return []
+        ok, r = supa("GET", "intai_pantau", params="?select=page_id,nama&order=ditambah.asc&limit=100")
+        return r if ok and isinstance(r, list) else []
+    with kunci_arsip:
+        _muat_arsip_lokal()
+        return [{"page_id": k, "nama": v.get("nama")} for k, v in ARSIP_LOKAL["pantau"].items()]
+
+
+def _bangun_antrian(cfg):
+    q = [{"k": "cari:" + n.lower(), "mode": "cari", "q": n, "nama": n} for n in cfg["niche"]]
+    if cfg["pesaing"]:
+        for p in _daftar_pesaing_ringkas():
+            pid = re.sub(r"\D", "", str(p.get("page_id") or ""))
+            if pid:
+                q.append({"k": "halaman:" + pid, "mode": "halaman", "q": pid, "nama": p.get("nama") or ("Halaman " + pid)})
+    return q
+
+
+def _pekerja_jadwal():
+    while True:
+        with kunci_jadwal:
+            st = JADWAL["status"]
+            sisa = _sisa(st)
+            if not sisa:
+                st["akhir"] = _iso_kini()
+                st["item_kini"] = None
+                setelan_tulis("jadwal_status", st)
+                return
+            it = sisa[0]
+            st["item_kini"] = it["nama"]
+        try:
+            with lock:   # kunci yang sama dengan /scan → tidak pernah dua scan bersamaan
+                h = jalankan_scan(it["q"], it["mode"])
+        except Exception as e:
+            h = {"ok": False, "error": str(e)[:160]}
+        with kunci_jadwal:
+            st = JADWAL["status"]
+            lama = st.setdefault("hasil", {}).get(it["k"]) or {}
+            st["hasil"][it["k"]] = {
+                "ok": bool(h.get("ok")), "aktif": h.get("jumlah"), "mati": h.get("jumlah_mati"),
+                "galat": "" if h.get("ok") else str(h.get("error") or "gagal")[:160],
+                "waktu": _iso_kini(), "coba": lama.get("coba", 0) + 1,
+            }
+            setelan_tulis("jadwal_status", st)
+        time.sleep(4)   # sopan ke Meta Ad Library
+
+
+def jadwal_tick(paksa=False, pemicu="cron"):
+    """Cepat (< 1 dtk): putuskan mulai / lanjut / tidak, lalu jalankan di thread latar."""
+    if not _muat_jadwal():
+        return {"ok": False, "siap": False, "pesan": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql"}
+    with kunci_jadwal:
+        t = JADWAL["thread"]
+        if t and t.is_alive():
+            return {"ok": True, "aksi": "berjalan", "pesan": "Putaran sedang berjalan"}
+        cfg, st = JADWAL["cfg"], JADWAL["status"] or {}
+        kini = datetime.now(WIB)
+        hari = kini.strftime("%Y-%m-%d")
+        if paksa:   # tombol "Jalankan sekarang": lanjutkan sisa putaran hari ini bila ada, selain itu putaran baru
+            aksi = "lanjut" if (st.get("tanggal") == hari and _sisa(st)) else "mulai"
+        elif not cfg["aktif"]:
+            return {"ok": True, "aksi": "nonaktif", "pesan": "Scan otomatis nonaktif"}
+        elif kini.hour < cfg["jam"]:
+            return {"ok": True, "aksi": "menunggu", "pesan": f"Menunggu jam {cfg['jam']:02d}:00 WIB"}
+        elif st.get("tanggal") != hari:
+            aksi = "mulai"
+        elif _sisa(st):
+            aksi = "lanjut"
+        else:
+            return {"ok": True, "aksi": "selesai", "pesan": "Putaran hari ini sudah selesai"}
+        if aksi == "mulai":
+            antrian = _bangun_antrian(cfg)
+            JADWAL["status"] = {"tanggal": hari, "pemicu": pemicu, "mulai": _iso_kini(),
+                                "akhir": None if antrian else _iso_kini(),
+                                "antrian": antrian, "hasil": {}, "item_kini": None}
+            setelan_tulis("jadwal_status", JADWAL["status"])
+            if not antrian:
+                return {"ok": True, "aksi": "kosong", "pesan": "Antrean kosong - isi niche harian atau pantau pesaing"}
+        t = threading.Thread(target=_pekerja_jadwal, daemon=True, name="jadwal")
+        JADWAL["thread"] = t
+        t.start()
+        return {"ok": True, "aksi": aksi, "pesan": ("Putaran dimulai" if aksi == "mulai" else "Putaran dilanjutkan"),
+                "antrian": len(_sisa(JADWAL["status"]))}
+
+
+def jadwal_ringkas():
+    if not _muat_jadwal():
+        return {"siap": False}
+    with kunci_jadwal:
+        cfg, st = JADWAL["cfg"], JADWAL["status"] or {}
+        h = st.get("hasil") or {}
+        t = JADWAL["thread"]
+        return {"siap": True, "aktif": cfg["aktif"], "jam": cfg["jam"], "tanggal": st.get("tanggal"),
+                "total": len(st.get("antrian") or []), "ok": sum(1 for v in h.values() if v.get("ok")),
+                "berjalan": bool(t and t.is_alive()), "akhir": st.get("akhir")}
+
+
+def jadwal_publik():
+    if not _muat_jadwal():
+        return {"ok": True, "siap": False}
+    pesaing = _daftar_pesaing_ringkas()
+    with kunci_jadwal:
+        cfg, st = dict(JADWAL["cfg"]), JADWAL["status"] or {}
+        t = JADWAL["thread"]
+        berjalan = bool(t and t.is_alive())
+        h = st.get("hasil") or {}
+        items = [dict({"nama": it["nama"], "mode": it["mode"]}, **(h.get(it["k"]) or {})) for it in (st.get("antrian") or [])]
+        sisa = len(_sisa(st)) if st else 0
+    return {
+        "ok": True, "siap": True, "cfg": cfg, "berjalan": berjalan, "kunci_wajib": bool(JADWAL_KUNCI),
+        "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"), "n_pesaing": len(pesaing),
+        "niche_maks": NICHE_HARIAN_MAKS,
+        "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"),
+                    "akhir": st.get("akhir"), "item_kini": st.get("item_kini") if berjalan else None,
+                    "total": len(items), "ok": sum(1 for i in items if i.get("ok")),
+                    "sisa": sisa, "terputus": bool(st.get("antrian")) and not berjalan and sisa > 0,
+                    "items": items},
+    }
+
+
+def jadwal_simpan(d):
+    if not _muat_jadwal():
+        return {"ok": False, "error": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql di Supabase"}
+    cfg = _rapikan_cfg(d)
+    if not setelan_tulis("jadwal", cfg):
+        return {"ok": False, "error": "Gagal menyimpan setelan"}
+    with kunci_jadwal:
+        JADWAL["cfg"] = cfg
+    _ARSIP_CACHE["t"] = 0.0
+    return dict(jadwal_publik(), ok=True)
+
+
+KOLOM_TREN = ("waktu,jumlah,aktif,mati,relevan,pengiklan,baru_7h,menang,umur_median,"
+              "harga_median,harga_titik,belanja_min,belanja_max")
+
+
+def _hari_wib(w):
+    try:
+        return (datetime.strptime(str(w)[:19], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=7)).strftime("%Y-%m-%d")
+    except Exception:
+        return str(w or "")[:10]
+
+
+def tren_niche(niche=""):
+    """Tanpa niche → daftar niche (kata kunci) beserta jumlah hari data. Dengan niche → 1 titik per hari
+    (potret TERAKHIR hari itu, WIB) dari intai_snapshot. Angka = sampel scan, bukan total pasar."""
+    niche = str(niche or "").strip()[:120]
+    if supa_aktif():
+        if niche:
+            ok, r = supa("GET", "intai_snapshot", params=f"?select={KOLOM_TREN}&niche=eq.{quote(niche)}"
+                                                         "&mode=neq.halaman&order=waktu.asc&limit=1000")
+        else:
+            ok, r = supa("GET", "intai_snapshot", params="?select=niche,waktu&mode=neq.halaman&order=waktu.desc&limit=5000")
+        if not ok or not isinstance(r, list):
+            return {"ok": True, "siap": False}
+    else:
+        with kunci_arsip:
+            _muat_arsip_lokal()
+            r = [dict(x) for x in ARSIP_LOKAL["snapshot"]
+                 if x.get("mode") != "halaman" and (not niche or x.get("niche") == niche)]
+    if not niche:
+        g = {}
+        for x in r:
+            n = x.get("niche")
+            if not n:
+                continue
+            e = g.setdefault(n, {"niche": n, "scan": 0, "hari": set(), "terakhir": ""})
+            e["scan"] += 1
+            e["hari"].add(_hari_wib(x.get("waktu")))
+            e["terakhir"] = max(e["terakhir"], str(x.get("waktu") or ""))
+        daftar = [dict(e, hari=len(e["hari"])) for e in g.values()]
+        daftar.sort(key=lambda e: e["terakhir"], reverse=True)
+        return {"ok": True, "siap": True, "daftar": daftar}
+    per_hari = {}
+    for x in sorted(r, key=lambda x: str(x.get("waktu") or "")):
+        per_hari[_hari_wib(x.get("waktu"))] = x
+    titik = [dict(v, hari=k) for k, v in sorted(per_hari.items())]
+    return {"ok": True, "siap": True, "niche": niche, "scan": len(r), "titik": titik[-180:]}
 
 
 # ======================= PESAING v1.1 (P2): profil pengiklan + pantau + feed =======================
@@ -3413,7 +3681,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing") \
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren") \
                 or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif u.path == "/api/versi":
@@ -3437,6 +3705,17 @@ class Handler(BaseHTTPRequestHandler):
             self.tulis(200, json.dumps(profil_pengiklan(pid), ensure_ascii=False), "application/json")
         elif u.path == "/api/pantau":
             self.tulis(200, json.dumps(daftar_pantau(), ensure_ascii=False), "application/json")
+        elif u.path == "/api/jadwal":
+            self.tulis(200, json.dumps(jadwal_publik(), ensure_ascii=False), "application/json")
+        elif u.path == "/api/jadwal/tick":
+            kunci = parse_qs(u.query).get("kunci", [""])[0]
+            if JADWAL_KUNCI and not hmac.compare_digest(kunci.encode(), JADWAL_KUNCI.encode()):
+                self.tulis(403, json.dumps({"ok": False, "pesan": "kunci salah"}), "application/json")
+                return
+            self.tulis(200, json.dumps(jadwal_tick()), "application/json")   # ringkas (< 200 byte) utk cron-job.org
+        elif u.path == "/api/tren":
+            self.tulis(200, json.dumps(tren_niche(parse_qs(u.query).get("niche", [""])[0]), ensure_ascii=False),
+                       "application/json")
         elif u.path == "/api/peristiwa":
             qs = parse_qs(u.query)
             self.tulis(200, json.dumps(peristiwa_feed(qs.get("lingkup", ["pantau"])[0],
@@ -3553,6 +3832,13 @@ class Handler(BaseHTTPRequestHandler):
                      prefer="return=minimal,resolution=merge-duplicates")
             self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                        "application/json")
+        elif u.path == "/api/jadwal":
+            d = self.baca_json()
+            if str(d.get("aksi") or "") == "jalan":
+                hasil = jadwal_tick(paksa=True, pemicu="manual")
+            else:
+                hasil = jadwal_simpan(d)
+            self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
         elif u.path == "/api/pantau":
             d = self.baca_json()
             hasil = ubah_pantau(str(d.get("aksi") or "tambah"), d.get("page_id"), d.get("nama") or "")

@@ -807,6 +807,58 @@
 #view-pengiklan .pf-titik{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:5px}
 #view-pengiklan .pf-titik.mati{background:#C9C2B5}
 #view-pengiklan .pf-lagi{text-align:center;margin-top:10px}
+
+/* ===== v1.2 P4: tren harian + jadwal scan otomatis (scoped) ===== */
+/* v1.2: variabel yg dulu hanya ada di #view-meta → dipakai view Pesaing/Profil/Tren (perbaikan avatar & garis pemisah v1.1) */
+#view-pesaing,#view-pengiklan,#view-tren,#kartu-arsip{--line2:rgba(34,48,46,.06);--accent2:#134E48;--accent-soft:#DCEDE8}
+#view-tren .tr-atas{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+#view-tren .tr-sel{border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;font-size:12.5px;font-weight:700;background:#FBFAF7;color:var(--ink);min-width:200px;max-width:100%}
+#view-tren .tr-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+#view-tren .tr-chip{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 11px;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+#view-tren .tr-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#view-tren .tr-chart{width:100%;height:auto;display:block}
+#view-tren .tr-chart text{font-size:10.5px;fill:var(--faint);font-family:inherit}
+#view-tren .tr-delta{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:6px 0 4px}
+#view-tren .tr-delta b{font-size:24px;font-weight:900;color:var(--ink)}
+#view-tren .tr-delta .naik{color:#2F7D64;font-weight:800;font-size:12.5px}
+#view-tren .tr-delta .turun{color:#B5443A;font-weight:800;font-size:12.5px}
+#view-tren .tr-delta .datar{color:var(--muted);font-weight:800;font-size:12.5px}
+#view-tren .tr-delta small{color:var(--faint);font-size:11px}
+#view-tren .tr-cat{font-size:11px;color:var(--muted);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+#view-tren .jd-baris{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+#view-tren .jd-baris:last-of-type{border-bottom:0}
+#view-tren .jd-baris b{font-weight:800}
+#view-tren .jd-baris small{display:block;color:var(--faint);font-size:10.5px;font-weight:600}
+#view-tren .jd-saklar{position:relative;width:42px;height:24px;flex:0 0 auto}
+#view-tren .jd-saklar input{opacity:0;width:0;height:0;position:absolute}
+#view-tren .jd-saklar span{position:absolute;inset:0;background:#D9DED9;border-radius:999px;cursor:pointer;transition:.2s}
+#view-tren .jd-saklar span:before{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+#view-tren .jd-saklar input:checked + span{background:var(--accent)}
+#view-tren .jd-saklar input:checked + span:before{transform:translateX(18px)}
+#view-tren .jd-sel{border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit;font-size:12px;font-weight:700;background:#FBFAF7;color:var(--ink)}
+#view-tren .jd-niche{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+#view-tren .jd-tag{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 6px 4px 11px;font-size:11.5px;font-weight:800}
+#view-tren .jd-tag button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;border-radius:50%}
+#view-tren .jd-tag button:hover{background:rgba(0,0,0,.08)}
+#view-tren .jd-saran{border:1px dashed var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:3px 10px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer}
+#view-tren .jd-saran:hover{border-color:var(--accent);color:var(--accent)}
+#view-tren .jd-input{display:flex;gap:8px}
+#view-tren .jd-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:9px 13px;font:inherit;font-size:12.5px;background:#FBFAF7;color:var(--ink)}
+#view-tren .jd-aksi{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#view-tren .jd-est{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6}
+#view-tren .jd-bar{height:8px;border-radius:999px;background:var(--line2);overflow:hidden;margin:8px 0}
+#view-tren .jd-bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .4s}
+#view-tren .jd-item{display:flex;gap:8px;align-items:center;font-size:11.5px;padding:4px 0;color:var(--ink)}
+#view-tren .jd-item .st{width:18px;text-align:center;flex:0 0 auto;font-weight:900}
+#view-tren .jd-item .st.ok{color:#2F7D64}#view-tren .jd-item .st.gagal{color:#B5443A}#view-tren .jd-item .st.antri{color:var(--faint)}
+#view-tren .jd-item small{color:var(--faint);margin-left:auto;white-space:nowrap}
+#view-tren .jd-langkah{font-size:11.8px;line-height:1.7;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+#view-tren .jd-langkah b{color:var(--ink)}
+#view-tren .jd-url{display:flex;gap:6px;align-items:center;background:#FBFAF7;border:1px solid var(--line);border-radius:10px;padding:7px 8px 7px 11px;font-size:11px;font-weight:700;color:var(--ink);word-break:break-all}
+#view-tren .jd-url code{flex:1;font-family:inherit}
+#kartu-arsip .arsip-jadwal{margin-top:8px;font-size:11.5px;color:var(--muted)}
+#kartu-arsip .arsip-jadwal a{color:var(--accent);font-weight:800;cursor:pointer}
+@media (max-width:900px){#view-tren .dash-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -832,6 +884,7 @@
     <button class="sb-item on" style="animation-delay:80ms" onclick="ke('/dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Dashboard</button>
     <button class="sb-item" style="animation-delay:140ms" onclick="ke('/meta')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Scan Meta Ad Library</button>
     <button class="sb-item" style="animation-delay:170ms" onclick="ke('/pesaing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Pesaing Dipantau</button>
+    <button class="sb-item" style="animation-delay:185ms" onclick="ke('/tren')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M15 7h5v5"/></svg>Tren Harian</button>
     <button class="sb-item" style="animation-delay:200ms" onclick="ke('/shopee')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Scan Shopee</button>
     <button class="sb-item" style="animation-delay:260ms" onclick="ke('/tiktok')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>Scan TikTok</button>
     </nav>
@@ -839,7 +892,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v1.1<br>Shopee &amp; TikTok: disiapkan</div>
+    <div class="sb-foot">Mesin Meta aktif · v1.2<br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
 
   <main class="isi-utama">
@@ -902,7 +955,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v1.1 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI v1.2 · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -1160,6 +1213,42 @@
               <div><b>Cek</b> = scan semua iklan halaman itu (±20–40 dtk per pesaing). Makin rutin dicek, makin tajam feed-nya.</div>
               <div>Pengiklan yang baru pertama kali terarsip <b>tidak</b> dihitung sebagai "baru", karena itu bukan perubahan.</div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- v1.2 P4: tren harian + scan otomatis -->
+    <div id="view-tren" style="display:none">
+      <div class="sapaan-bar">
+        <div>
+          <h1>Tren Harian</h1>
+          <div class="sub2">Satu titik per hari untuk tiap niche, diambil dari potret scan (manual maupun otomatis). Nyalakan <b>scan otomatis</b> supaya titiknya bertambah sendiri tiap pagi, tanpa kamu buka aplikasi.</div>
+        </div>
+      </div>
+      <div id="tr-peringatan"></div>
+      <div class="dash-grid">
+        <div class="kol">
+          <div class="kartu">
+            <div class="judul-kartu"><b>Grafik tren niche</b><span id="tr-info">memuat…</span></div>
+            <div class="tr-atas"><select id="tr-niche" class="tr-sel" onchange="TR.niche=this.value;muatTrenNiche()"></select></div>
+            <div class="tr-chips" id="tr-metrik"></div>
+            <div id="tr-isi"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+            <div class="tr-cat">🟢 Tiap titik dihitung dari iklan asli di scan hari itu (potret terakhir per hari, WIB). INTAI mengambil <b>halaman pertama</b> Ad Library × 3 format, kira-kira 40–90 iklan per scan. Jadi angka di sini adalah <b>sampel</b>: pakai untuk membaca <b>arah</b> (naik/turun, makin ramai/sepi), bukan jumlah total pasar.</div>
+          </div>
+        </div>
+        <div class="kol">
+          <div class="kartu">
+            <div class="judul-kartu"><b>Scan otomatis harian</b><span id="jd-sumber">memuat…</span></div>
+            <div id="jd-isi"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+          </div>
+          <div class="kartu">
+            <div class="judul-kartu"><b>Putaran terakhir</b><span id="jd-tgl">—</span></div>
+            <div id="jd-putaran"><div class="pf-kosong">Belum pernah berjalan.</div></div>
+          </div>
+          <div class="kartu">
+            <div class="judul-kartu"><b>Pasang pemicu gratis</b><span>sekali saja</span></div>
+            <div id="jd-pemicu" class="jd-langkah"></div>
           </div>
         </div>
       </div>
@@ -2629,7 +2718,16 @@ async function muatArsip(){
     ' Bahan untuk profil pengiklan, peringkat niche &amp; grafik tren.</div>' +
     (d.p2_siap === false ? '<div class="arsip-peringatan" style="margin-top:8px">Fitur <b>Pesaing Dipantau</b> butuh <code>SUPABASE-PESAING.sql</code> (sekali jalan).</div>'
       : (d.pantau !== undefined ? '<div class="arsip-cat" style="margin-top:6px"><a style="color:var(--accent);font-weight:800;cursor:pointer" onclick="ke(\'/pesaing\')">' + f(d.pantau) + ' pesaing dipantau · ' + f(d.peristiwa) + ' perubahan tercatat →</a></div>' : '')) +
-    (st.terakhir_ok === false ? '<div class="arsip-peringatan" style="margin-top:8px">Simpan arsip terakhir gagal: ' + esc(String(st.terakhir_galat || "").slice(0, 160)) + '</div>' : '');
+    (st.terakhir_ok === false ? '<div class="arsip-peringatan" style="margin-top:8px">Simpan arsip terakhir gagal: ' + esc(String(st.terakhir_galat || "").slice(0, 160)) + '</div>' : '') +
+    arsipJadwalHtml(d.jadwal);
+}
+function arsipJadwalHtml(j){   /* v1.2 P4 */
+  if(!j) return "";
+  if(!j.siap) return '<div class="arsip-jadwal">Scan otomatis harian butuh <code>SUPABASE-JADWAL.sql</code> (sekali jalan). <a onclick="ke(\'/tren\')">Lihat →</a></div>';
+  if(!j.aktif) return '<div class="arsip-jadwal">Scan otomatis: <b>nonaktif</b>. <a onclick="ke(\'/tren\')">Atur jadwal &amp; lihat tren →</a></div>';
+  const hariIni = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+  let k = j.berjalan ? "sedang berjalan (" + j.ok + "/" + j.total + ")" : (j.tanggal === hariIni ? "hari ini " + j.ok + "/" + j.total + " selesai" : "menunggu jadwal");
+  return '<div class="arsip-jadwal">Scan otomatis tiap hari jam <b>' + String(j.jam).padStart(2, "0") + ':00 WIB</b> · ' + k + ' · <a onclick="ke(\'/tren\')">Tren →</a></div>';
 }
 
 
@@ -2965,13 +3063,241 @@ async function pfScanUlang(){
   if(PF.pid === pid && document.getElementById("view-pengiklan").style.display !== "none") muatProfil(pid);
 }
 
+
+/* ===== v1.2 P4: tren harian + jadwal scan otomatis ===== */
+const TR = {niche: "", metrik: "aktif", daftar: [], data: null, jd: null, cfg: null, poll: null, ubah: false};
+const TR_METRIK = [
+  {k: "aktif", l: "Iklan aktif", hit: true},
+  {k: "pengiklan", l: "Pengiklan", hit: true},
+  {k: "baru_7h", l: "Iklan baru 7 hari", hit: true},
+  {k: "menang", l: "Iklan pemenang", hit: true},
+  {k: "umur_median", l: "Umur median (hari)", hit: false},
+  {k: "harga_median", l: "Harga median", hit: false, rp: true}
+];
+function trFmt(m, v){
+  if(v === null || v === undefined || isNaN(v)) return "—";
+  if(m.rp) return "Rp" + fmtHarga(Math.round(v));
+  return Number(Math.round(v * 10) / 10).toLocaleString("id-ID");
+}
+function trTglPendek(h){ try{ return new Date(h + "T00:00:00Z").toLocaleDateString("id-ID", {day: "numeric", month: "short", timeZone: "UTC"}); }catch(e){ return h; } }
+async function muatTren(){
+  muatJadwal();
+  let d = null;
+  try{ d = await (await fetch("/api/tren")).json(); }catch(e){}
+  const sel = document.getElementById("tr-niche"), info = document.getElementById("tr-info"), isi = document.getElementById("tr-isi");
+  if(!sel) return;
+  if(!d || !d.ok || !d.siap){ isi.innerHTML = '<div class="pf-kosong">Arsip potret belum terbaca. Pastikan <code>SUPABASE-ARSIP.sql</code> sudah dijalankan.</div>'; info.textContent = "—"; return; }
+  TR.daftar = d.daftar || [];
+  if(!TR.daftar.length){
+    sel.style.display = "none"; document.getElementById("tr-metrik").innerHTML = "";
+    info.textContent = "0 niche";
+    isi.innerHTML = '<div class="pf-kosong"><b>Belum ada potret niche.</b> Scan satu kata kunci di <b>Scan Meta</b>, atau masukkan niche ke scan otomatis di kanan. Grafik muncul setelah niche yang sama terpotret di 2 hari berbeda.</div>';
+    return;
+  }
+  sel.style.display = "";
+  if(!TR.niche || !TR.daftar.some(function(e){ return e.niche === TR.niche; })){
+    const fav = (TR.cfg && TR.cfg.niche || []).map(function(x){ return x.toLowerCase(); });
+    const pilih = TR.daftar.filter(function(e){ return fav.indexOf(String(e.niche).toLowerCase()) >= 0; })[0] || TR.daftar.slice().sort(function(a, b){ return b.hari - a.hari; })[0];
+    TR.niche = pilih.niche;
+  }
+  sel.innerHTML = TR.daftar.map(function(e){
+    return '<option value="' + esc(e.niche) + '"' + (e.niche === TR.niche ? " selected" : "") + '>' + esc(e.niche) + ' · ' + e.hari + ' hari data</option>';
+  }).join("");
+  info.textContent = TR.daftar.length + " niche";
+  muatTrenNiche();
+}
+async function muatTrenNiche(){
+  const isi = document.getElementById("tr-isi");
+  isi.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Memuat…</div>';
+  let d = null;
+  try{ d = await (await fetch("/api/tren?niche=" + encodeURIComponent(TR.niche))).json(); }catch(e){}
+  if(!d || !d.ok || !d.siap){ isi.innerHTML = '<div class="pf-kosong">Data tren tidak terbaca.</div>'; return; }
+  TR.data = d;
+  gambarTren();
+}
+function pilihMetrik(k){ TR.metrik = k; gambarTren(); }
+function gambarTren(){
+  const d = TR.data, isi = document.getElementById("tr-isi");
+  if(!d) return;
+  document.getElementById("tr-metrik").innerHTML = TR_METRIK.map(function(m){
+    return '<button class="tr-chip' + (m.k === TR.metrik ? " on" : "") + '" onclick="pilihMetrik(\'' + m.k + '\')">' + m.l + '</button>';
+  }).join("");
+  const m = TR_METRIK.filter(function(x){ return x.k === TR.metrik; })[0];
+  const titik = (d.titik || []).filter(function(t){ return t[m.k] !== null && t[m.k] !== undefined; });
+  if(titik.length < 2){
+    isi.innerHTML = '<div class="pf-kosong"><b>Baru ' + titik.length + ' hari data</b> untuk "' + esc(d.niche) + '"' + (titik.length ? ' (' + esc(m.l.toLowerCase()) + ' ' + trFmt(m, titik[0][m.k]) + ' pada ' + trTglPendek(titik[0].hari) + ')' : '') +
+      '. Garis tren muncul setelah niche ini terpotret di <b>2 hari berbeda</b>. ' + (m.k === "harga_median" && !titik.length ? 'Harga hanya terisi bila iklan memuat harga yang terbaca. ' : '') +
+      'Tambahkan ke scan otomatis supaya terisi sendiri tiap hari.</div>';
+    return;
+  }
+  isi.innerHTML = trDelta(titik, m) + trSvg(titik, m);
+}
+function trDelta(titik, m){
+  const L = titik[titik.length - 1], tL = Date.parse(L.hari + "T00:00:00Z");
+  let ref = null, lbl = "";
+  for(let i = titik.length - 2; i >= 0; i--){ if(tL - Date.parse(titik[i].hari + "T00:00:00Z") >= 7 * 864e5){ ref = titik[i]; break; } }
+  if(ref) lbl = "vs 7 hari lalu (" + trTglPendek(ref.hari) + ")"; else { ref = titik[0]; lbl = "sejak " + trTglPendek(ref.hari); }
+  const a = Number(ref[m.k]), b = Number(L[m.k]), sel = b - a;
+  const pct = a ? Math.round(sel / Math.abs(a) * 100) : null;
+  const kls = sel > 0 ? "naik" : sel < 0 ? "turun" : "datar";
+  const panah = sel > 0 ? "▲ " : sel < 0 ? "▼ " : "■ ";
+  return '<div class="tr-delta"><div><b>' + trFmt(m, b) + '</b> <small>' + esc(m.l.toLowerCase()) + ' · ' + trTglPendek(L.hari) + '</small></div>' +
+    '<div><span class="' + kls + '">' + panah + (sel > 0 ? "+" : "") + trFmt(m, sel) + (pct !== null && sel !== 0 ? " (" + (sel > 0 ? "+" : "") + pct + "%)" : sel === 0 ? " tetap" : "") + '</span> <small>' + lbl + '</small></div>' +
+    '<div><small>' + titik.length + ' hari data · ' + (TR.data.scan || 0) + ' potret</small></div></div>';
+}
+function trSvg(titik, m){
+  const W = 640, H = 240, pl = 48, pr = 16, pt = 16, pb = 30;
+  const vals = titik.map(function(t){ return Number(t[m.k]); });
+  let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  if(m.hit) mn = 0;
+  if(mn === mx){ mx = mx + 1; if(!m.hit) mn = Math.max(0, mn - 1); }
+  const pad = (mx - mn) * 0.08; mx += pad; if(!m.hit) mn = Math.max(0, mn - pad);
+  /* skala "bulat": 4 langkah dgn kelipatan 1/2/2,5/5 × 10^n (hitungan → langkah ≥ 1, bilangan bulat) */
+  const mentah = (mx - mn) / 4, mag = Math.pow(10, Math.floor(Math.log10(mentah || 1)));
+  let langkah = [1, 2, 2.5, 5, 10].map(function(k){ return k * mag; }).filter(function(v){ return v >= mentah; })[0];
+  if(m.hit) langkah = Math.max(1, Math.ceil(langkah));
+  mn = Math.floor(mn / langkah) * langkah; mx = mn + langkah * 4;
+  if(mx - langkah * 4 < 0) mn = 0;
+  const t0 = Date.parse(titik[0].hari + "T00:00:00Z"), t1 = Date.parse(titik[titik.length - 1].hari + "T00:00:00Z");
+  const X = function(t){ return pl + (t1 === t0 ? (W - pl - pr) / 2 : (Date.parse(t.hari + "T00:00:00Z") - t0) / (t1 - t0) * (W - pl - pr)); };
+  const Y = function(v){ return pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn)); };
+  let g = "";
+  for(let i = 0; i <= 4; i++){
+    const v = mn + (mx - mn) * i / 4, y = Y(v).toFixed(1);
+    g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(26,43,38,.08)"/>' +
+         '<text x="' + (pl - 8) + '" y="' + (+y + 3.5) + '" text-anchor="end">' + esc(trFmt(m, v)) + '</text>';
+  }
+  const pts = titik.map(function(t){ return [X(t), Y(Number(t[m.k]))]; });
+  const garis = pts.map(function(p, i){ return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+  const area = garis + " L" + pts[pts.length - 1][0].toFixed(1) + " " + (H - pb) + " L" + pts[0][0].toFixed(1) + " " + (H - pb) + " Z";
+  const nLbl = Math.min(6, titik.length), idxs = [];
+  for(let i = 0; i < nLbl; i++){ const k = Math.round(i * (titik.length - 1) / Math.max(1, nLbl - 1)); if(idxs.indexOf(k) < 0) idxs.push(k); }
+  const lx = idxs.map(function(k){ return '<text x="' + pts[k][0].toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle">' + esc(trTglPendek(titik[k].hari)) + '</text>'; }).join("");
+  const dot = pts.map(function(p, i){
+    return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (titik.length > 40 ? 2.4 : 3.8) + '" fill="#fff" stroke="var(--accent)" stroke-width="2"><title>' +
+      esc(trTglPendek(titik[i].hari) + ": " + trFmt(m, Number(titik[i][m.k])) + " " + m.l.toLowerCase()) + '</title></circle>';
+  }).join("");
+  return '<svg class="tr-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Grafik ' + esc(m.l) + '">' +
+    '<defs><linearGradient id="tr-gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F7D64" stop-opacity=".22"/><stop offset="1" stop-color="#2F7D64" stop-opacity="0"/></linearGradient></defs>' +
+    g + '<path d="' + area + '" fill="url(#tr-gr)"/><path d="' + garis + '" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' + dot + lx + '</svg>';
+}
+
+/* ---------- jadwal ---------- */
+async function muatJadwal(diam){
+  let d = null;
+  try{ d = await (await fetch("/api/jadwal")).json(); }catch(e){}
+  const isi = document.getElementById("jd-isi"), sb = document.getElementById("jd-sumber");
+  if(!isi) return;
+  if(!d || !d.ok){ isi.innerHTML = '<div class="pf-kosong">Setelan jadwal tidak terbaca.</div>'; return; }
+  if(!d.siap){
+    sb.textContent = "belum aktif";
+    isi.innerHTML = '<div class="arsip-peringatan"><b>Satu langkah lagi.</b> Jalankan <code>SUPABASE-JADWAL.sql</code> sekali di Supabase (SQL Editor → Run), lalu muat ulang halaman ini. Grafik tren di kiri tetap jalan tanpa ini.</div>';
+    document.getElementById("jd-pemicu").innerHTML = '<div>Panduan pemicu muncul setelah tabel jadwal dibuat.</div>';
+    return;
+  }
+  const lama = TR.jd;
+  TR.jd = d;
+  if(!TR.ubah || !TR.cfg) TR.cfg = JSON.parse(JSON.stringify(d.cfg));
+  sb.textContent = "sekarang " + d.sekarang_wib.slice(11) + " WIB";
+  if(!diam || !lama || !TR.ubah) gambarSetelan();
+  gambarPutaran();
+  gambarPemicu();
+  if(d.berjalan && !TR.poll){ TR.poll = setInterval(function(){ if(document.getElementById("view-tren").style.display === "none"){ clearInterval(TR.poll); TR.poll = null; return; } muatJadwal(true); }, 5000); }
+  if(!d.berjalan && TR.poll){ clearInterval(TR.poll); TR.poll = null; if(lama && lama.berjalan){ toast("Putaran scan otomatis selesai: " + d.putaran.ok + "/" + d.putaran.total + " berhasil."); muatTren(); } }
+}
+function jdEstimasi(){
+  const c = TR.cfg, n = c.niche.length + (c.pesaing ? (TR.jd.n_pesaing || 0) : 0);
+  if(!n) return 'Antrean kosong. Tambahkan niche atau pantau pesaing di menu <b>Pesaing Dipantau</b>.';
+  return 'Antrean ±<b>' + n + '</b> scan (' + c.niche.length + ' niche' + (c.pesaing ? ' + ' + (TR.jd.n_pesaing || 0) + ' pesaing' : '') + ') · perkiraan ±' + Math.max(1, Math.round(n * 40 / 60)) + ' menit, berjalan di server.';
+}
+function gambarSetelan(){
+  const c = TR.cfg, d = TR.jd, isi = document.getElementById("jd-isi");
+  let jam = "";
+  for(let h = 0; h < 24; h++) jam += '<option value="' + h + '"' + (h === c.jam ? " selected" : "") + '>' + String(h).padStart(2, "0") + ':00</option>';
+  const ada = c.niche.map(function(x){ return x.toLowerCase(); });
+  const saran = TR.daftar.map(function(e){ return e.niche; }).filter(function(n){ return ada.indexOf(String(n).toLowerCase()) < 0; }).slice(0, 6);
+  isi.innerHTML =
+    '<div class="jd-baris"><div><b>Scan otomatis</b><small>' + (c.aktif ? "nyala, berjalan sendiri tiap hari" : "mati, tidak ada scan terjadwal") + '</small></div>' +
+      '<label class="jd-saklar"><input type="checkbox" id="jd-aktif"' + (c.aktif ? " checked" : "") + ' onchange="TR.cfg.aktif=this.checked;jdUbah(true)"><span></span></label></div>' +
+    '<div class="jd-baris"><div><b>Mulai jam</b><small>zona WIB · pilih jam sepi, misal subuh</small></div>' +
+      '<select class="jd-sel" id="jd-jam" onchange="TR.cfg.jam=+this.value;jdUbah()">' + jam + '</select></div>' +
+    '<div class="jd-baris" style="display:block"><div><b>Niche harian</b> <small style="display:inline">· ' + c.niche.length + '/' + (d.niche_maks || 10) + ' kata kunci</small></div>' +
+      '<div class="jd-niche">' + (c.niche.length ? c.niche.map(function(n, i){ return '<span class="jd-tag">' + esc(n) + '<button title="Hapus" onclick="jdHapusNiche(' + i + ')">×</button></span>'; }).join("") : '<span class="pf-kosong" style="padding:0">Belum ada niche.</span>') + '</div>' +
+      (saran.length ? '<div class="jd-niche">' + saran.map(function(n){ return '<button class="jd-saran" data-n="' + esc(n) + '" onclick="jdTambahNiche(this.dataset.n)">+ ' + esc(n) + '</button>'; }).join("") + '</div>' : '') +
+      '<div class="jd-input"><input id="jd-niche-in" maxlength="60" placeholder="Ketik niche, misal: serum wajah" onkeydown="if(event.key===\'Enter\')jdTambahNiche(this.value)"><button class="ps-tb" onclick="jdTambahNiche(document.getElementById(\'jd-niche-in\').value)">Tambah</button></div></div>' +
+    '<div class="jd-baris"><div><b>Cek pesaing dipantau</b><small>' + (d.n_pesaing || 0) + ' pesaing · tiap cek memperbarui feed perubahan</small></div>' +
+      '<label class="jd-saklar"><input type="checkbox" id="jd-pesaing"' + (c.pesaing ? " checked" : "") + ' onchange="TR.cfg.pesaing=this.checked;jdUbah()"><span></span></label></div>' +
+    '<div class="jd-est" id="jd-est">' + jdEstimasi() + '</div>' +
+    '<div class="jd-aksi"><button class="ps-tb utama" id="jd-simpan" onclick="simpanJadwal()"' + (TR.ubah ? "" : " disabled") + '><svg class=ik><use href=#ik-check></use></svg>' + (TR.ubah ? "Simpan setelan" : "Tersimpan") + '</button>' +
+      '<button class="ps-tb" id="jd-jalan" onclick="jalankanJadwal()"' + (d.berjalan ? " disabled" : "") + '><svg class=ik><use href=#ik-zap></use></svg>' + (d.berjalan ? "Sedang berjalan…" : "Jalankan sekarang") + '</button></div>';
+}
+function jdUbah(segera){ TR.ubah = true; gambarSetelan(); if(segera) simpanJadwal(); }
+function jdTambahNiche(n){
+  n = String(n || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  if(!n) return;
+  if(/^halaman\s+\d+$/i.test(n)){ toast("Untuk halaman pesaing, pakai menu <b>Pesaing Dipantau</b>."); return; }
+  if(TR.cfg.niche.some(function(x){ return x.toLowerCase() === n.toLowerCase(); })){ toast("Niche itu sudah ada."); return; }
+  if(TR.cfg.niche.length >= (TR.jd.niche_maks || 10)){ toast("Maksimal " + (TR.jd.niche_maks || 10) + " niche harian."); return; }
+  TR.cfg.niche.push(n); jdUbah();
+  const el = document.getElementById("jd-niche-in"); if(el) el.focus();
+}
+function jdHapusNiche(i){ TR.cfg.niche.splice(i, 1); jdUbah(); }
+async function simpanJadwal(){
+  const b = document.getElementById("jd-simpan"); if(b) b.disabled = true;
+  let d = null;
+  try{ d = await (await fetch("/api/jadwal", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(Object.assign({aksi: "simpan"}, TR.cfg))})).json(); }catch(e){}
+  if(!d || !d.ok){ toast("Gagal menyimpan: " + esc((d && d.error) || "koneksi terputus")); if(b) b.disabled = false; return; }
+  TR.ubah = false; TR.cfg = JSON.parse(JSON.stringify(d.cfg)); TR.jd = d;
+  toast(d.cfg.aktif ? "Tersimpan ✓ Scan otomatis nyala, mulai jam " + String(d.cfg.jam).padStart(2, "0") + ":00 WIB." : "Tersimpan ✓ Scan otomatis mati.");
+  gambarSetelan(); gambarPemicu();
+}
+async function jalankanJadwal(){
+  if(TR.ubah){ await simpanJadwal(); if(TR.ubah) return; }
+  const b = document.getElementById("jd-jalan"); if(b) b.disabled = true;
+  let d = null;
+  try{ d = await (await fetch("/api/jadwal", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({aksi: "jalan"})})).json(); }catch(e){}
+  if(!d || !d.ok){ toast("Gagal: " + esc((d && (d.pesan || d.error)) || "koneksi terputus")); if(b) b.disabled = false; return; }
+  toast(esc(d.pesan) + (d.antrian ? " · " + d.antrian + " scan di antrean. Boleh tutup halaman ini, scan tetap jalan di server." : ""));
+  muatJadwal();
+}
+function gambarPutaran(){
+  const p = TR.jd.putaran || {}, box = document.getElementById("jd-putaran"), tg = document.getElementById("jd-tgl");
+  if(!p.tanggal){ tg.textContent = "—"; box.innerHTML = '<div class="pf-kosong">Belum pernah berjalan. Klik <b>Jalankan sekarang</b> untuk mencoba, atau tunggu jadwal.</div>'; return; }
+  tg.textContent = trTglPendek(p.tanggal) + " · " + (p.pemicu === "manual" ? "manual" : "otomatis");
+  if(!p.total){ box.innerHTML = '<div class="pf-kosong">Antrean kosong saat itu, tidak ada yang discan.</div>'; return; }
+  const pct = Math.round(p.ok / p.total * 100);
+  let kepala = TR.jd.berjalan ? '<b>Sedang memindai:</b> ' + esc(p.item_kini || "…") : p.terputus ? '<b>Terputus</b> (server sempat tidur). Sisa ' + p.sisa + ' scan dilanjutkan otomatis pada pemicu berikutnya, atau klik <b>Jalankan sekarang</b>.' : '<b>Selesai</b> ' + (p.akhir ? pfRelatif(p.akhir) : "");
+  box.innerHTML = '<div style="font-size:12px">' + kepala + '</div><div class="jd-bar"><i style="width:' + pct + '%"></i></div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">' + p.ok + ' dari ' + p.total + ' berhasil</div>' +
+    p.items.map(function(it){
+      const st = it.ok ? '<span class="st ok">✓</span>' : (it.coba >= 2 ? '<span class="st gagal">✗</span>' : (it.coba ? '<span class="st gagal">↻</span>' : '<span class="st antri">·</span>'));
+      const ket = it.ok ? pfAngka(it.aktif) + " aktif" : it.galat ? esc(String(it.galat).slice(0, 60)) : "antre";
+      const nama = it.mode === "halaman" ? '<span title="pesaing">' + esc(it.nama) + '</span>' : '<b>' + esc(it.nama) + '</b>';
+      return '<div class="jd-item">' + st + nama + '<small>' + ket + '</small></div>';
+    }).join("");
+}
+function gambarPemicu(){
+  const d = TR.jd, c = TR.cfg, box = document.getElementById("jd-pemicu");
+  const url = location.origin + "/api/jadwal/tick" + (d.kunci_wajib ? "?kunci=ISI_KUNCIMU" : "");
+  const j1 = String(c.jam).padStart(2, "0"), j2 = String((c.jam + 1) % 24).padStart(2, "0");
+  box.innerHTML =
+    '<div>Server gratis Render <b>tidur</b> kalau 15 menit tidak dibuka, jadi perlu "pengetuk pintu" dari luar. Pakai <b>cron-job.org</b> (gratis):</div>' +
+    '<div><b>1.</b> Daftar di cron-job.org → <b>Create cronjob</b>.</div>' +
+    '<div><b>2.</b> Isi URL:<div class="jd-url" style="margin-top:5px"><code id="jd-url-teks">' + esc(url) + '</code><button class="ps-tb" data-u="' + esc(url) + '" onclick="salin(this.dataset.u)"><svg class=ik><use href=#ik-copy></use></svg>Salin</button></div></div>' +
+    '<div><b>3.</b> Jadwal: <b>Custom</b> → menit <b>*/10</b> (tiap 10 menit), jam <b>' + j1 + '</b> dan <b>' + j2 + '</b>, zona waktu <b>Asia/Jakarta</b>. Jadi ±12 ketukan per hari, cukup untuk membangunkan server dan menuntaskan antrean.</div>' +
+    '<div><b>4.</b> Simpan. Ketukan pertama tiap pagi boleh tercatat <b>gagal/timeout</b>: itu server yang sedang bangun (±1 menit), normal. Ketukan 10 menit kemudian akan berhasil dan scan mulai.</div>' +
+    (d.kunci_wajib ? '<div>🔒 Kunci aktif: ganti <code>ISI_KUNCIMU</code> dengan nilai <code>JADWAL_KUNCI</code> yang kamu isi di Render.</div>'
+      : '<div style="color:var(--faint)">Opsional: supaya URL ini tidak bisa diketuk orang lain, tambahkan Environment Variable <code>JADWAL_KUNCI</code> (kata acak buatanmu) di Render, lalu tambahkan <code>?kunci=...</code> di URL. Tanpa kunci pun aman: ketukan hanya menjalankan jadwalmu sekali sehari, tidak bisa mengubah setelan.</div>') +
+    '<div style="color:var(--faint)">Mengubah jam? Sesuaikan juga jam di cron-job.org.</div>';
+}
+
 /* ================= ROUTER SPA (v0.7): dashboard <-> scan dalam satu halaman ================= */
-const VIEWS = ["dashboard", "meta", "pesaing", "shopee", "tiktok", "pengiklan"];   // v0.9: urutan = urutan tombol sidebar (pengiklan: tanpa tombol)
+const VIEWS = ["dashboard", "meta", "pesaing", "tren", "shopee", "tiktok", "pengiklan"];   // v0.9: urutan = urutan tombol sidebar (pengiklan: tanpa tombol)
 function viewDariPath(p){
   p = String(p || "/").replace(/\/+$/, "");
   const mP = /^\/pengiklan\/(\d{1,40})$/.exec(p);
   if(mP){ PF.pid = mP[1]; return "pengiklan"; }
-  for(const v of ["meta", "pesaing", "shopee", "tiktok"]){ if(p === "/" + v) return v; }
+  for(const v of ["meta", "pesaing", "tren", "shopee", "tiktok"]){ if(p === "/" + v) return v; }
   return "dashboard";
 }
 function tampilView(v, push){
@@ -2981,7 +3307,7 @@ function tampilView(v, push){
     const el = document.getElementById("view-" + n);
     if(el) el.style.display = (n === v) ? "" : "none";
   });
-  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : "INTAI — Dashboard";
+  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
     const items = nav.querySelectorAll(".sb-item");
@@ -2992,6 +3318,7 @@ function tampilView(v, push){
   if(v === "dashboard" && typeof muatRingkasan === "function") muatRingkasan();
   if(v === "dashboard" && typeof muatArsip === "function") muatArsip();
   if(v === "pesaing") muatPesaing();
+  if(v === "tren") muatTren();
   if(v === "pengiklan") muatProfil(PF.pid);
   if(push !== false){
     const url = v === "dashboard" ? "/dashboard" : v === "pengiklan" ? "/pengiklan/" + PF.pid : "/" + v;
@@ -3035,6 +3362,8 @@ function ke(url){
     }
   } else if(u.indexOf("/pesaing") === 0){
     tampilView("pesaing");
+  } else if(u.indexOf("/tren") === 0){
+    tampilView("tren");
   } else if(u.indexOf("/pengiklan/") === 0){
     bukaProfil(u.slice(11));
   } else if(u.indexOf("/shopee") === 0){
@@ -3056,5 +3385,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49478811857008f',t:'MTc5MTc5MDk3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a494a0b32e1d58ef',t:'MTc5MTc5MjYyMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
