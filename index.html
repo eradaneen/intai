@@ -1111,7 +1111,7 @@
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · v1.3<br>Shopee &amp; TikTok: disiapkan</div>
+    <div class="sb-foot">Mesin Meta aktif · <span class="v-intai">v1.4</span><br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
 
   <main class="isi-utama">
@@ -1180,7 +1180,7 @@
     </div>
 
     <footer class="reveal">
-      <div>INTAI v1.3 · intelijen jualan lintas platform · sinyal</div>
+      <div>INTAI <span class="v-intai">v1.4</span> · intelijen jualan lintas platform · sinyal</div>
       <div>Data publik Meta Ad Library · estimasi berlabel model 🟠 · bukan angka pasti omzet</div>
     </footer>
       </div>
@@ -1376,7 +1376,7 @@
   </div></div>
 </div>
 
-<div class="foot">INTAI v1.1 · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
+<div class="foot">INTAI <span class="v-intai">v1.4</span> · sinyal: umur + varian + funnel + format · klik baris = detail lengkap · <b onclick="ke('/dashboard')" style="cursor:pointer">← kembali ke dashboard</b></div>
 
 <div class="lightbox" id="lb" onclick="if(event.target===this)tutupLb()">
   <button class="lb-x" onclick="tutupLb()" title="Tutup (Esc)">✕</button>
@@ -1550,7 +1550,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v1.1 · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI <span class="v-intai">v1.4</span> · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
 
@@ -1574,7 +1574,7 @@
           <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
           <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
         </div>
-        <div class="mk-foot"><div>INTAI v1.1 · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+        <div class="mk-foot"><div>INTAI <span class="v-intai">v1.4</span> · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
     </div>
   </main>
@@ -1596,6 +1596,10 @@ function tampilkanBannerStatis(){
   const b = document.getElementById("banner-statis");
   if(b) b.style.display = "block";
 }
+/* v1.4.1: label versi diambil dari server — tidak lagi tertulis mati */
+fetch(API_BASE + "/api/versi").then(r => r.json()).then(d => {
+  if(d && d.v) document.querySelectorAll(".v-intai").forEach(el => { el.textContent = "v" + d.v; });
+}).catch(() => {});
 (function probeServer(){
   fetch(API_BASE + "/api/me?token=__cek").then(r => {
     /* 404 = server lama tanpa /api/me -> statis. 403 dari proxy tetap dianggap hidup (dapat dibaca, hanya token). */
@@ -4397,5 +4401,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4981c146e04aa34',t:'MTc5MTgyOTEzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4984cd6aa2fe77c',t:'MTc5MTgzMTEzMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

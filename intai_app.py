@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4"
+VERSI = "1.4.1"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -3353,7 +3353,8 @@ JADWAL_BAWAAN = {"aktif": False, "niche": [], "pesaing": True}
 # v1.4: 1 antrean global per hari = gabungan niche + pesaing SEMUA akun yg aktif (tanpa dobel);
 # tiap item mencatat pemiliknya ("u") → riwayat & tampilan per akun. Jam mulai = 1 utk semua akun
 # (pemicu cron dipasang pemilik server), dibaca dari env JADWAL_JAM / setelan lama "jadwal".jam / 5.
-JADWAL = {"cfgs": None, "jam": 5, "status": None, "thread": None, "siap": None, "t_siap": 0.0}
+JADWAL = {"cfgs": None, "t_cfgs": 0.0, "jam": 5, "status": None, "thread": None, "siap": None, "t_siap": 0.0}
+JADWAL_SEGAR_DTK = 120   # v1.4.1: setelan per akun dibaca ulang berkala (mis. setelah dipindah lewat SQL)
 kunci_jadwal = threading.RLock()
 
 
@@ -3425,10 +3426,12 @@ def _rapikan_cfg(c, ketat=False):
 
 def _muat_jadwal():
     with kunci_jadwal:
-        if JADWAL["cfgs"] is None:
+        if JADWAL["cfgs"] is None or time.time() - JADWAL["t_cfgs"] > JADWAL_SEGAR_DTK:
             ok, semua = setelan_awalan("jadwal:")
             if ok:
                 JADWAL["cfgs"] = {k.split(":", 1)[1]: _rapikan_cfg(v) for k, v in semua.items() if k and ":" in k}
+                JADWAL["t_cfgs"] = time.time()
+            if ok and JADWAL["status"] is None:
                 _, lama = setelan_baca("jadwal")   # setelan global v1.3 → hanya jam-nya yg dipakai
                 jam = _int(os.environ.get("JADWAL_JAM"), None)
                 if jam is None and isinstance(lama, dict):
@@ -3658,8 +3661,15 @@ def jadwal_simpan(email, d):
 
 def niche_akun(email):
     """Niche (huruf kecil) yang pernah di-scan akun ini + niche harian-nya → filter Tren Harian."""
-    with lock:
-        s = {str(r.get("kata") or "").lower() for r in RIWAYAT if r.get("pemilik") == email and r.get("mode") != "halaman"}
+    rw = None
+    if supa_aktif() and akun_siap():   # v1.4.1: langsung dari Supabase (memori bisa basi setelah data dipindah lewat SQL)
+        ok, r = supa("GET", "intai_riwayat", params=f"?select=kata,mode&pemilik=eq.{quote(email)}&order=id.desc&limit=1000")
+        if ok and isinstance(r, list):
+            rw = r
+    if rw is None:
+        with lock:
+            rw = [r for r in RIWAYAT if r.get("pemilik") == email]
+    s = {str(r.get("kata") or "").lower() for r in rw if r.get("mode") != "halaman"}
     if _muat_jadwal():
         with kunci_jadwal:
             s |= {n.lower() for n in _cfg_akun(email)["niche"]}
