@@ -1301,6 +1301,13 @@
   .shell.sb-buka .hp-menu .gb2{opacity:0}
   .shell.sb-buka .hp-menu .gb3{transform:translateY(-5px) rotate(-45deg)}
 }
+/* v1.4.5: transisi antar-halaman — view masuk lembut (tanpa fill, transform hilang setelah selesai → sticky/fixed aman) */
+@keyframes viewMasuk{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
+@keyframes isiMuncul{from{opacity:0}to{opacity:1}}
+.view-masuk{animation:viewMasuk .32s cubic-bezier(.2,0,0,1);will-change:opacity,transform}
+.isi-muncul{animation:isiMuncul .28s ease}
+html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya saat pertama dibuka */
+@media (prefers-reduced-motion:reduce){.view-masuk,.isi-muncul{animation:none}}
 @media (max-width:1024px) and (prefers-reduced-motion:reduce){
   .sb,.sb > *,.sb-nav > .sb-item,.hp-bar,.isi-utama,.sb-tirai,.hp-menu path{transition:none!important}
 }
@@ -2375,6 +2382,24 @@ function sbBuka(b){
     else if(window.__kalibrasiPil) setTimeout(function(){ window.__kalibrasiPil(); }, 40);
   }
 }
+/* v1.4.5: hitung ulang potongan kartu & posisi bar saat isi halaman berganti ketika laci terbuka/menutup.
+   Dulu potongan bawah dihitung dari tinggi halaman lama → halaman baru yang lebih pendek terpotong habis (kartu kosong). */
+function sbPosAtas(el){ let t = 0; while(el){ t += el.offsetTop; el = el.offsetParent; } return t; }   /* offsetTop mengabaikan transform */
+function sbKlipUlang(){
+  const sh = document.querySelector(".shell");
+  if(!sh || !(sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup"))) return;
+  const bar = document.getElementById("hp-bar"), isi = sh.querySelector(".isi-utama"), y = window.scrollY;
+  if(bar && bar.style.position === "relative"){ const st = sbPosAtas(bar) - (parseFloat(bar.style.top) || 0); bar.style.top = (y - st) + "px"; }
+  if(isi){
+    const it = sbPosAtas(isi) - y, cy = window.innerHeight / 2;
+    const ox = String(isi.style.transformOrigin || "").split(" ")[0] || "50%";   /* sumbu x tidak berubah oleh gulir */
+    isi.style.transformOrigin = ox + " " + (cy - it) + "px";
+    if(bar){
+      isi.style.setProperty("--klip-a", Math.max(0, bar.offsetHeight - it) + "px");
+      isi.style.setProperty("--klip-b", Math.max(0, it + isi.offsetHeight - window.innerHeight) + "px");
+    }
+  }
+}
 document.addEventListener("click", function(e){
   if(document.documentElement.clientWidth <= BATAS_HP && e.target.closest && e.target.closest(".sb .sb-item, .sb .sb-scan-item")) setTimeout(function(){ sbBuka(false); }, 260);   /* v1.4.4: beri waktu pil mekar terlihat */
 });
@@ -2465,6 +2490,7 @@ async function muatRingkasan(){
     const r = await fetch(API_BASE + "/api/ringkasan");
     d = await r.json();
   }catch(e){}
+  await tungguTransisi();
   if(!d || !d.ok){
     ["kpi-iklan","kpi-scan","kpi-terakhir","kpi-niche"].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = "—"; });
     isiChipHero([]);
@@ -3984,6 +4010,7 @@ async function muatArsip(){
   if(!isi) return;
   let d = null;
   try{ const r = await fetch("/api/arsip"); d = await r.json(); }catch(e){}
+  await tungguTransisi();
   if(!d || !d.ok){ isi.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Arsip tidak terbaca.</div>'; if(sb) sb.textContent = "—"; return; }
   if(sb) sb.textContent = d.sumber === "supabase" ? "Supabase" : "lokal";
   if(!d.siap){
@@ -4098,6 +4125,7 @@ async function muatPesaing(){
   if(!daftar) return;
   let d = null;
   try{ d = await (await fetch("/api/pantau")).json(); }catch(e){}
+  await tungguTransisi();
   if(!d || !d.ok){ daftar.innerHTML = '<div class="pf-kosong">Daftar pesaing tidak terbaca. Coba muat ulang.</div>'; return; }
   if(!d.siap){
     per.innerHTML = '<div class="arsip-peringatan" style="margin-bottom:14px"><b>Fitur Pesaing belum aktif.</b> ' + (d.pesan ? 'Jalankan <code>SUPABASE-AKUN.sql</code> sekali di Supabase (SQL Editor → Run) agar daftar pesaing tersimpan per akun.' : 'Jalankan <code>SUPABASE-PESAING.sql</code> sekali di Supabase (SQL Editor → Run).') + ' Profil pengiklan tetap bisa dibuka dari detail iklan.</div>';
@@ -4241,6 +4269,7 @@ async function muatProfil(pid){
   box.innerHTML = '<div class="chart-kosong" style="color:var(--faint);padding:40px 0">Memuat profil…</div>';
   let d = null;
   try{ d = await (await fetch("/api/pengiklan?id=" + encodeURIComponent(pid))).json(); }catch(e){}
+  await tungguTransisi();
   if(PF.pid !== pid) return;  // user sudah pindah profil
   const kembali = '<div class="pf-kembali"><button class="ps-tb" onclick="pfKembali()"><svg class=ik><use href=#ik-back></use></svg>Kembali</button></div>';
   if(!d || !d.ok){ box.innerHTML = kembali + '<div class="pf-catatan kuning" style="margin-top:14px">Profil tidak terbaca' + (d && d.error ? ': ' + esc(d.error) : '') + '.</div>'; return; }
@@ -4368,15 +4397,32 @@ function trFmt(m, v){
   return Number(Math.round(v * 10) / 10).toLocaleString("id-ID");
 }
 function trTglPendek(h){ try{ return new Date(h + "T00:00:00Z").toLocaleDateString("id-ID", {day: "numeric", month: "short", timeZone: "UTC"}); }catch(e){ return h; } }
+/* v1.4.5: tempat cadangan setinggi grafik nanti (tinggi svg mengikuti lebar) + tombol metrik langsung tampil → isi tidak melompat */
+function trCadangan(){
+  const isi = document.getElementById("tr-isi");
+  if(!isi) return;
+  const HP = document.documentElement.clientWidth <= 640, w = isi.clientWidth || 600;
+  isi.style.minHeight = Math.round(w * (HP ? 230 / 360 : 240 / 640) + (w <= 310 ? 120 : w <= 400 ? 78 : 36) + 4) + "px";
+  if(!isi.querySelector(".chart-kosong")) isi.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Memuat…</div>';
+  const tm = document.getElementById("tr-metrik");
+  if(tm && !tm.children.length) tm.innerHTML = TR_METRIK.map(function(m){ return '<button class="tr-chip' + (m.k === TR.metrik ? " on" : "") + '" onclick="pilihMetrik(\'' + m.k + '\')">' + m.l + '</button>'; }).join("");
+}
 async function muatTren(){
   muatJadwal();
+  if(!TR.dataJson) trCadangan();
   let d = null;
   try{ d = await (await fetch("/api/tren")).json(); }catch(e){}
+  await tungguTransisi();
   const sel = document.getElementById("tr-niche"), info = document.getElementById("tr-info"), isi = document.getElementById("tr-isi");
   if(!sel) return;
-  if(!d || !d.ok || !d.siap){ isi.innerHTML = '<div class="pf-kosong">Arsip potret belum terbaca. Pastikan <code>SUPABASE-ARSIP.sql</code> sudah dijalankan.</div>'; info.textContent = "—"; return; }
+  /* v1.4.5: daftar niche sama dengan kunjungan sebelumnya → biarkan tampilan, cukup segarkan niche aktif diam-diam */
+  const jd = d ? JSON.stringify(d) : "";
+  if(d && d.ok && d.siap && TR.cDaftar === jd && TR.niche){ muatTrenNiche(); return; }
+  if(d && d.ok && d.siap) TR.cDaftar = jd;
+  if(!d || !d.ok || !d.siap){ TR.dataJson = null; TR.cDaftar = null; isi.style.minHeight = ""; isi.innerHTML = '<div class="pf-kosong">Arsip potret belum terbaca. Pastikan <code>SUPABASE-ARSIP.sql</code> sudah dijalankan.</div>'; info.textContent = "—"; return; }
   TR.daftar = d.daftar || [];
   if(!TR.daftar.length){
+    TR.dataJson = null; isi.style.minHeight = "";
     sel.style.display = "none"; document.getElementById("tr-metrik").innerHTML = "";
     info.textContent = "0 niche";
     isi.innerHTML = '<div class="pf-kosong"><b>Belum ada potret niche.</b> Scan satu kata kunci di <b>Scan Meta</b>, atau masukkan niche ke scan otomatis di kanan. Grafik muncul setelah niche yang sama terpotret di 2 hari berbeda.</div>';
@@ -4395,13 +4441,24 @@ async function muatTren(){
   muatTrenNiche();
 }
 async function muatTrenNiche(){
-  const isi = document.getElementById("tr-isi");
-  isi.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Memuat…</div>';
+  /* v1.4.5: cache per niche — kunjungan ulang / ganti niche tampil seketika, lalu disegarkan diam-diam; tidak menggambar ulang bila data sama */
+  const isi = document.getElementById("tr-isi"), kunci = TR.niche;
+  TR.cNiche = TR.cNiche || {};
+  const c = TR.cNiche[kunci];
+  if(c){ if(TR.dataJson !== c){ TR.data = JSON.parse(c); TR.dataJson = c; gambarTren(); } }
+  else trCadangan();
   let d = null;
-  try{ d = await (await fetch("/api/tren?niche=" + encodeURIComponent(TR.niche))).json(); }catch(e){}
-  if(!d || !d.ok || !d.siap){ isi.innerHTML = '<div class="pf-kosong">Data tren tidak terbaca.</div>'; return; }
-  TR.data = d;
+  try{ d = await (await fetch("/api/tren?niche=" + encodeURIComponent(kunci))).json(); }catch(e){}
+  await tungguTransisi();
+  isi.style.minHeight = "";
+  if(kunci !== TR.niche) return;   /* niche sudah diganti saat menunggu */
+  if(!d || !d.ok || !d.siap){ if(!c) isi.innerHTML = '<div class="pf-kosong">Data tren tidak terbaca.</div>'; return; }
+  const j = JSON.stringify(d);
+  TR.cNiche[kunci] = j;
+  if(TR.dataJson === j) return;
+  TR.data = d; TR.dataJson = j;
   gambarTren();
+  if(!c){ isi.classList.remove("isi-muncul"); void isi.offsetWidth; isi.classList.add("isi-muncul"); }
 }
 function pilihMetrik(k){ TR.metrik = k; gambarTren(); }
 function gambarTren(){
@@ -4628,6 +4685,7 @@ async function csCek(){
 setInterval(function(){ if(TOKEN && document.visibilityState === "visible"){ const v = document.getElementById("view-cs"); csCek().then(function(){ if(v && v.style.display !== "none" && !CS.sibuk) csGambar(); }); } }, 180000);
 async function csMuat(){
   await csCek();
+  await tungguTransisi();
   csGambar();
 }
 function csIkonWa(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z"/><path d="M9.2 8.6c.3 2.6 2.1 4.6 5 5.4l1-1.2-1.6-.9-.7.6c-.8-.4-1.5-1.1-1.9-1.9l.6-.7-.9-1.6z"/></svg>'; }
@@ -4798,6 +4856,7 @@ async function admMuat(){
     const d = await r.json();
     if(d && d.ok) ADM.d = d;
   }catch(e){}
+  await tungguTransisi();
   admGambarAkun(); admGambarSistem();
 }
 function admGambarAkun(){
@@ -5028,6 +5087,7 @@ async function muatGaleri(){
   if(document.getElementById("view-galeri").style.display !== "none"){ try{ history.replaceState({v: "galeri"}, "", "/galeri" + (qs ? "?" + qs : "")); }catch(e){} }
   let d = null;
   try{ d = await (await fetch("/api/galeri?" + qs)).json(); }catch(e){}
+  await tungguTransisi();
   if(id !== GL.muat) return;
   GL.data = d;
   gambarGaleri();
@@ -5127,6 +5187,9 @@ function viewDariPath(p){
   for(const v of ["meta", "galeri", "pesaing", "tren", "shopee", "tiktok", "ekspor", "cs", "admin"]){ if(p === "/" + v) return v; }
   return "dashboard";
 }
+/* v1.4.5: render data ditunda sampai animasi masuk / laci tutup selesai, supaya tidak menyendat gerakan */
+var VT = {v: null, sampai: 0};
+function tungguTransisi(){ const s = VT.sampai - performance.now(); return s > 0 ? new Promise(function(r){ setTimeout(r, s); }) : Promise.resolve(); }
 function tampilView(v, push){
   if(VIEWS.indexOf(v) < 0) v = "dashboard";
   if(!document.getElementById("view-dashboard") || !document.getElementById("view-meta")) return;
@@ -5134,6 +5197,18 @@ function tampilView(v, push){
     const el = document.getElementById("view-" + n);
     if(el) el.style.display = (n === v) ? "" : "none";
   });
+  (function(){   /* v1.4.5: animasi masuk */
+    const lama = VT.v; VT.v = v;
+    if(lama === null || lama === v) return;
+    document.documentElement.classList.add("anim-selesai");
+    const sh = document.querySelector(".shell"), laci = !!sh && (sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup"));
+    if(laci){ VT.sampai = performance.now() + 800; return; }   /* HP: kartu halaman yang kembali membesar = transisinya */
+    VT.sampai = performance.now() + 330;
+    const el = document.getElementById("view-" + v);
+    if(!el || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+    el.classList.remove("view-masuk"); void el.offsetWidth; el.classList.add("view-masuk");
+    clearTimeout(el.__tvm); el.__tvm = setTimeout(function(){ el.classList.remove("view-masuk"); }, 420);
+  })();
   document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : v === "galeri" ? "INTAI — Galeri Iklan" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
@@ -5162,6 +5237,7 @@ function tampilView(v, push){
   }
   if(v === "galeri") muatGaleri();
   window.scrollTo(0, 0);
+  sbKlipUlang();
 }
 window.addEventListener("popstate", function(){
   tampilView(viewDariPath(location.pathname), false);
@@ -5231,5 +5307,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a0e6020ad358ef',t:'MTc5MTkyMTI5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a1230d1ba96d00',t:'MTc5MTkyMzc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
