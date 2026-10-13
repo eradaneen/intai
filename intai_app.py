@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.3"
+VERSI = "1.4.4"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -3388,6 +3388,13 @@ def galeri_csv(p):
 # /api/jadwal/tick tiap 10 mnt di jendela jam tertentu. Tick menjawab < 1 dtk; scan jalan di thread.
 # Antrean + hasil disimpan per item (intai_setelan) → server tidur di tengah jalan = dilanjutkan tick berikutnya.
 JADWAL_KUNCI = (os.environ.get("JADWAL_KUNCI") or "").strip()   # opsional: bila diisi, tick wajib ?kunci=
+# v1.4.3: pemilik server (lihat panduan pemicu cron). Env INTAI_ADMIN boleh berisi beberapa email dipisah koma.
+ADMIN_DAFTAR = [e.strip().lower() for e in (os.environ.get("INTAI_ADMIN") or "eradaneen@gmail.com").split(",") if e.strip()]
+ADMIN_EMAIL = set(ADMIN_DAFTAR)
+
+
+def is_admin(email):
+    return bool(email) and str(email).strip().lower() in ADMIN_EMAIL
 WIB = timezone(timedelta(hours=7))
 NICHE_HARIAN_MAKS = 3    # v1.4: per akun
 JADWAL_BAWAAN = {"aktif": False, "niche": [], "pesaing": True}
@@ -3654,8 +3661,9 @@ def jadwal_ringkas(email):
 
 
 def jadwal_publik(email):
+    admin = is_admin(email)
     if not _muat_jadwal():
-        return {"ok": True, "siap": False}
+        return {"ok": True, "siap": False, "admin": admin}
     pesaing = _daftar_pesaing_ringkas(email)
     with kunci_jadwal:
         cfg, st = _cfg_akun(email), JADWAL["status"] or {}
@@ -3673,7 +3681,8 @@ def jadwal_publik(email):
     cfg_pub["jam"] = JADWAL["jam"]
     return {
         "ok": True, "siap": True, "cfg": cfg_pub, "niche_lebih": cfg.get("niche_lebih") or [],
-        "berjalan": berjalan, "kunci_wajib": bool(JADWAL_KUNCI), "jam_global": True,
+        "berjalan": berjalan, "kunci_wajib": bool(JADWAL_KUNCI) and admin, "jam_global": True,
+        "admin": admin,   # v1.4.3: panduan pemicu cron hanya untuk pemilik server
         "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"), "n_pesaing": len(pesaing),
         "niche_maks": NICHE_HARIAN_MAKS,
         "putaran": {"tanggal": st.get("tanggal") if milik else None, "pemicu": st.get("pemicu"),
@@ -4279,6 +4288,255 @@ def ekspor_ubah(email, d):
     return {"ok": False, "error": "aksi tidak dikenal"}
 
 
+# ---- v1.4.4: CS — kontak + tiket bantuan per akun ----
+# Disimpan di tabel intai_setelan yang sudah ada (kunci tiket:<email>) → TANPA SQL baru.
+# Admin (INTAI_ADMIN) melihat & membalas tiket semua akun.
+CS_TIKET_MAKS = 30          # per akun (yang selesai paling lama dibuang duluan)
+CS_TERBUKA_MAKS = 10        # tiket belum selesai per akun
+CS_PESAN_MAKS = 60          # pesan per tiket
+CS_TEKS_MAKS = 2000
+CS_KATEGORI = ["Akun & login", "Scan & data", "Scan otomatis", "Ekspor CSV", "Saran fitur", "Lainnya"]
+kunci_cs = threading.Lock()
+
+
+def cs_kontak():
+    """Kontak CS publik. Env: INTAI_CS_WA (nomor WA), INTAI_CS_EMAIL ('-' = sembunyikan). Bawaan email = admin pertama."""
+    wa = re.sub(r"\D", "", os.environ.get("INTAI_CS_WA") or "")
+    if wa.startswith("0"):
+        wa = "62" + wa[1:]
+    em = (os.environ.get("INTAI_CS_EMAIL") or "").strip()
+    if not em:
+        em = ADMIN_DAFTAR[0] if ADMIN_DAFTAR else ""
+    if em == "-" or "@" not in em:
+        em = ""
+    return {"wa": wa if 8 <= len(wa) <= 15 else "", "email": em}
+
+
+def _cs_teks(v, n=CS_TEKS_MAKS):
+    return str(v or "").replace("\r\n", "\n").replace("\r", "\n").strip()[:n]
+
+
+def _cs_daftar(email):
+    ok, v = setelan_baca("tiket:" + email)
+    return ok, [t for t in (v if isinstance(v, list) else []) if isinstance(t, dict) and t.get("id")]
+
+
+def _nama_akun(email):
+    with lock:
+        return (AKUN_DB.get(email) or {}).get("nama") or email
+
+
+def cs_baca(email):
+    admin = is_admin(email)
+    ok, milik = _cs_daftar(email)
+    hasil = {"ok": True, "siap": ok, "admin": admin, "kontak": cs_kontak(), "kategori": CS_KATEGORI,
+             "tiket": milik, "belum": sum(1 for t in milik if t.get("baca_user") is False)}
+    if admin:
+        ok2, peta = setelan_awalan("tiket:")
+        masuk = []
+        for k, v in (peta or {}).items():
+            pem = str(k)[len("tiket:"):]
+            nama = _nama_akun(pem)
+            for t in (v if isinstance(v, list) else []):
+                if isinstance(t, dict) and t.get("id"):
+                    masuk.append(dict(t, pemilik=pem, nama_pemilik=nama))
+        masuk.sort(key=lambda t: str(t.get("diperbarui") or ""), reverse=True)
+        hasil["masuk"] = masuk[:300]
+        hasil["masuk_belum"] = sum(1 for t in masuk if t.get("baca_admin") is False)
+    return hasil
+
+
+def cs_ubah(email, d):
+    aksi = str(d.get("aksi") or "")
+    admin = is_admin(email)
+    peran = "admin" if (admin and d.get("sebagai") == "admin") else "user"
+    pemilik = str(d.get("pemilik") or "").strip().lower() if peran == "admin" else email
+    if not pemilik:
+        return {"ok": False, "error": "pemilik tiket kosong"}
+    kini = _iso_kini()
+    with kunci_cs:   # bukan `lock` global → panggilan Supabase tidak menahan scan
+        ok, daftar = _cs_daftar(pemilik)
+        if not ok:
+            return {"ok": False, "error": "Penyimpanan tiket belum siap. Hubungi CS lewat WhatsApp/email dulu."}
+        if aksi == "baru":
+            if peran != "user":
+                return {"ok": False, "error": "Admin tidak membuat tiket atas nama akun lain"}
+            judul, teks = _cs_teks(d.get("judul"), 120), _cs_teks(d.get("teks"))
+            if len(judul) < 3 or len(teks) < 5:
+                return {"ok": False, "error": "Isi judul (min. 3 huruf) dan pesan (min. 5 huruf)"}
+            if sum(1 for t in daftar if t.get("status") != "selesai") >= CS_TERBUKA_MAKS:
+                return {"ok": False, "error": f"Maksimal {CS_TERBUKA_MAKS} tiket terbuka. Tandai selesai tiket lama dulu."}
+            kat = d.get("kategori") if d.get("kategori") in CS_KATEGORI else "Lainnya"
+            t = {"id": "t" + secrets.token_hex(5), "judul": judul, "kategori": kat, "status": "terbuka",
+                 "dibuat": kini, "diperbarui": kini, "baca_user": True, "baca_admin": False,
+                 "pesan": [{"dari": "user", "nama": _nama_akun(email), "teks": teks, "waktu": kini}]}
+            daftar.insert(0, t)
+            while len(daftar) > CS_TIKET_MAKS:
+                lama = [x for x in daftar if x.get("status") == "selesai"]
+                daftar.remove(lama[-1] if lama else daftar[-1])
+        else:
+            tid = str(d.get("id") or "")
+            t = next((x for x in daftar if x.get("id") == tid), None)
+            if not t:
+                return {"ok": False, "error": "Tiket tidak ditemukan"}
+            if aksi == "balas":
+                teks = _cs_teks(d.get("teks"))
+                if len(teks) < 1:
+                    return {"ok": False, "error": "Pesan kosong"}
+                if len(t.get("pesan") or []) >= CS_PESAN_MAKS:
+                    return {"ok": False, "error": "Percakapan tiket ini sudah panjang. Buat tiket baru."}
+                t.setdefault("pesan", []).append({"dari": peran, "nama": "CS INTAI" if peran == "admin" else _nama_akun(email),
+                                                  "teks": teks, "waktu": kini})
+                t["status"] = "dibalas" if peran == "admin" else "terbuka"
+                t["baca_user"], t["baca_admin"] = (False, True) if peran == "admin" else (True, False)
+                t["diperbarui"] = kini
+            elif aksi in ("selesai", "buka"):
+                t["status"] = "selesai" if aksi == "selesai" else "terbuka"
+                t["diperbarui"] = kini
+                t["baca_" + peran] = True
+            elif aksi == "baca":
+                if t.get("baca_" + peran) is not False:
+                    return {"ok": True, "tiket": t}   # sudah terbaca → tanpa tulis
+                t["baca_" + peran] = True
+            elif aksi == "hapus":
+                daftar = [x for x in daftar if x.get("id") != tid]
+                t = None
+            else:
+                return {"ok": False, "error": "aksi tidak dikenal"}
+        if not setelan_tulis("tiket:" + pemilik, daftar):
+            return {"ok": False, "error": "Gagal menyimpan tiket. Coba lagi sebentar."}
+    return {"ok": True, "tiket": t}
+
+
+# ---- v1.4.4: halaman Admin (akun, reset password, status sistem) + "Akun saya" (ubah nama / ganti password) ----
+def _simpan_akun(email):
+    """Tulis 1 akun dari AKUN_DB ke file lokal + Supabase (di luar `lock`)."""
+    with lock:
+        a = dict(AKUN_DB.get(email) or {})
+    if not a:
+        return False
+    simpan_data()
+    if supa_aktif():
+        ok, _ = supa("POST", "intai_akun", payload={"email": email, "nama": a.get("nama") or email, "hash": a.get("hash")},
+                     prefer="return=minimal,resolution=merge-duplicates")
+        return bool(ok)
+    return True
+
+
+def _nama_valid(nama):
+    nama = re.sub(r"\s+", " ", str(nama or "")).strip()[:60]
+    if len(nama) < 2:
+        return None, "Nama minimal 2 huruf"
+    if "@" in nama:
+        return None, "Nama tidak boleh berupa email"
+    return nama, ""
+
+
+def akun_ubah_sendiri(email, d):
+    aksi = str(d.get("aksi") or "")
+    if aksi == "nama":
+        nama, err = _nama_valid(d.get("nama"))
+        if not nama:
+            return {"ok": False, "error": err}
+        with lock:
+            if email not in AKUN_DB:
+                return {"ok": False, "error": "Akun tidak ditemukan"}
+            AKUN_DB[email]["nama"] = nama
+        if not _simpan_akun(email):
+            return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
+        return {"ok": True, "nama": nama}
+    if aksi == "password":
+        lama, baru = str(d.get("lama") or ""), str(d.get("baru") or "")
+        if len(baru) < 6:
+            return {"ok": False, "error": "Password baru minimal 6 karakter"}
+        with lock:
+            h = (AKUN_DB.get(email) or {}).get("hash")
+        if not cek_pw(lama, h)[0]:
+            return {"ok": False, "error": "Password lama salah"}
+        h_baru = hash_pw(baru)
+        with lock:
+            AKUN_DB[email]["hash"] = h_baru
+        if not _simpan_akun(email):
+            return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
+        return {"ok": True}
+    return {"ok": False, "error": "aksi tidak dikenal"}
+
+
+def admin_data():
+    _muat_jadwal()
+    with lock:
+        akun = [{"email": e, "nama": a.get("nama") or e} for e, a in AKUN_DB.items()]
+    cfgs = JADWAL["cfgs"] or {}
+    _, tiket = setelan_awalan("tiket:")
+    for a in akun:
+        c = cfgs.get(a["email"]) or {}
+        a["niche"] = list(c.get("niche") or []) if c.get("aktif") else []
+        tk = tiket.get("tiket:" + a["email"]) if isinstance(tiket, dict) else None
+        a["tiket_terbuka"] = sum(1 for t in (tk or []) if isinstance(t, dict) and t.get("status") != "selesai")
+        a["admin"] = is_admin(a["email"])
+    akun.sort(key=lambda a: (not a["admin"], a["nama"].lower()))
+    with kunci_jadwal:
+        st = dict(JADWAL["status"] or {})
+        t = JADWAL["thread"]
+        berjalan = bool(t and t.is_alive())
+        jam = JADWAL["jam"]
+    h = st.get("hasil") or {}
+    items = []
+    for it in st.get("antrian") or []:
+        r = h.get(it.get("k")) or {}
+        items.append({"nama": it.get("nama"), "mode": it.get("mode"), "akun": len(it.get("u") or []),
+                      "ok": r.get("ok"), "aktif": r.get("aktif"), "galat": r.get("galat") or "", "coba": r.get("coba", 0)})
+    try:
+        arsip = statistik_arsip()
+    except Exception:
+        arsip = {}
+    return {
+        "ok": True,
+        "akun": akun,
+        "sistem": {
+            "versi": VERSI, "supabase": supa_aktif(), "akun_siap": akun_siap(), "setelan_siap": setelan_siap(),
+            "admin": ADMIN_DAFTAR, "cs": cs_kontak(), "jam": jam, "kunci_wajib": bool(JADWAL_KUNCI),
+            "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"),
+            "arsip": {k: arsip.get(k) for k in ("iklan", "iklan_aktif", "pengiklan", "snapshot", "niche") if k in arsip},
+            "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"), "akhir": st.get("akhir"),
+                        "berjalan": berjalan, "total": len(items), "ok": sum(1 for i in items if i["ok"]),
+                        "gagal": sum(1 for i in items if i["ok"] is False and i["coba"] >= 2),
+                        "sisa": len(_sisa(st)) if st else 0, "items": items},
+        },
+    }
+
+
+_HURUF_PW = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+def admin_ubah(email_admin, d):
+    aksi = str(d.get("aksi") or "")
+    target = str(d.get("email") or "").strip().lower()
+    with lock:
+        ada = target in AKUN_DB
+    if not ada:
+        return {"ok": False, "error": "Akun tidak ditemukan"}
+    if aksi == "reset_pw":
+        pw = "".join(secrets.choice(_HURUF_PW) for _ in range(10))
+        h_baru = hash_pw(pw)
+        with lock:
+            AKUN_DB[target]["hash"] = h_baru
+        if not _simpan_akun(target):
+            return {"ok": False, "error": "Gagal menyimpan ke database. Password TIDAK berubah di Supabase; coba lagi."}
+        print(f"[INTAI ADMIN] {email_admin} mereset password {target}")
+        return {"ok": True, "password": pw, "email": target}
+    if aksi == "nama":
+        nama, err = _nama_valid(d.get("nama"))
+        if not nama:
+            return {"ok": False, "error": err}
+        with lock:
+            AKUN_DB[target]["nama"] = nama
+        if not _simpan_akun(target):
+            return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
+        return {"ok": True, "nama": nama}
+    return {"ok": False, "error": "aksi tidak dikenal"}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a):
         pass
@@ -4343,20 +4601,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri", "/ekspor") \
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri", "/ekspor", "/cs", "/admin") \
                 or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif not self.gerbang(u.path, ("/api/versi", "/api/me", "/api/jadwal/tick")):
             return
         elif u.path == "/api/versi":
-            self.tulis(200, json.dumps({"ok": True, "v": VERSI}), "application/json")
+            self.tulis(200, json.dumps({"ok": True, "v": VERSI, "cs": cs_kontak()}), "application/json")   # v1.4.4: kontak CS utk layar Masuk (lupa password)
         elif u.path == "/api/me":
             email = self.email_sesi() or baca_sesi(parse_qs(u.query).get("token", [""])[0])
             with lock:
                 akun = AKUN_DB.get(email) if email else None
             if akun:
                 self.tulis(200, json.dumps({"ok": True, "nama": akun["nama"], "email": email,
-                                            "akun_siap": akun_siap()}), "application/json")
+                                            "akun_siap": akun_siap(), "admin": is_admin(email)}), "application/json")
             else:
                 self.tulis(200, json.dumps({"ok": False}), "application/json")
         elif u.path == "/api/arsip":
@@ -4382,6 +4640,13 @@ class Handler(BaseHTTPRequestHandler):
             self.json_ok(bintang_baca(self.email))
         elif u.path == "/api/ekspor":
             self.json_ok(ekspor_baca(self.email))
+        elif u.path == "/api/cs":
+            self.json_ok(cs_baca(self.email))
+        elif u.path == "/api/admin":
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            else:
+                self.json_ok(admin_data())
         elif u.path == "/api/jadwal":
             self.tulis(200, json.dumps(jadwal_publik(self.email), ensure_ascii=False), "application/json")
         elif u.path == "/api/jadwal/tick":
@@ -4502,6 +4767,10 @@ class Handler(BaseHTTPRequestHandler):
             nama = str(d.get("nama") or "").strip()
             email = str(d.get("email") or "").strip().lower()
             pw = str(d.get("password") or "")
+            if "@" in nama:
+                self.tulis(200, json.dumps({"ok": False, "error": "Kolom Nama berisi email. Isi dengan nama kamu."}),
+                           "application/json")
+                return
             if not nama or len(pw) < 6 or "@" not in email or "." not in email.split("@")[-1]:
                 self.tulis(200, json.dumps({"ok": False, "error": "Data belum lengkap (password min. 6 karakter)"}),
                            "application/json")
@@ -4536,6 +4805,15 @@ class Handler(BaseHTTPRequestHandler):
             self.json_ok(bintang_tulis(self.email, self.baca_json().get("daftar")))
         elif u.path == "/api/ekspor":
             self.json_ok(ekspor_ubah(self.email, self.baca_json()))
+        elif u.path == "/api/cs":
+            self.json_ok(cs_ubah(self.email, self.baca_json()))
+        elif u.path == "/api/akun":
+            self.json_ok(akun_ubah_sendiri(self.email, self.baca_json()))
+        elif u.path == "/api/admin":
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            else:
+                self.json_ok(admin_ubah(self.email, self.baca_json()))
         elif u.path == "/api/logout":
             self.tulis(200, json.dumps({"ok": True}), "application/json", [self.cookie_sesi("", 0)])
         else:
