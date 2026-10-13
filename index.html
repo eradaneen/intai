@@ -1779,7 +1779,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
               <details><summary>Apakah dataku terlihat akun lain?</summary><div>Tidak. Riwayat scan, Pesaing Dipantau, ⭐ Pantauan, Ekspor CSV, dan jadwal scan otomatis hanya milik akunmu. <b>Galeri Iklan</b> dan <b>profil pengiklan</b> adalah arsip bersama karena isinya data publik dari Meta Ad Library.</div></details>
               <details><summary>Cara membuka file CSV di Excel atau Google Sheets?</summary><div>Buka menu <b>Ekspor CSV</b>. Pilih unduhan <b>Excel</b> (file <code>…_excel.csv</code>, klik dua kali) atau <b>Google Sheets</b> (File → Impor → Unggah file <code>…_sheets.csv</code>), atau tekan <b>Salin</b> lalu tempel di sel A1.</div></details>
               <details><summary>Kapan Scan Shopee &amp; TikTok tersedia?</summary><div>Masih disiapkan. Saat ini mesin yang aktif adalah Meta Ad Library.</div></details>
-              <details><summary>Lupa password?</summary><div>Belum ada reset otomatis. Di layar Masuk, ketuk <b>Lupa password? Hubungi CS</b>, lalu kirim pesan dari email yang terdaftar supaya CS bisa memastikan itu akunmu.</div></details>
+              <details><summary>Lupa password?</summary><div>Di layar Masuk, ketuk <b>Lupa password? Reset lewat email</b>, lalu isi email akunmu. Kami kirim tautan untuk membuat password baru (berlaku 30 menit, sekali pakai). Cek juga folder <b>Spam</b>. Email tidak sampai? Ketuk <b>Hubungi CS</b> di layar yang sama.</div></details>
             </div>
           </div>
         </div>
@@ -1960,7 +1960,7 @@ let TOKEN = LS.get("intai_token") || "";
 let AKUN = null;
 
 /* ===== v1.4: akun wajib — sesi dikirim di header setiap permintaan ke server INTAI ===== */
-const RUTE_PUBLIK = /^\/api\/(versi|me|login|register|logout)$/;
+const RUTE_PUBLIK = /^\/api\/(versi|me|login|register|logout|lupa|reset)$/;
 const _fetchAsli = window.fetch.bind(window);
 window.fetch = function(input, init){
   const url = typeof input === "string" ? input : ((input && input.url) || "");
@@ -2093,7 +2093,18 @@ function gantiTab(tab){
       '<label>Password</label><input type="password" id="f-pass" placeholder="••••••••" autocomplete="current-password">' +
       '<button class="btn" onclick="kirimMasuk()">MASUK</button>' +
       '<div class="tukar">Belum punya akun? <b onclick="gantiTab(\'daftar\')">Daftar</b></div>' +
-      '<div class="tukar" id="lupa-pw" style="margin-top:8px;font-weight:650">Lupa password? <b onclick="lupaPw()">Hubungi CS</b></div>';
+      '<div class="tukar" style="margin-top:8px;font-weight:650">Lupa password? <b onclick="gantiTab(\'lupa\')">Reset lewat email</b></div>';
+  } else if(tab === "lupa"){   /* v1.4.5 */
+    const em0 = ((document.getElementById("f-email") || {}).value || "").trim();
+    isi.innerHTML =
+      '<h2>Lupa password 🔑</h2><div class="sub">Masukkan email akunmu. Kami kirim tautan untuk membuat password baru.</div>' +
+      '<label>Email</label><input type="email" id="f-email" placeholder="nama@email.com" autocomplete="email" value="' + esc(em0) + '">' +
+      '<button class="btn" id="b-lupa" onclick="kirimLupa()">KIRIM TAUTAN RESET</button>' +
+      '<div class="tukar">Sudah ingat? <b onclick="gantiTab(\'masuk\')">Masuk</b></div>' +
+      '<div class="tukar" id="lupa-pw" style="margin-top:8px;font-weight:650">Email tidak sampai? <b onclick="lupaPw()">Hubungi CS</b></div>';
+  } else if(tab === "reset"){   /* v1.4.5: dari tautan email /reset?t=… */
+    isi.innerHTML = '<h2>Buat password baru 🔑</h2><div class="sub" id="rs-sub">Memeriksa tautan…</div><div id="rs-isi"></div>';
+    cekTautanReset();
   } else {
     isi.innerHTML =
       '<h2>Buat akun gratis 🎯</h2><div class="sub">Cukup email &amp; password — tanpa ribet.</div>' +
@@ -2104,11 +2115,73 @@ function gantiTab(tab){
       '<div class="tukar">Sudah punya akun? <b onclick="gantiTab(\'masuk\')">Masuk</b></div>';
   }
   document.getElementById("pesan-auth").textContent = "";
-  const enter = e => { if(e.key === "Enter"){ tab === "masuk" ? kirimMasuk() : kirimDaftar(); } };
+  const enter = e => { if(e.key === "Enter"){ tab === "masuk" ? kirimMasuk() : tab === "lupa" ? kirimLupa() : tab === "reset" ? kirimReset() : kirimDaftar(); } };
   ["f-email","f-pass","f-nama"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("keydown", enter); });
 }
 
 function pesan(t, ok){ const el = document.getElementById("pesan-auth"); if(el){ el.textContent = t; el.className = "pesan " + (ok ? "ok" : "bad"); } }
+
+/* ===== v1.4.5: lupa password lewat email ===== */
+var RESET_T = "";
+async function kirimLupa(){
+  const email = (document.getElementById("f-email").value || "").trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ pesan("Format email belum benar."); return; }
+  const b = document.getElementById("b-lupa"); if(b) b.disabled = true;
+  pesan("Mengirim…", true);
+  try{
+    const d = await (await fetch(API_BASE + "/api/lupa", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({email: email})})).json();
+    if(d && d.ok){
+      pesan("Kalau " + email + " terdaftar, tautan reset sudah dikirim. Cek kotak masuk dan folder Spam. Tautan berlaku " + (d.menit || 30) + " menit.", true);
+      if(b){ b.textContent = "KIRIM ULANG (tunggu 1 menit)"; setTimeout(function(){ if(document.body.contains(b)){ b.disabled = false; b.textContent = "KIRIM ULANG"; } }, 60000); }
+      return;
+    }
+    if(b) b.disabled = false;
+    pesan((d && d.error) || "Gagal mengirim.");
+    if(d && d.mail === false) lupaPw();   /* layanan email belum diatur → tampilkan kontak CS */
+  }catch(e){ if(b) b.disabled = false; pesan("Server tidak terhubung"); }
+}
+async function cekTautanReset(){
+  const sub = document.getElementById("rs-sub"), box = document.getElementById("rs-isi");
+  let d = null;
+  try{ d = await (await fetch(API_BASE + "/api/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({t: RESET_T, cek: true})})).json(); }catch(e){}
+  if(!sub || !box) return;
+  if(!d){ sub.textContent = "Server tidak terhubung. Muat ulang halaman ini sebentar lagi."; return; }
+  if(!d.ok){
+    const h2 = document.querySelector("#isi-auth h2"); if(h2) h2.textContent = "Tautan tidak berlaku";
+    sub.textContent = d.error || "Tautan tidak berlaku.";
+    box.innerHTML = '<button class="btn" onclick="gantiTab(\'lupa\')">MINTA TAUTAN BARU</button><div class="tukar"><b onclick="keluarReset()">Kembali ke Masuk</b></div>';
+    return;
+  }
+  sub.innerHTML = "untuk akun <b>" + esc(d.email) + "</b>";
+  box.innerHTML = '<label>Password baru (min. 6 karakter)</label><input type="password" id="f-pass" autocomplete="new-password" placeholder="••••••••">' +
+    '<label>Ulangi password baru</label><input type="password" id="f-pass2" autocomplete="new-password" placeholder="••••••••">' +
+    '<button class="btn" id="b-reset" onclick="kirimReset()">SIMPAN PASSWORD &amp; MASUK</button>' +
+    '<div class="tukar"><b onclick="keluarReset()">Batal</b></div>';
+  const enter = function(e){ if(e.key === "Enter") kirimReset(); };
+  ["f-pass", "f-pass2"].forEach(function(id){ const el = document.getElementById(id); if(el){ el.addEventListener("keydown", enter); } });
+  const f = document.getElementById("f-pass"); if(f) f.focus();
+}
+async function kirimReset(){
+  const a = (document.getElementById("f-pass") || {}).value || "", b2 = (document.getElementById("f-pass2") || {}).value || "";
+  if(a.length < 6){ pesan("Password minimal 6 karakter."); return; }
+  if(a !== b2){ pesan("Kedua password belum sama."); return; }
+  const b = document.getElementById("b-reset"); if(b) b.disabled = true;
+  pesan("Menyimpan…", true);
+  try{
+    const d = await (await fetch(API_BASE + "/api/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({t: RESET_T, password: a})})).json();
+    if(!d || !d.ok){ if(b) b.disabled = false; pesan((d && d.error) || "Gagal menyimpan."); return; }
+    TOKEN = d.token; LS.set("intai_token", TOKEN);
+    try{ sessionStorage.removeItem("intai_reset_t"); }catch(e){}
+    pesan("Password baru tersimpan ✓ membuka INTAI…", true);
+    try{ history.replaceState({v: "dashboard"}, "", "/dashboard"); }catch(e){}
+    location.reload();
+  }catch(e){ if(b) b.disabled = false; pesan("Server tidak terhubung"); }
+}
+function keluarReset(){
+  try{ sessionStorage.removeItem("intai_reset_t"); history.replaceState({v: "dashboard"}, "", "/dashboard"); }catch(e){}
+  if(TOKEN){ location.reload(); return; }
+  gantiTab("masuk");
+}
 
 async function kirimMasuk(){
   const email = document.getElementById("f-email").value.trim();
@@ -2154,6 +2227,16 @@ async function keluar(){
 }
 
 async function cekSesi(){
+  if(location.pathname.replace(/\/+$/, "") === "/reset"){   /* v1.4.5: tautan reset dari email */
+    let t = "";
+    try{ t = new URLSearchParams(location.search).get("t") || sessionStorage.getItem("intai_reset_t") || ""; }catch(e){}
+    try{ if(t){ sessionStorage.setItem("intai_reset_t", t); history.replaceState(null, "", "/reset"); } }catch(e){}   /* token tidak tertinggal di riwayat/Referer */
+    RESET_T = t;
+    document.documentElement.classList.add("intai-terkunci");
+    gambarAkun();
+    bukaAuth("reset", true);
+    return;
+  }
   if(!TOKEN){ gambarAkun(); kunciLayar(); return; }
   try{
     const r = await fetch(API_BASE + "/api/me");
@@ -4878,7 +4961,8 @@ function admGambarAkun(){
       '<div class="adm-ux"><b><i>' + esc(nm) + '</i>' + (a.admin ? '<span class="adm-pil">admin</span>' : '') + (nm.indexOf("@") >= 0 ? '<span class="adm-pil" style="background:#FFF1D6;color:#8A5A12" title="Nama berisi email">nama = email</span>' : '') + '</b>' +
       '<span>' + esc(meta.join(" · ")) + '</span></div>' +
       '<div class="adm-ua"><button class="cs-tb" data-e="' + esc(a.email) + '" data-n="' + esc(nm) + '" onclick="admNama(this.dataset.e, this.dataset.n)">Ubah nama</button>' +
-      '<button class="cs-tb cs-bahaya" data-e="' + esc(a.email) + '" onclick="admReset(this.dataset.e)">Reset password</button></div></div>';
+      '<button class="cs-tb" data-e="' + esc(a.email) + '" onclick="admKirimReset(this.dataset.e, this)" title="Kirim tautan buat password baru ke email pengguna">Kirim tautan reset</button>' +
+      '<button class="cs-tb cs-bahaya" data-e="' + esc(a.email) + '" onclick="admReset(this.dataset.e)" title="Buat password sementara (kirim sendiri ke pengguna)">Password sementara</button></div></div>';
   }).join("") : '<div class="pf-kosong">Tidak ada akun yang cocok.</div>';
 }
 function admR(k, v){ return '<div class="adm-r"><span>' + k + '</span><b>' + v + '</b></div>'; }
@@ -4896,6 +4980,15 @@ function admGambarSistem(){
     admR("Potret &amp; niche", a.snapshot != null ? esc(a.snapshot) + " potret · " + esc(a.niche || 0) + " niche" : "—") +
     admR("Admin", esc((s.admin || []).join(", "))) +
     admR("Kontak CS", (cs.wa ? "WA +" + esc(cs.wa) : '<span class="buruk">WA belum diatur</span> <small style="color:var(--faint)">(INTAI_CS_WA)</small>') + "<br>" + (cs.email ? esc(cs.email) : '<span class="buruk">email disembunyikan</span>'));
+  {   /* v1.4.5: layanan email reset password */
+    const em = s.email || {}, tr = em.terakhir || {};
+    const lay = em.layanan === "apps_script" ? '<span class="ok">✓ Google Apps Script</span>' + (em.kunci ? "" : ' <span class="buruk">· INTAI_MAIL_KUNCI kosong</span>')
+      : em.layanan === "brevo" ? '<span class="ok">✓ Brevo</span> <small style="color:var(--faint)">dari ' + esc(em.dari) + '</small>'
+      : '<span class="buruk">✗ belum diatur</span> <small style="color:var(--faint)">(INTAI_MAIL_URL + INTAI_MAIL_KUNCI)</small>';
+    const akhir = tr.t ? (tr.ok ? '<span class="ok">✓ terkirim ' + esc(tr.t.slice(5)) + '</span>' + (tr.sisa != null ? ' <small style="color:var(--faint)">· sisa kuota hari ini ' + esc(tr.sisa) + '</small>' : '')
+      : '<span class="buruk">✗ gagal ' + esc(tr.t.slice(5)) + '</span><br><small style="color:var(--faint)">' + esc(tr.galat || "") + '</small>') : '<small style="color:var(--faint)">belum ada sejak server menyala</small>';
+    document.getElementById("adm-server").innerHTML += admR("Email reset password", lay + "<br>" + akhir);
+  }
   document.getElementById("adm-pemicu").innerHTML = pemicuHTML(!!s.kunci_wajib, s.jam != null ? s.jam : 5);
   const p = s.putaran || {};
   document.getElementById("adm-put-tgl").textContent = p.tanggal ? trTglPendek(p.tanggal) + " · " + (p.pemicu === "manual" ? "manual" : "otomatis") : "belum pernah";
@@ -4926,6 +5019,16 @@ async function admNama(email, lama){
   if(!d) return;
   toast("✓ Nama " + esc(email) + " → <b>" + esc(d.nama) + "</b>");
   if(AKUN && AKUN.email === email){ AKUN.nama = d.nama; gambarAkun(); }
+  admMuat();
+}
+async function admKirimReset(email, btn){   /* v1.4.5 */
+  const em = ADM.d && ADM.d.sistem && ADM.d.sistem.email;
+  if(em && !em.layanan){ toast("⚠️ Layanan email belum diatur. Isi <b>INTAI_MAIL_URL</b> + <b>INTAI_MAIL_KUNCI</b> di Render (lihat Admin → Status sistem)."); return; }
+  if(!confirm("Kirim tautan reset password ke " + email + "?\n\nPassword lamanya TETAP berlaku sampai pengguna membuat password baru lewat tautan itu.")) return;
+  if(btn){ btn.disabled = true; btn.textContent = "Mengirim…"; }
+  const d = await admKirim({aksi: "kirim_reset", email: email});
+  if(btn){ btn.disabled = false; btn.textContent = "Kirim tautan reset"; }
+  if(d) toast("✓ Tautan reset terkirim ke <b>" + esc(email) + "</b> (berlaku " + (d.menit || 30) + " menit).");
   admMuat();
 }
 async function admReset(email){
@@ -5307,5 +5410,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a1230d1ba96d00',t:'MTc5MTkyMzc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a1ba1ad8d97d66',t:'MTc5MTkyOTk3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

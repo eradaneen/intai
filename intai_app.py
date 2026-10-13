@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.5"
+VERSI = "1.4.6"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -4496,6 +4496,8 @@ def admin_data():
         "sistem": {
             "versi": VERSI, "supabase": supa_aktif(), "akun_siap": akun_siap(), "setelan_siap": setelan_siap(),
             "admin": ADMIN_DAFTAR, "cs": cs_kontak(), "jam": jam, "kunci_wajib": bool(JADWAL_KUNCI),
+            "email": {"layanan": mail_layanan(), "kunci": bool(MAIL_KUNCI), "dari": MAIL_DARI if mail_layanan() == "brevo" else "",
+                      "terakhir": dict(MAIL_STATUS), "menit": RESET_MENIT},
             "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"),
             "arsip": {k: arsip.get(k) for k in ("iklan", "iklan_aktif", "pengiklan", "snapshot", "niche") if k in arsip},
             "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"), "akhir": st.get("akhir"),
@@ -4506,16 +4508,202 @@ def admin_data():
     }
 
 
+# ---- v1.4.5: lupa password lewat email ----
+# Render gratis memblokir SMTP (port 25/465/587) → email dikirim lewat HTTPS:
+#   1) Google Apps Script milik admin (INTAI_MAIL_URL + INTAI_MAIL_KUNCI) — terkirim asli dari Gmail admin, ±100 email/hari
+#   2) Brevo API (BREVO_API_KEY + INTAI_MAIL_DARI) — 300 email/hari; pengirim @gmail diganti Brevo jadi @brevosend.com
+# Token reset tanpa tabel baru: HMAC(email|kedaluwarsa|sidik hash password) → otomatis sekali pakai (hash berubah setelah dipakai).
+RESET_MENIT = 30
+MAIL_URL = (os.environ.get("INTAI_MAIL_URL") or "").strip()
+MAIL_KUNCI = (os.environ.get("INTAI_MAIL_KUNCI") or "").strip()
+BREVO_KEY = (os.environ.get("BREVO_API_KEY") or "").strip()
+MAIL_DARI = (os.environ.get("INTAI_MAIL_DARI") or "").strip()
+MAIL_STATUS = {"t": None, "ok": None, "galat": "", "sisa": None}
+_kunci_lupa = threading.Lock()
+LUPA_JEJAK = {}   # "e:<email>" / "i:<ip>" -> [waktu]
+
+
+def mail_layanan():
+    if MAIL_URL.startswith("https://script.google.com/"):
+        return "apps_script"
+    if BREVO_KEY and "@" in MAIL_DARI:
+        return "brevo"
+    return ""
+
+
+def kirim_email(ke, subjek, teks, html):
+    """(ok, galat). Tidak pernah melempar exception."""
+    lay = mail_layanan()
+    try:
+        if lay == "apps_script":
+            r = requests.post(MAIL_URL, json={"kunci": MAIL_KUNCI, "ke": ke, "subjek": subjek, "teks": teks, "html": html},
+                              timeout=25, allow_redirects=True)
+            try:
+                d = r.json()
+            except Exception:
+                d = {}
+            ok, galat = bool(d.get("ok")), str(d.get("error") or ("" if d else f"HTTP {r.status_code} (bukan JSON - cek akses Web App = Anyone)"))
+            if ok:
+                MAIL_STATUS["sisa"] = d.get("sisa")
+        elif lay == "brevo":
+            r = requests.post("https://api.brevo.com/v3/smtp/email", timeout=25,
+                              headers={"api-key": BREVO_KEY, "accept": "application/json", "content-type": "application/json"},
+                              json={"sender": {"name": "INTAI", "email": MAIL_DARI}, "to": [{"email": ke}],
+                                    "subject": subjek, "textContent": teks, "htmlContent": html})
+            ok, galat = r.status_code in (200, 201, 202), ("" if r.status_code in (200, 201, 202) else f"Brevo HTTP {r.status_code}: {r.text[:160]}")
+        else:
+            ok, galat = False, "Layanan email belum diatur"
+    except Exception as e:
+        ok, galat = False, str(e)[:200]
+    MAIL_STATUS.update({"t": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"), "ok": ok, "galat": galat[:200]})
+    if not ok:
+        print(f"[INTAI EMAIL] gagal ke {ke}: {galat}")
+    return ok, galat
+
+
+def _sidik_pw(email):
+    with lock:
+        h = str((AKUN_DB.get(email) or {}).get("hash") or "")
+    return hashlib.sha256(("sidik|" + h).encode("utf-8")).hexdigest()[:16] if h else ""
+
+
+def _ttd_reset(isi, sidik):
+    return hmac.new(SESI_RAHASIA, ("reset|" + isi + "|" + sidik).encode("utf-8"), hashlib.sha256).hexdigest()[:40]
+
+
+def buat_token_reset(email):
+    isi = _b64u(email.encode("utf-8")) + "." + str(int(time.time()) + RESET_MENIT * 60)
+    return "r1." + isi + "." + _ttd_reset(isi, _sidik_pw(email))
+
+
+def baca_token_reset(tok):
+    """(email, '') bila sah · (None, alasan) bila tidak."""
+    try:
+        tok = str(tok or "").strip()
+        if not tok.startswith("r1."):
+            return None, "Tautan reset tidak sah."
+        _, b, exp, sig = tok.split(".", 3)
+        email = base64.urlsafe_b64decode(b + "=" * (-len(b) % 4)).decode("utf-8")
+        sidik = _sidik_pw(email)
+        if not sidik or not hmac.compare_digest(sig, _ttd_reset(b + "." + exp, sidik)):
+            return None, "Tautan reset sudah dipakai atau tidak sah. Minta tautan baru."
+        if int(exp) < time.time():
+            return None, f"Tautan reset sudah kedaluwarsa (berlaku {RESET_MENIT} menit). Minta tautan baru."
+        return email, ""
+    except Exception:
+        return None, "Tautan reset tidak sah."
+
+
+def _samarkan(email):
+    a, _, b = email.partition("@")
+    return (a[:2] + "•" * max(1, min(6, len(a) - 2)) + "@" + b) if b else email
+
+
+def _boleh_lupa(kunci, maks, detik):
+    now = time.time()
+    with _kunci_lupa:
+        j = [t for t in LUPA_JEJAK.get(kunci, []) if now - t < detik]
+        if len(j) >= maks:
+            LUPA_JEJAK[kunci] = j
+            return False
+        j.append(now)
+        LUPA_JEJAK[kunci] = j
+        if len(LUPA_JEJAK) > 5000:
+            for k in list(LUPA_JEJAK)[:2500]:
+                LUPA_JEJAK.pop(k, None)
+        return True
+
+
+def email_reset(email, basis):
+    with lock:
+        nama = (AKUN_DB.get(email) or {}).get("nama") or "Pengguna INTAI"
+    link = basis.rstrip("/") + "/reset?t=" + buat_token_reset(email)
+    teks = (f"Halo {nama},\n\nAda permintaan reset password untuk akun INTAI {email}.\n"
+            f"Buka tautan ini untuk membuat password baru (berlaku {RESET_MENIT} menit, sekali pakai):\n{link}\n\n"
+            "Kalau bukan kamu yang meminta, abaikan email ini. Password kamu tidak berubah.\n\nINTAI · Intelijen Jualan")
+    from html import escape as _e
+    html = ('<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:auto;color:#051F20">'
+            '<div style="background:#0B2B26;color:#DAF1DE;padding:16px 20px;border-radius:14px 14px 0 0;font-weight:800;font-size:18px">◆ INTAI</div>'
+            '<div style="border:1px solid #8EB69B;border-top:0;border-radius:0 0 14px 14px;padding:20px">'
+            f'<p>Halo <b>{_e(nama)}</b>,</p><p>Ada permintaan reset password untuk akun INTAI <b>{_e(email)}</b>.</p>'
+            f'<p style="text-align:center;margin:24px 0"><a href="{_e(link)}" style="background:#235347;color:#fff;text-decoration:none;'
+            'padding:12px 22px;border-radius:999px;font-weight:800;display:inline-block">Buat password baru</a></p>'
+            f'<p style="font-size:13px;color:#235347">Tautan berlaku {RESET_MENIT} menit dan hanya bisa dipakai sekali. '
+            'Kalau bukan kamu yang meminta, abaikan email ini. Password kamu tidak berubah.</p>'
+            f'<p style="font-size:12px;color:#7a8f86;word-break:break-all">Tombol tidak bisa diklik? Salin alamat ini: {_e(link)}</p>'
+            '</div></div>')
+    return kirim_email(email, "Reset password INTAI", teks, html)
+
+
+def lupa_password(email, ip, basis):
+    """Jawaban SELALU sama apakah email terdaftar atau tidak (cegah tebak-tebakan akun). Email dikirim di latar."""
+    if not mail_layanan():
+        return {"ok": False, "mail": False, "error": "Reset lewat email belum diaktifkan. Hubungi CS."}
+    email = str(email or "").strip().lower()
+    if "@" not in email:
+        return {"ok": False, "mail": True, "error": "Format email belum benar."}
+    if not _boleh_lupa("i:" + ip, 10, 3600):
+        return {"ok": False, "mail": True, "error": "Terlalu banyak permintaan. Coba lagi 1 jam lagi."}
+    with lock:
+        ada = email in AKUN_DB
+    if ada and _boleh_lupa("e1:" + email, 1, 60) and _boleh_lupa("e:" + email, 4, 3600):
+        threading.Thread(target=email_reset, args=(email, basis), daemon=True, name="email-reset").start()
+    return {"ok": True, "mail": True, "menit": RESET_MENIT}
+
+
+def reset_dengan_token(tok, pw_baru):
+    email, alasan = baca_token_reset(tok)
+    if not email:
+        return {"ok": False, "error": alasan}
+    if len(str(pw_baru or "")) < 6:
+        return {"ok": False, "error": "Password baru minimal 6 karakter"}
+    h_baru = hash_pw(str(pw_baru))
+    with lock:
+        if email not in AKUN_DB:
+            return {"ok": False, "error": "Akun tidak ditemukan"}
+        h_lama = AKUN_DB[email].get("hash")
+        AKUN_DB[email]["hash"] = h_baru
+    if not _simpan_akun(email):
+        with lock:
+            AKUN_DB[email]["hash"] = h_lama
+        return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
+    print(f"[INTAI] password {email} diganti lewat tautan email")
+    with lock:
+        nama = AKUN_DB[email].get("nama") or email
+    return {"ok": True, "email": email, "nama": nama}
+
+
+def basis_url(handler):
+    """Alamat publik utk tautan email. Tidak memakai header Host mentah di server publik (cegah tautan palsu)."""
+    for k in ("INTAI_URL", "RENDER_EXTERNAL_URL"):
+        v = (os.environ.get(k) or "").strip()
+        if v.startswith("http"):
+            return v.rstrip("/")
+    host = str(handler.headers.get("Host") or "").strip()
+    if re.fullmatch(r"(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d{1,5})?", host) or re.fullmatch(r"[a-z0-9-]+\.onrender\.com", host) \
+            or re.fullmatch(r"\d{2,5}-[a-z0-9]+\.e2b\.app", host):
+        return ("https://" if not host.startswith(("localhost", "127.", "0.0.0.0")) else "http://") + host
+    return "http://localhost:" + str(PORT)
+
+
 _HURUF_PW = "abcdefghjkmnpqrstuvwxyz23456789"
 
 
-def admin_ubah(email_admin, d):
+def admin_ubah(email_admin, d, basis=""):
     aksi = str(d.get("aksi") or "")
     target = str(d.get("email") or "").strip().lower()
     with lock:
         ada = target in AKUN_DB
     if not ada:
         return {"ok": False, "error": "Akun tidak ditemukan"}
+    if aksi == "kirim_reset":
+        if not mail_layanan():
+            return {"ok": False, "error": "Layanan email belum diatur (INTAI_MAIL_URL / BREVO_API_KEY di Render)."}
+        ok, galat = email_reset(target, basis)
+        if not ok:
+            return {"ok": False, "error": "Email gagal terkirim: " + galat}
+        print(f"[INTAI ADMIN] {email_admin} mengirim tautan reset ke {target}")
+        return {"ok": True, "email": target, "menit": RESET_MENIT}
     if aksi == "reset_pw":
         pw = "".join(secrets.choice(_HURUF_PW) for _ in range(10))
         h_baru = hash_pw(pw)
@@ -4601,7 +4789,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri", "/ekspor", "/cs", "/admin") \
+        if u.path in ("/", "/index.html", "/dashboard", "/meta", "/shopee", "/tiktok", "/pesaing", "/tren", "/galeri", "/ekspor", "/cs", "/admin", "/reset") \
                 or re.fullmatch(r"/pengiklan/\d{1,40}/?", u.path):
             self.tulis(200, muat_halaman(), "text/html; charset=utf-8")
         elif not self.gerbang(u.path, ("/api/versi", "/api/me", "/api/jadwal/tick")):
@@ -4735,7 +4923,30 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        if not self.gerbang(u.path, ("/api/login", "/api/register", "/api/logout")):
+        if not self.gerbang(u.path, ("/api/login", "/api/register", "/api/logout", "/api/lupa", "/api/reset")):
+            return
+        if u.path == "/api/lupa":   # v1.4.5
+            d = self.baca_json()
+            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
+            self.json_ok(lupa_password(d.get("email"), ip, basis_url(self)))
+            return
+        if u.path == "/api/reset":   # v1.4.5
+            d = self.baca_json()
+            if d.get("cek"):
+                em, alasan = baca_token_reset(d.get("t"))
+                self.json_ok({"ok": bool(em), "email": _samarkan(em) if em else "", "error": alasan})
+                return
+            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
+            if not _boleh_lupa("r:" + ip, 20, 3600):
+                self.json_ok({"ok": False, "error": "Terlalu banyak percobaan. Coba lagi nanti."})
+                return
+            h = reset_dengan_token(d.get("t"), d.get("password"))
+            if h.get("ok"):
+                tok = buat_sesi(h["email"])
+                self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": h["nama"], "email": h["email"]}),
+                           "application/json", [self.cookie_sesi(tok, SESI_HARI * 86400)])
+            else:
+                self.json_ok(h)
             return
         if u.path == "/api/login":
             d = self.baca_json()
@@ -4813,7 +5024,7 @@ class Handler(BaseHTTPRequestHandler):
             if not is_admin(self.email):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
             else:
-                self.json_ok(admin_ubah(self.email, self.baca_json()))
+                self.json_ok(admin_ubah(self.email, self.baca_json(), basis_url(self)))
         elif u.path == "/api/logout":
             self.tulis(200, json.dumps({"ok": True}), "application/json", [self.cookie_sesi("", 0)])
         else:
