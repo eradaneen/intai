@@ -34,7 +34,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.6"
+VERSI = "1.4.7"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -2151,6 +2151,203 @@ def status_iklan(umur, skor, jual=None):
     return "UJI"
 
 
+# ===================== v1.4.7: M7 Rekam jejak pengiklan =====================
+# Sumber: tab "Tentang" Meta Ad Library (data transparansi halaman, publik) → 🟢 asli Meta.
+# Diambil ON-DEMAND (saat profil dibuka / tombol di detail iklan), BUKAN saat scan → scan tidak melambat.
+# Cache: setelan "jejak:<pid>" 7 hari + memori; gagal dicache 20 menit supaya tidak membebani Meta.
+JEJAK_TTL = 7 * 86400
+JEJAK_DOC_ID = os.environ.get("INTAI_JEJAK_DOC", "26438337149177216")
+JEJAK_MEM = {}
+JEJAK_GAGAL = {}
+_jejak_sem = threading.BoundedSemaphore(2)
+_PAT_LSD = re.compile(r'"LSD",\[\],\{"token":"([^"]+)"')
+
+
+def _cari_kunci(o, kunci, kedalaman=0):
+    if kedalaman > 14:
+        return None
+    if isinstance(o, dict):
+        if kunci in o:
+            return o
+        for v in o.values():
+            r = _cari_kunci(v, kunci, kedalaman + 1)
+            if r is not None:
+                return r
+    elif isinstance(o, list):
+        for v in o:
+            r = _cari_kunci(v, kunci, kedalaman + 1)
+            if r is not None:
+                return r
+    return None
+
+
+def _jejak_ambil_meta(pid):
+    """1 halaman Ad Library (LSD + variabel) + 1 POST graphql tab Tentang → dict mentah."""
+    s = mesin.buka_sesi()
+    url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
+           f"&country=ID&view_all_page_id={pid}&search_type=page&media_type=all")
+    html = ambil_halaman_url(s, url)
+    m = _PAT_LSD.search(html or "")
+    if not m:
+        raise RuntimeError("token Meta tidak terbaca")
+    lsd = m.group(1)
+    vs = {}
+    i = html.find('"queryName":"AdLibraryFoundationRootQuery"')
+    j = html.rfind('"variables":', 0, i) if i > 0 else -1
+    if j > 0:
+        try:
+            vs = json.loads(html[j + 12:i].rstrip().rstrip(","))
+        except Exception:
+            vs = {}
+    if not vs:
+        vs = {"activeStatus": "all", "adType": "ALL", "audienceTimeframe": "LAST_7_DAYS", "bylines": [],
+              "collationToken": None, "contentLanguages": [], "countries": ["ID"], "country": "ID",
+              "deeplinkAdID": None, "isAudienceTab": False, "isLandingPage": False, "isTargetedCountry": False,
+              "hasDeeplinkAdID": False, "location": None, "mediaType": "all", "multiCountryFilterMode": None,
+              "pageIDs": [], "potentialReachInput": None, "publisherPlatforms": [], "regions": None,
+              "sessionID": secrets.token_hex(16), "source": None, "sortData": None, "startDate": None,
+              "fetchSharedDisclaimers": True}
+    vs.pop("v", None)
+    vs.update({"queryString": "", "searchType": "page", "viewAllPageID": pid, "activeStatus": "all",
+               "isAboutTab": True, "fetchPageInfo": True})
+    r = s.post("https://www.facebook.com/api/graphql/", timeout=30, data={
+        "lsd": lsd, "fb_api_caller_class": "RelayModern",
+        "fb_api_req_friendly_name": "AdLibraryFoundationRootQuery",
+        "variables": json.dumps(vs), "server_timestamps": "true", "doc_id": JEJAK_DOC_ID},
+        headers={"X-FB-LSD": lsd, "X-FB-Friendly-Name": "AdLibraryFoundationRootQuery",
+                 "Origin": "https://www.facebook.com", "Referer": url,
+                 "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "empty",
+                 "Content-Type": "application/x-www-form-urlencoded"})
+    if r.status_code != 200:
+        raise RuntimeError(f"Meta menjawab {r.status_code}")
+    halaman, info = None, None
+    for baris in r.text.splitlines():
+        baris = baris.strip()
+        if not baris.startswith("{"):
+            continue
+        try:
+            o = json.loads(baris)
+        except Exception:
+            continue
+        if halaman is None:
+            halaman = _cari_kunci(o, "pages_transparency_info")
+        if info is None:
+            pi = _cari_kunci(o, "page_verification")
+            if pi is not None and "ig_followers" in pi:
+                info = pi
+    if halaman is None:
+        raise RuntimeError("format Meta berubah (data transparansi tidak ada)")
+    return halaman, info or {}
+
+
+def _jejak_olah(pid, halaman, info):
+    now = time.time()
+    pti = halaman.get("pages_transparency_info") or {}
+    hist = [x for x in (pti.get("history_items") or []) if isinstance(x, dict)]
+    dibuat = None
+    ganti = []
+    for x in hist:
+        try:
+            t = int(x.get("event_time") or 0)
+        except Exception:
+            t = 0
+        if x.get("item_type") == "CREATION" and t:
+            dibuat = t if dibuat is None else min(dibuat, t)
+        elif x.get("item_type") == "NAME_CHANGE" and t:
+            ganti.append(t)
+    ganti.sort(reverse=True)
+    admin = []
+    for c in ((pti.get("admin_locations") or {}).get("admin_country_counts") or []):
+        try:
+            admin.append({"negara": str(((c.get("country") or {}).get("iso_name")) or "?"), "n": int(c.get("count") or 0)})
+        except Exception:
+            pass
+    admin.sort(key=lambda a: -a["n"])
+    pem = halaman.get("confirmed_page_owner")
+    if isinstance(pem, dict):
+        pem = pem.get("name") or pem.get("text") or "terkonfirmasi"
+    pem = str(pem) if pem else None
+    d = {
+        "pid": pid, "nama": halaman.get("name") or info.get("page_name"),
+        "dibuat": dibuat, "umur_hari": int((now - dibuat) // 86400) if dibuat else None,
+        "ganti_nama": ganti, "admin": admin, "pemilik": pem,
+        "tentang": ((halaman.get("about") or {}).get("text") or "")[:400],
+        "media_negara": pti.get("state_media_country_label"),
+        "verifikasi": info.get("page_verification"), "kategori": info.get("page_category"),
+        "likes": info.get("likes"), "ig_username": info.get("ig_username"),
+        "ig_followers": info.get("ig_followers"), "ig_verifikasi": info.get("ig_verification"),
+        "dihapus": bool(info.get("page_is_deleted")), "iklan_tersembunyi": info.get("hidden_ads"),
+    }
+    # tanda = interpretasi INTAI 🔵 dari fakta 🟢 di atas
+    t = []
+    u = d["umur_hari"]
+    if u is not None:
+        if u >= 730:
+            t.append({"j": "kuat", "t": f"Halaman berumur {u // 365} tahun — bukan halaman baru/sekali pakai."})
+        elif u < 90:
+            t.append({"j": "waspada", "t": f"Halaman baru dibuat ({u} hari lalu). Bisa pemain baru, bisa juga halaman cadangan/sekali pakai."})
+    n_g = len(ganti)
+    if n_g >= 3:
+        t.append({"j": "waspada", "t": f"Sudah ganti nama {n_g}×. Pola umum halaman yang dipakai ulang untuk produk berbeda."})
+    if ganti and now - ganti[0] < 30 * 86400:
+        t.append({"j": "waspada", "t": "Baru ganti nama dalam 30 hari terakhir."})
+    if not ganti and u is not None and u >= 365:
+        t.append({"j": "kuat", "t": "Tidak pernah ganti nama sejak dibuat — identitas merek konsisten."})
+    if pem:
+        t.append({"j": "kuat", "t": "Pemilik halaman terkonfirmasi Meta."})
+    if str(d["verifikasi"] or "") in ("BLUE_VERIFIED", "VERIFIED", "GRAY_VERIFIED"):
+        t.append({"j": "kuat", "t": "Halaman bercentang (terverifikasi)."})
+    asing = [a["negara"] for a in admin if a["negara"] not in ("Indonesia", "?")]
+    if asing:
+        t.append({"j": "info", "t": "Ada admin di luar Indonesia: " + ", ".join(asing[:4]) + "."})
+    tot = sum(a["n"] for a in admin)
+    if tot >= 10:
+        t.append({"j": "info", "t": f"Dikelola {tot} admin — kemungkinan tim/agensi, bukan perorangan."})
+    if d["dihapus"]:
+        t.append({"j": "waspada", "t": "Meta menandai halaman ini sudah dihapus."})
+    d["tanda"] = t
+    return d
+
+
+def jejak_pengiklan(pid, segar=False):
+    pid = re.sub(r"\D", "", str(pid or ""))[:20]
+    if not pid:
+        return {"ok": False, "error": "ID halaman tidak valid"}
+    now = time.time()
+    if not segar:
+        c = JEJAK_MEM.get(pid)
+        if not c:
+            ok, v = setelan_baca("jejak:" + pid)
+            if ok and isinstance(v, dict) and v.get("data"):
+                c = v
+                JEJAK_MEM[pid] = c
+        if c and now - float(c.get("t") or 0) < JEJAK_TTL:
+            return {"ok": True, "cache": True, "diambil": c["t"], "data": c["data"]}
+    g = JEJAK_GAGAL.get(pid)
+    if g and now - g[0] < 1200:
+        return {"ok": False, "error": g[1] + " (coba lagi beberapa menit lagi)"}
+    if not _jejak_sem.acquire(timeout=25):
+        return {"ok": False, "error": "INTAI sedang mengambil data lain. Coba lagi sebentar."}
+    try:
+        halaman, info = _jejak_ambil_meta(pid)
+        data = _jejak_olah(pid, halaman, info)
+    except Exception as e:
+        msg = str(e)[:140] or e.__class__.__name__
+        JEJAK_GAGAL[pid] = (now, "Rekam jejak tidak terbaca dari Meta: " + msg)
+        print(f"[INTAI] jejak {pid} gagal: {msg}")
+        return {"ok": False, "error": JEJAK_GAGAL[pid][1]}
+    finally:
+        _jejak_sem.release()
+    JEJAK_GAGAL.pop(pid, None)
+    c = {"t": int(now), "data": data}
+    JEJAK_MEM[pid] = c
+    if len(JEJAK_MEM) > 800:
+        for k in sorted(JEJAK_MEM, key=lambda k: JEJAK_MEM[k]["t"])[:200]:
+            JEJAK_MEM.pop(k, None)
+    setelan_tulis("jejak:" + pid, c)
+    return {"ok": True, "cache": False, "diambil": c["t"], "data": data}
+
+
 def jalankan_scan(nilai, mode="cari", pemilik=None):
     """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
     s = mesin.buka_sesi()
@@ -4147,28 +4344,75 @@ def _b64u(b):
     return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
 
+# v1.4.7: sesi "s2" diikat ke (a) sidik hash password dan (b) nomor "angkatan" sesi per akun.
+#   Ganti password → semua sesi lama putus. "Keluarkan semua perangkat" → angkatan naik → semua sesi lama putus.
+#   Angkatan disimpan di setelan "sesi:<email>" {"e": n} + cache memori (dibaca sekali saat pertama dipakai).
+#   Token format lama "s1" tidak diterima lagi → semua pengguna masuk ulang sekali setelah versi ini.
+SESI_EPOCH = {}
+_epoch_muat = {"ok": False, "t": 0.0}
+_kunci_epoch = threading.Lock()
+
+
+def _muat_epoch():
+    if _epoch_muat["ok"] or time.time() - _epoch_muat["t"] < 30:
+        return
+    with _kunci_epoch:
+        if _epoch_muat["ok"]:
+            return
+        _epoch_muat["t"] = time.time()
+        ok, semua = setelan_awalan("sesi:")
+        if ok:
+            for k, v in (semua or {}).items():
+                try:
+                    SESI_EPOCH[str(k)[5:]] = int((v or {}).get("e") or 0)
+                except Exception:
+                    pass
+            _epoch_muat["ok"] = True
+
+
+def _sidik_hash(h):
+    return hashlib.sha256(("sidik|" + str(h or "")).encode("utf-8")).hexdigest()[:16] if h else ""
+
+
+def _ttd_sesi(isi, h, epoch):
+    return hmac.new(SESI_RAHASIA, ("s2|" + isi + "|" + _sidik_hash(h) + "|" + str(epoch)).encode("utf-8"), hashlib.sha256).hexdigest()[:48]
+
+
 def buat_sesi(email):
+    _muat_epoch()
+    with lock:
+        h = (AKUN_DB.get(email) or {}).get("hash")
     isi = _b64u(email.encode("utf-8")) + "." + str(int(time.time()) + SESI_HARI * 86400)
-    return "s1." + isi + "." + hmac.new(SESI_RAHASIA, isi.encode("ascii"), hashlib.sha256).hexdigest()[:48]
+    return "s2." + isi + "." + _ttd_sesi(isi, h, SESI_EPOCH.get(email, 0))
 
 
 def baca_sesi(tok):
-    """email bila token sah, belum kedaluwarsa, dan akunnya masih ada — selain itu None."""
+    """email bila token sah, belum kedaluwarsa, akunnya masih ada, password & angkatan sesi belum berubah — selain itu None."""
     try:
         tok = str(tok or "").strip()
-        if not tok.startswith("s1."):
+        if not tok.startswith("s2."):
             return None
         _, b, exp, sig = tok.split(".", 3)
-        isi = b + "." + exp
-        if not hmac.compare_digest(sig, hmac.new(SESI_RAHASIA, isi.encode("ascii"), hashlib.sha256).hexdigest()[:48]):
-            return None
         if int(exp) < time.time():
             return None
         email = base64.urlsafe_b64decode(b + "=" * (-len(b) % 4)).decode("utf-8")
+        _muat_epoch()
         with lock:
-            return email if email in AKUN_DB else None
+            a = AKUN_DB.get(email)
+            h = a.get("hash") if a else None
+        if not a:
+            return None
+        return email if hmac.compare_digest(sig, _ttd_sesi(b + "." + exp, h, SESI_EPOCH.get(email, 0))) else None
     except Exception:
         return None
+
+
+def putus_semua_sesi(email):
+    """Naikkan angkatan sesi → semua token lama akun ini tidak berlaku. Return True bila tersimpan permanen."""
+    _muat_epoch()
+    e = max(int(time.time()), SESI_EPOCH.get(email, 0) + 1)
+    SESI_EPOCH[email] = e
+    return setelan_tulis("sesi:" + email, {"e": e})
 
 
 AKUN_SIAP = {"v": None, "t": 0.0}
@@ -4458,7 +4702,10 @@ def akun_ubah_sendiri(email, d):
             AKUN_DB[email]["hash"] = h_baru
         if not _simpan_akun(email):
             return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
-        return {"ok": True}
+        return {"ok": True, "token": buat_sesi(email)}   # v1.4.7: perangkat ini tetap masuk, perangkat lain putus
+    if aksi == "keluar_semua":   # v1.4.7
+        tetap = putus_semua_sesi(email)
+        return {"ok": True, "token": buat_sesi(email), "permanen": tetap}
     return {"ok": False, "error": "aksi tidak dikenal"}
 
 
@@ -4594,6 +4841,64 @@ def baca_token_reset(tok):
         return None, "Tautan reset tidak sah."
 
 
+# ---- v1.4.7: kode 6 angka di email (tetap bisa dipakai walau Gmail mematikan tautan di folder Spam) ----
+# Disimpan di setelan "resetkode:<email>" (tahan server tidur/restart); cadangan memori bila tabel setelan belum siap.
+KODE_MAKS_SALAH = 5
+KODE_MEM = {}
+
+
+def _kode_hash(email, kode):
+    return hmac.new(SESI_RAHASIA, ("kode|" + email + "|" + kode).encode("utf-8"), hashlib.sha256).hexdigest()[:40]
+
+
+def _kode_simpan(email, v):
+    if setelan_tulis("resetkode:" + email, v):
+        KODE_MEM.pop(email, None)
+    else:
+        KODE_MEM[email] = v
+
+
+def _kode_baca(email):
+    ok, v = setelan_baca("resetkode:" + email)
+    if ok and isinstance(v, dict) and v.get("h"):
+        return v
+    v = KODE_MEM.get(email)
+    return v if isinstance(v, dict) and v.get("h") else None
+
+
+def buat_kode_reset(email):
+    """Satu kode aktif per akun; permintaan baru menggantikan kode lama."""
+    kode = f"{secrets.randbelow(10 ** 6):06d}"
+    _kode_simpan(email, {"h": _kode_hash(email, kode), "exp": int(time.time()) + RESET_MENIT * 60,
+                         "sidik": _sidik_pw(email), "salah": 0})
+    return kode
+
+
+def cek_kode_reset(email, kode):
+    """(email, '') bila kode benar · (None, alasan). Tiap kode salah dihitung; 5x salah → kode hangus."""
+    email = str(email or "").strip().lower()
+    kode = re.sub(r"\D", "", str(kode or ""))
+    if len(kode) != 6:
+        return None, "Kode berisi 6 angka."
+    salah_umum = "Kode salah atau sudah tidak berlaku. Periksa lagi, atau minta kode baru."
+    v = _kode_baca(email)
+    if not v:
+        return None, salah_umum
+    if int(v.get("exp") or 0) < time.time():
+        return None, f"Kode sudah kedaluwarsa (berlaku {RESET_MENIT} menit). Minta kode baru."
+    if v.get("sidik") != _sidik_pw(email):
+        return None, "Kode sudah dipakai. Minta kode baru bila perlu."
+    if int(v.get("salah") or 0) >= KODE_MAKS_SALAH:
+        return None, f"Kode salah {KODE_MAKS_SALAH} kali. Demi keamanan, minta kode baru."
+    if not hmac.compare_digest(str(v.get("h") or ""), _kode_hash(email, kode)):
+        v["salah"] = int(v.get("salah") or 0) + 1
+        _kode_simpan(email, v)
+        if v["salah"] >= KODE_MAKS_SALAH:
+            return None, f"Kode salah {KODE_MAKS_SALAH} kali. Demi keamanan, minta kode baru."
+        return None, salah_umum
+    return email, ""
+
+
 def _samarkan(email):
     a, _, b = email.partition("@")
     return (a[:2] + "•" * max(1, min(6, len(a) - 2)) + "@" + b) if b else email
@@ -4618,21 +4923,32 @@ def email_reset(email, basis):
     with lock:
         nama = (AKUN_DB.get(email) or {}).get("nama") or "Pengguna INTAI"
     link = basis.rstrip("/") + "/reset?t=" + buat_token_reset(email)
-    teks = (f"Halo {nama},\n\nAda permintaan reset password untuk akun INTAI {email}.\n"
-            f"Buka tautan ini untuk membuat password baru (berlaku {RESET_MENIT} menit, sekali pakai):\n{link}\n\n"
+    kode = buat_kode_reset(email)
+    kode_tampil = kode[:3] + " " + kode[3:]
+    teks = (f"Halo {nama},\n\nAda permintaan reset password untuk akun INTAI {email}.\n\n"
+            f"KODE RESET: {kode_tampil}\n"
+            "Ketik kode ini di layar Lupa password INTAI.\n\n"
+            f"Atau buka tautan ini (berlaku {RESET_MENIT} menit, sekali pakai):\n{link}\n\n"
+            "Email ini masuk folder Spam? Tautan dimatikan Gmail di sana. Pakai kodenya, atau tekan 'Bukan spam'.\n\n"
             "Kalau bukan kamu yang meminta, abaikan email ini. Password kamu tidak berubah.\n\nINTAI · Intelijen Jualan")
     from html import escape as _e
     html = ('<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:auto;color:#051F20">'
             '<div style="background:#0B2B26;color:#DAF1DE;padding:16px 20px;border-radius:14px 14px 0 0;font-weight:800;font-size:18px">◆ INTAI</div>'
             '<div style="border:1px solid #8EB69B;border-top:0;border-radius:0 0 14px 14px;padding:20px">'
             f'<p>Halo <b>{_e(nama)}</b>,</p><p>Ada permintaan reset password untuk akun INTAI <b>{_e(email)}</b>.</p>'
-            f'<p style="text-align:center;margin:24px 0"><a href="{_e(link)}" style="background:#235347;color:#fff;text-decoration:none;'
+            '<p style="margin:18px 0 6px;font-size:13px;color:#235347;text-align:center">Kode reset (ketik di layar <b>Lupa password</b> INTAI)</p>'
+            f'<div style="text-align:center;font-family:Consolas,Menlo,monospace;font-size:32px;font-weight:800;letter-spacing:6px;'
+            f'background:#EEF7F0;border:1px dashed #8EB69B;border-radius:12px;padding:12px;color:#051F20">{_e(kode_tampil)}</div>'
+            '<p style="text-align:center;font-size:13px;color:#7a8f86;margin:16px 0 0">atau</p>'
+            f'<p style="text-align:center;margin:12px 0 24px"><a href="{_e(link)}" style="background:#235347;color:#fff;text-decoration:none;'
             'padding:12px 22px;border-radius:999px;font-weight:800;display:inline-block">Buat password baru</a></p>'
             f'<p style="font-size:13px;color:#235347">Tautan berlaku {RESET_MENIT} menit dan hanya bisa dipakai sekali. '
             'Kalau bukan kamu yang meminta, abaikan email ini. Password kamu tidak berubah.</p>'
+            '<p style="font-size:12px;color:#8A5A12;background:#FFF6E5;border-radius:8px;padding:8px 10px">Email ini ada di folder <b>Spam</b>? '
+            'Gmail mematikan tombol di sana. Pakai <b>kode</b> di atas, atau tekan <b>Bukan spam</b> supaya tombolnya aktif.</p>'
             f'<p style="font-size:12px;color:#7a8f86;word-break:break-all">Tombol tidak bisa diklik? Salin alamat ini: {_e(link)}</p>'
             '</div></div>')
-    return kirim_email(email, "Reset password INTAI", teks, html)
+    return kirim_email(email, "Kode reset password INTAI: " + kode_tampil, teks, html)
 
 
 def lupa_password(email, ip, basis):
@@ -4651,8 +4967,11 @@ def lupa_password(email, ip, basis):
     return {"ok": True, "mail": True, "menit": RESET_MENIT}
 
 
-def reset_dengan_token(tok, pw_baru):
-    email, alasan = baca_token_reset(tok)
+def reset_dengan_token(tok, pw_baru, email_kode=None):
+    if email_kode:
+        email, alasan = cek_kode_reset(email_kode[0], email_kode[1])
+    else:
+        email, alasan = baca_token_reset(tok)
     if not email:
         return {"ok": False, "error": alasan}
     if len(str(pw_baru or "")) < 6:
@@ -4667,7 +4986,9 @@ def reset_dengan_token(tok, pw_baru):
         with lock:
             AKUN_DB[email]["hash"] = h_lama
         return {"ok": False, "error": "Gagal menyimpan ke database. Coba lagi."}
-    print(f"[INTAI] password {email} diganti lewat tautan email")
+    if email_kode:
+        _kode_simpan(email, {})
+    print(f"[INTAI] password {email} diganti lewat {'kode' if email_kode else 'tautan'} email")
     with lock:
         nama = AKUN_DB[email].get("nama") or email
     return {"ok": True, "email": email, "nama": nama}
@@ -4696,6 +5017,10 @@ def admin_ubah(email_admin, d, basis=""):
         ada = target in AKUN_DB
     if not ada:
         return {"ok": False, "error": "Akun tidak ditemukan"}
+    if aksi == "putus_sesi":   # v1.4.7
+        tetap = putus_semua_sesi(target)
+        print(f"[INTAI ADMIN] {email_admin} mengeluarkan {target} dari semua perangkat")
+        return {"ok": True, "email": target, "permanen": tetap}
     if aksi == "kirim_reset":
         if not mail_layanan():
             return {"ok": False, "error": "Layanan email belum diatur (INTAI_MAIL_URL / BREVO_API_KEY di Render)."}
@@ -4816,6 +5141,9 @@ class Handler(BaseHTTPRequestHandler):
             self.json_ok(d)
         elif u.path == "/api/arsip/status":
             self.tulis(200, json.dumps(dict(ARSIP_STATUS, ok=True), ensure_ascii=False), "application/json")
+        elif u.path == "/api/pengiklan/jejak":   # v1.4.7 M7
+            q = parse_qs(u.query)
+            self.json_ok(jejak_pengiklan(q.get("id", [""])[0], q.get("segar", [""])[0] == "1"))
         elif u.path == "/api/pengiklan":
             pid = parse_qs(u.query).get("id", [""])[0]
             self.tulis(200, json.dumps(profil_pengiklan(pid, self.email), ensure_ascii=False), "application/json")
@@ -4932,15 +5260,19 @@ class Handler(BaseHTTPRequestHandler):
             return
         if u.path == "/api/reset":   # v1.4.5
             d = self.baca_json()
+            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
+            pakai_kode = bool(d.get("kode"))
+            if (pakai_kode or not d.get("cek")) and not _boleh_lupa("r:" + ip, 20, 3600):
+                self.json_ok({"ok": False, "error": "Terlalu banyak percobaan. Coba lagi 1 jam lagi."})
+                return
             if d.get("cek"):
-                em, alasan = baca_token_reset(d.get("t"))
+                if pakai_kode:
+                    em, alasan = cek_kode_reset(d.get("email"), d.get("kode"))
+                else:
+                    em, alasan = baca_token_reset(d.get("t"))
                 self.json_ok({"ok": bool(em), "email": _samarkan(em) if em else "", "error": alasan})
                 return
-            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
-            if not _boleh_lupa("r:" + ip, 20, 3600):
-                self.json_ok({"ok": False, "error": "Terlalu banyak percobaan. Coba lagi nanti."})
-                return
-            h = reset_dengan_token(d.get("t"), d.get("password"))
+            h = reset_dengan_token(d.get("t"), d.get("password"), (d.get("email"), d.get("kode")) if pakai_kode else None)
             if h.get("ok"):
                 tok = buat_sesi(h["email"])
                 self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": h["nama"], "email": h["email"]}),
@@ -4956,7 +5288,6 @@ class Handler(BaseHTTPRequestHandler):
                 akun = dict(AKUN_DB.get(email) or {})
             oke, upgrade = cek_pw(pw, akun.get("hash")) if akun else (False, False)  # hashing di luar lock
             if oke:
-                tok = buat_sesi(email)
                 nama = akun["nama"]
                 if upgrade:  # akun v0.7 (sha256) → otomatis naik ke PBKDF2 saat login
                     h_baru = hash_pw(pw)
@@ -4967,6 +5298,7 @@ class Handler(BaseHTTPRequestHandler):
                     if supa_aktif():
                         supa("POST", "intai_akun", payload={"email": email, "nama": nama, "hash": h_baru},
                              prefer="return=minimal,resolution=merge-duplicates")
+                tok = buat_sesi(email)   # v1.4.7: SETELAH upgrade hash (token terikat ke hash)
             if oke:
                 self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                            "application/json", [self.cookie_sesi(tok, SESI_HARI * 86400)])
@@ -5019,7 +5351,11 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/cs":
             self.json_ok(cs_ubah(self.email, self.baca_json()))
         elif u.path == "/api/akun":
-            self.json_ok(akun_ubah_sendiri(self.email, self.baca_json()))
+            h = akun_ubah_sendiri(self.email, self.baca_json())
+            if h.get("token"):
+                self.tulis(200, json.dumps(h, ensure_ascii=False), "application/json", [self.cookie_sesi(h["token"], SESI_HARI * 86400)])
+            else:
+                self.json_ok(h)
         elif u.path == "/api/admin":
             if not is_admin(self.email):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")

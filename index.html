@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no, email=no, address=no, date=no">
 <title>INTAI — Dashboard Intelijen Jualan</title>
 <style>
@@ -185,6 +185,8 @@
     background:#fff;border:1px solid rgba(11,43,38,.13);box-shadow:none}
   .ov .modal input:focus{border-color:var(--g700);box-shadow:0 0 0 3px rgba(142,182,155,.35)}
   .ov .modal .btn{margin-top:14px;padding:11px;font-size:12px}
+  .ov .modal .btn.btn-garis{background:transparent;color:#163832;border:1.5px solid #8EB69B;box-shadow:none}
+  .ov .modal .btn.btn-garis:hover{background:#EEF7F0}
   .ov .modal .tukar{margin-top:10px;font-size:11px}
   .ov .modal .pesan{margin-top:6px;min-height:0}
   .ov .modal .pesan:empty{display:none}
@@ -392,6 +394,38 @@
   .hs-tahap{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
   .hs-tahap span{font-size:10.5px;font-weight:700;color:rgba(218,241,222,.6);padding:4px 10px;border-radius:999px;border:1px solid rgba(218,241,222,.12)}
   .hs-tahap span.kini{color:var(--g950);background:var(--g300);border-color:var(--g300)}
+/* v1.4.7 M7: Rekam jejak pengiklan */
+.jj-kartu{margin-bottom:14px}
+.jj-kepala{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.jj-kepala b{font-size:14px;color:#051F20}
+.jj-kepala .jj-src{font-size:9.5px;font-weight:800;color:var(--muted)}
+.jj-kepala .jj-segar{margin-left:auto;border:1px solid #CFE3D4;background:#fff;color:#235347;border-radius:999px;padding:4px 10px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer}
+.jj-kepala .jj-segar:disabled{opacity:.5;cursor:wait}
+.jj-fakta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.jj-f{background:#F6FBF7;border:1px solid #DCEBE0;border-radius:14px;padding:10px 12px;min-width:0}
+.jj-f .l{font-size:9.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#557069}
+.jj-f .v{font-size:17px;font-weight:900;color:#051F20;margin-top:3px;letter-spacing:-.3px;line-height:1.2;overflow-wrap:anywhere}
+.jj-f .v small{font-size:11px;font-weight:700;color:#557069;letter-spacing:0}
+.jj-f .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4;overflow-wrap:anywhere}
+.jj-tanda{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.jj-t{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;border-radius:12px;padding:8px 11px;border:1px solid}
+.jj-t i{font-style:normal;font-size:9.5px;font-weight:900;letter-spacing:.3px;text-transform:uppercase;border-radius:999px;padding:2px 8px;flex:0 0 auto;margin-top:1px}
+.jj-t.kuat{background:#E9F5EC;border-color:#BEDCC6;color:#163832}.jj-t.kuat i{background:#235347;color:#DAF1DE}
+.jj-t.waspada{background:#FBF3E2;border-color:#E8D9B8;color:#6B4A0E}.jj-t.waspada i{background:#B7791F;color:#fff}
+.jj-t.info{background:#EEF4F7;border-color:#D3E2EA;color:#2E4F63}.jj-t.info i{background:#2E6B8F;color:#fff}
+.jj-garis{margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.6}
+.jj-garis ol{list-style:none;margin:6px 0 0;padding:0 0 0 14px;border-left:2px solid #CFE3D4}
+.jj-garis li{position:relative;padding:2px 0 6px 6px}
+.jj-garis li:before{content:"";position:absolute;left:-20px;top:7px;width:10px;height:10px;border-radius:50%;background:#8EB69B;border:2px solid #fff}
+.jj-garis li.buat:before{background:#235347}
+.jj-garis li b{color:#051F20}
+.jj-cat{font-size:10.5px;color:var(--faint);margin-top:10px;line-height:1.55}
+.jj-muat{font-size:12px;color:var(--muted);padding:10px 0;display:flex;align-items:center;gap:8px}
+.jj-muat:before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid #CFE3D4;border-top-color:#235347;animation:jjPutar .8s linear infinite}
+@keyframes jjPutar{to{transform:rotate(360deg)}}
+.jj-gagal{font-size:12px;color:#7A5410;background:#FBF3E2;border:1px solid #E8D9B8;border-radius:12px;padding:9px 12px;line-height:1.55}
+.jj-gagal button{margin-left:6px;border:0;background:none;color:#235347;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+@media (max-width:640px){.jj-fakta{grid-template-columns:1fr 1fr}.jj-f .v{font-size:15px}}
 </style>
 <style>
 #view-meta {
@@ -1164,7 +1198,40 @@
   #view-meta{width:98vw;max-width:98vw;margin-left:calc(1vw - 14px);margin-right:calc(1vw - 14px)}   /* 14px = padding .isi-utama di HP */
   #view-meta .wrap{padding-left:0;padding-right:0;max-width:none}
   #view-meta .panggung{padding-left:16px;padding-right:16px}
+  /* v1.4.7: semua halaman lain ikut selebar 98% layar; teks pembuka diberi napas 10px */
+  .isi-utama > :is(#view-dashboard,#view-pesaing,#view-galeri,#view-ekspor,#view-cs,#view-admin,#view-tren,#view-pengiklan,#view-shopee,#view-tiktok){
+    width:98vw;max-width:98vw;margin-left:calc(1vw - 14px);margin-right:calc(1vw - 14px);box-sizing:border-box}
+  .isi-utama > [id^="view-"] > .sapaan-bar,#view-pengiklan .pf-kembali,#view-pengiklan .pf-kepala,#view-pengiklan .pf-catatan,
+  .isi-utama > [id^="view-"] > .note,.isi-utama > [id^="view-"] > footer{padding-left:10px;padding-right:10px}
+  #view-pengiklan .pf-catatan{padding-left:14px;padding-right:14px}
+  #view-galeri .gl-info,#view-galeri .gl-legenda,#view-galeri .gl-hal{padding-left:10px;padding-right:10px}
 }
+
+/* ===== v1.4.7: navigasi bawah HP (Dashboard · Scan Meta · Galeri · Tren · Menu) ===== */
+.bn{display:none}
+@media (max-width:1024px){
+  html.bn-aktif .bn{display:flex;position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+    width:min(98vw,520px);box-sizing:border-box;z-index:50;padding:6px;border-radius:24px;
+    background:rgba(5,31,32,.95);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+    box-shadow:0 14px 34px rgba(5,31,32,.34),inset 0 1px 0 rgba(218,241,222,.08);
+    transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .25s}
+  .bn button{flex:1 1 0;min-width:0;position:relative;z-index:1;border:0;background:none;color:#8EB69B;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px 7px;
+    font:inherit;font-size:10.5px;font-weight:800;letter-spacing:.1px;-webkit-tap-highlight-color:transparent;transition:color .3s,transform .15s}
+  .bn button:active{transform:scale(.93)}
+  .bn button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bn button svg{width:21px;height:21px;display:block}
+  .bn button i{display:block;line-height:0}
+  .bn button.on{color:#051F20}
+  .bn-pil{position:absolute;top:6px;bottom:6px;left:0;width:var(--w,0px);transform:translateX(var(--x,0px));z-index:0;
+    background:#DAF1DE;border-radius:18px;box-shadow:0 4px 14px rgba(142,182,155,.35);
+    transition:transform .42s cubic-bezier(.65,0,.35,1),width .42s cubic-bezier(.65,0,.35,1)}
+  .bn.tanpa-anim .bn-pil{transition:none}
+  html.bn-aktif .isi-utama{padding-bottom:calc(44px + 80px + env(safe-area-inset-bottom,0px))}
+  .shell.sb-buka .bn,.shell.sb-menutup .bn,html.bn-sembunyi .bn{transform:translate(-50%,calc(100% + 30px));opacity:0;pointer-events:none}
+  html.bn-aktif #toast,html.bn-aktif #view-meta .toast{bottom:calc(92px + env(safe-area-inset-bottom,0px))!important}
+}
+@media (prefers-reduced-motion:reduce){.bn-pil{transition:none!important}}
 
 /* ===== v1.4.4: CS & Bantuan ===== */
 :is(#view-cs,#view-admin) .cs-form{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
@@ -1364,6 +1431,15 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
 
     <div class="sb-foot">Mesin Meta aktif · <span class="v-intai">v1.4</span><br>Shopee &amp; TikTok: disiapkan</div>
   </aside>
+
+  <nav class="bn" id="bn" aria-label="Navigasi cepat">
+    <span class="bn-pil" aria-hidden="true"></span>
+    <button data-v="dashboard" onclick="ke('/dashboard')"><i></i><span>Dashboard</span></button>
+    <button data-v="meta" onclick="ke('/meta')"><i></i><span>Scan Meta</span></button>
+    <button data-v="galeri" onclick="ke('/galeri')"><i></i><span>Galeri</span></button>
+    <button data-v="tren" onclick="ke('/tren')"><i></i><span>Tren</span></button>
+    <button data-v="menu" onclick="sbBuka(true)" aria-label="Buka menu"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></i><span>Menu</span></button>
+  </nav>
 
   <main class="isi-utama">
     <div id="view-dashboard">
@@ -1779,7 +1855,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
               <details><summary>Apakah dataku terlihat akun lain?</summary><div>Tidak. Riwayat scan, Pesaing Dipantau, ⭐ Pantauan, Ekspor CSV, dan jadwal scan otomatis hanya milik akunmu. <b>Galeri Iklan</b> dan <b>profil pengiklan</b> adalah arsip bersama karena isinya data publik dari Meta Ad Library.</div></details>
               <details><summary>Cara membuka file CSV di Excel atau Google Sheets?</summary><div>Buka menu <b>Ekspor CSV</b>. Pilih unduhan <b>Excel</b> (file <code>…_excel.csv</code>, klik dua kali) atau <b>Google Sheets</b> (File → Impor → Unggah file <code>…_sheets.csv</code>), atau tekan <b>Salin</b> lalu tempel di sel A1.</div></details>
               <details><summary>Kapan Scan Shopee &amp; TikTok tersedia?</summary><div>Masih disiapkan. Saat ini mesin yang aktif adalah Meta Ad Library.</div></details>
-              <details><summary>Lupa password?</summary><div>Di layar Masuk, ketuk <b>Lupa password? Reset lewat email</b>, lalu isi email akunmu. Kami kirim tautan untuk membuat password baru (berlaku 30 menit, sekali pakai). Cek juga folder <b>Spam</b>. Email tidak sampai? Ketuk <b>Hubungi CS</b> di layar yang sama.</div></details>
+              <details><summary>Lupa password?</summary><div>Di layar Masuk, ketuk <b>Lupa password? Reset lewat email</b>, lalu isi email akunmu. Kami kirim <b>kode 6 angka</b> dan tautan (berlaku 30 menit, sekali pakai). Ketik kodenya di layar yang sama, lalu buat password baru. Email masuk folder <b>Spam</b>? Kodenya tetap bisa dipakai. Email tidak sampai? Ketuk <b>Hubungi CS</b>.</div></details>
             </div>
           </div>
         </div>
@@ -2054,6 +2130,8 @@ function gambarAkun(){
   const el = document.getElementById("sb-user");
   if(!el) return;
   el.classList.toggle("tamu", !AKUN); /* v1.3.1: tamu = pil ramping Daftar/Masuk */
+  document.documentElement.classList.toggle("bn-aktif", !!AKUN);   /* v1.4.7: navigasi bawah HP hanya saat masuk */
+  requestAnimationFrame(function(){ bnSinkron(undefined, true); });
   if(AKUN){
     const nm = AKUN.nama || AKUN.email;
     const awal = (nm || "?").trim().charAt(0).toUpperCase();
@@ -2097,9 +2175,13 @@ function gantiTab(tab){
   } else if(tab === "lupa"){   /* v1.4.5 */
     const em0 = ((document.getElementById("f-email") || {}).value || "").trim();
     isi.innerHTML =
-      '<h2>Lupa password 🔑</h2><div class="sub">Masukkan email akunmu. Kami kirim tautan untuk membuat password baru.</div>' +
+      '<h2>Lupa password 🔑</h2><div class="sub">Masukkan email akunmu. Kami kirim <b>kode 6 angka</b> dan tautan untuk membuat password baru.</div>' +
       '<label>Email</label><input type="email" id="f-email" placeholder="nama@email.com" autocomplete="email" value="' + esc(em0) + '">' +
-      '<button class="btn" id="b-lupa" onclick="kirimLupa()">KIRIM TAUTAN RESET</button>' +
+      '<button class="btn" id="b-lupa" onclick="kirimLupa()">KIRIM KODE RESET</button>' +
+      '<div id="lp-kode" hidden><label>Kode 6 angka dari email</label>' +
+      '<input type="text" id="f-kode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" style="font-size:20px;letter-spacing:4px;text-align:center;font-weight:800">' +
+      '<button class="btn" id="b-kode" onclick="cekKode()">LANJUT</button></div>' +
+      '<div class="tukar" id="lp-punya">Sudah dapat kode? <b onclick="tampilKolomKode()">Masukkan kode</b></div>' +
       '<div class="tukar">Sudah ingat? <b onclick="gantiTab(\'masuk\')">Masuk</b></div>' +
       '<div class="tukar" id="lupa-pw" style="margin-top:8px;font-weight:650">Email tidak sampai? <b onclick="lupaPw()">Hubungi CS</b></div>';
   } else if(tab === "reset"){   /* v1.4.5: dari tautan email /reset?t=… */
@@ -2115,14 +2197,50 @@ function gantiTab(tab){
       '<div class="tukar">Sudah punya akun? <b onclick="gantiTab(\'masuk\')">Masuk</b></div>';
   }
   document.getElementById("pesan-auth").textContent = "";
-  const enter = e => { if(e.key === "Enter"){ tab === "masuk" ? kirimMasuk() : tab === "lupa" ? kirimLupa() : tab === "reset" ? kirimReset() : kirimDaftar(); } };
-  ["f-email","f-pass","f-nama"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("keydown", enter); });
+  const enter = e => { if(e.key === "Enter"){ tab === "masuk" ? kirimMasuk() : tab === "lupa" ? (e.target.id === "f-kode" ? cekKode() : kirimLupa()) : tab === "reset" ? kirimReset() : kirimDaftar(); } };
+  ["f-email","f-pass","f-nama","f-kode"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("keydown", enter); });
 }
 
 function pesan(t, ok){ const el = document.getElementById("pesan-auth"); if(el){ el.textContent = t; el.className = "pesan " + (ok ? "ok" : "bad"); } }
 
 /* ===== v1.4.5: lupa password lewat email ===== */
-var RESET_T = "";
+var RESET_T = "", RESET_KODE = null;   /* v1.4.7: {email, kode} bila memakai kode 6 angka */
+function tampilKolomKode(){
+  const k = document.getElementById("lp-kode"), p = document.getElementById("lp-punya");
+  if(k) k.hidden = false;
+  if(p) p.hidden = true;
+  const f = document.getElementById("f-kode"); if(f) f.focus();
+}
+async function cekKode(){
+  const email = ((document.getElementById("f-email") || {}).value || "").trim();
+  const kode = ((document.getElementById("f-kode") || {}).value || "").replace(/\D/g, "");
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ pesan("Isi email akunmu dulu."); return; }
+  if(kode.length !== 6){ pesan("Kode berisi 6 angka."); return; }
+  const b = document.getElementById("b-kode"); if(b) b.disabled = true;
+  pesan("Memeriksa kode…", true);
+  let d = null;
+  try{ d = await (await fetch(API_BASE + "/api/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({email: email, kode: kode, cek: true})})).json(); }catch(e){}
+  if(b) b.disabled = false;
+  if(!d){ pesan("Server tidak terhubung"); return; }
+  if(!d.ok){ pesan(d.error || "Kode salah."); return; }
+  RESET_KODE = {email: email, kode: kode}; RESET_T = "";
+  const isi = document.getElementById("isi-auth");
+  isi.innerHTML = '<h2>Buat password baru 🔑</h2><div class="sub" id="rs-sub"></div><div id="rs-isi"></div>';
+  document.getElementById("pesan-auth").textContent = "";
+  formPwBaru(d.email);
+}
+function formPwBaru(emailSamar){
+  const sub = document.getElementById("rs-sub"), box = document.getElementById("rs-isi");
+  if(!sub || !box) return;
+  sub.innerHTML = "untuk akun <b>" + esc(emailSamar) + "</b>";
+  box.innerHTML = '<label>Password baru (min. 6 karakter)</label><input type="password" id="f-pass" autocomplete="new-password" placeholder="••••••••">' +
+    '<label>Ulangi password baru</label><input type="password" id="f-pass2" autocomplete="new-password" placeholder="••••••••">' +
+    '<button class="btn" id="b-reset" onclick="kirimReset()">SIMPAN PASSWORD &amp; MASUK</button>' +
+    '<div class="tukar"><b onclick="keluarReset()">Batal</b></div>';
+  const enter = function(e){ if(e.key === "Enter") kirimReset(); };
+  ["f-pass", "f-pass2"].forEach(function(id){ const el = document.getElementById(id); if(el){ el.addEventListener("keydown", enter); } });
+  const f = document.getElementById("f-pass"); if(f) f.focus();
+}
 async function kirimLupa(){
   const email = (document.getElementById("f-email").value || "").trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ pesan("Format email belum benar."); return; }
@@ -2131,7 +2249,8 @@ async function kirimLupa(){
   try{
     const d = await (await fetch(API_BASE + "/api/lupa", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({email: email})})).json();
     if(d && d.ok){
-      pesan("Kalau " + email + " terdaftar, tautan reset sudah dikirim. Cek kotak masuk dan folder Spam. Tautan berlaku " + (d.menit || 30) + " menit.", true);
+      pesan("Kalau " + email + " terdaftar, kode reset sudah dikirim (berlaku " + (d.menit || 30) + " menit). Cek kotak masuk dan folder Spam, lalu ketik kodenya di bawah.", true);
+      tampilKolomKode();
       if(b){ b.textContent = "KIRIM ULANG (tunggu 1 menit)"; setTimeout(function(){ if(document.body.contains(b)){ b.disabled = false; b.textContent = "KIRIM ULANG"; } }, 60000); }
       return;
     }
@@ -2152,14 +2271,8 @@ async function cekTautanReset(){
     box.innerHTML = '<button class="btn" onclick="gantiTab(\'lupa\')">MINTA TAUTAN BARU</button><div class="tukar"><b onclick="keluarReset()">Kembali ke Masuk</b></div>';
     return;
   }
-  sub.innerHTML = "untuk akun <b>" + esc(d.email) + "</b>";
-  box.innerHTML = '<label>Password baru (min. 6 karakter)</label><input type="password" id="f-pass" autocomplete="new-password" placeholder="••••••••">' +
-    '<label>Ulangi password baru</label><input type="password" id="f-pass2" autocomplete="new-password" placeholder="••••••••">' +
-    '<button class="btn" id="b-reset" onclick="kirimReset()">SIMPAN PASSWORD &amp; MASUK</button>' +
-    '<div class="tukar"><b onclick="keluarReset()">Batal</b></div>';
-  const enter = function(e){ if(e.key === "Enter") kirimReset(); };
-  ["f-pass", "f-pass2"].forEach(function(id){ const el = document.getElementById(id); if(el){ el.addEventListener("keydown", enter); } });
-  const f = document.getElementById("f-pass"); if(f) f.focus();
+  RESET_KODE = null;
+  formPwBaru(d.email);
 }
 async function kirimReset(){
   const a = (document.getElementById("f-pass") || {}).value || "", b2 = (document.getElementById("f-pass2") || {}).value || "";
@@ -2168,7 +2281,8 @@ async function kirimReset(){
   const b = document.getElementById("b-reset"); if(b) b.disabled = true;
   pesan("Menyimpan…", true);
   try{
-    const d = await (await fetch(API_BASE + "/api/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({t: RESET_T, password: a})})).json();
+    const body = RESET_KODE ? {email: RESET_KODE.email, kode: RESET_KODE.kode, password: a} : {t: RESET_T, password: a};
+    const d = await (await fetch(API_BASE + "/api/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})).json();
     if(!d || !d.ok){ if(b) b.disabled = false; pesan((d && d.error) || "Gagal menyimpan."); return; }
     TOKEN = d.token; LS.set("intai_token", TOKEN);
     try{ sessionStorage.removeItem("intai_reset_t"); }catch(e){}
@@ -2986,6 +3100,9 @@ function detailHTML(x){
     '<span onclick="salin(this.dataset.u)" data-u="' + esc(String(d.archive_id||"")) + '"><span class="k">archive_id:</span> ' + esc(String(d.archive_id||"—")) + '</span>\n' +
     '<span onclick="salin(this.dataset.u)" data-u="' + esc(String(d.ad_id||"")) + '"><span class="k">ad_id:</span> ' + esc(String(d.ad_id||"—")) + '</span>\n' +
     '<span onclick="salin(this.dataset.u)" data-u="' + esc(String(d.page_id||"")) + '"><span class="k">page_id:</span> ' + esc(String(d.page_id||"—")) + '</span></div>';
+
+  // v1.4.7 M7: REKAM JEJAK PENGIKLAN (dimuat saat diklik → scan tidak melambat)
+  if(d.page_id) h += '<div class="subjudul">Rekam Jejak Pengiklan</div><div class="jj-slot" data-pid="' + esc(String(d.page_id)) + '" onclick="event.stopPropagation()">' + jejakSlot(d.page_id, false) + '</div>';
 
   // TAUTAN
   h += '<div class="subjudul">Tautan</div>';
@@ -4343,6 +4460,79 @@ function pfFilter(f){
   document.querySelectorAll("#view-pengiklan .pf-filter button").forEach(function(b){ b.classList.toggle("on", b.dataset.f === f); });
   document.getElementById("pf-daftar").innerHTML = pfBarisIklan();
 }
+
+/* ===== v1.4.7 M7: Rekam jejak pengiklan (data transparansi halaman Meta, on-demand + cache 7 hari) ===== */
+const JEJAK = {};
+const JJ_BLN = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+function jjTgl(u){ if(!u) return "—"; const d = new Date(u * 1000); return d.getDate() + " " + JJ_BLN[d.getMonth()] + " " + d.getFullYear(); }
+function jjUmur(h){
+  if(h === null || h === undefined) return "—";
+  if(h < 31) return h + "<small> hari</small>";
+  const th = Math.floor(h / 365), bl = Math.floor((h % 365) / 30.4);
+  return th ? th + "<small> thn</small>" + (bl ? " " + bl + "<small> bln</small>" : "") : bl + "<small> bln</small>";
+}
+function jjRingkasAngka(n){
+  if(n === null || n === undefined) return "—";
+  n = Number(n);
+  return n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " jt" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(".", ",") + " rb" : n.toLocaleString("id-ID");
+}
+function jejakHTML(r){
+  const d = r.data || {};
+  const g = d.ganti_nama || [], adm = d.admin || [];
+  const totA = adm.reduce(function(a, x){ return a + (x.n || 0); }, 0);
+  const verif = ["BLUE_VERIFIED", "VERIFIED", "GRAY_VERIFIED"].indexOf(String(d.verifikasi || "")) >= 0;
+  let h = '<div class="jj-kepala"><b>Rekam jejak pengiklan</b><span class="jj-src">🟢 data transparansi Meta · ' +
+    (r.cache ? "diambil " + jjTgl(r.diambil) : "baru diambil") + '</span>' +
+    '<button class="jj-segar" title="Ambil ulang dari Meta" onclick="event.stopPropagation();jejakMuat(this.closest(\'[data-pid]\'), true)">↻ Perbarui</button></div>' +
+    '<div class="jj-fakta">' +
+    '<div class="jj-f"><div class="l">Umur halaman</div><div class="v">' + jjUmur(d.umur_hari) + '</div><div class="s">dibuat ' + jjTgl(d.dibuat) + '</div></div>' +
+    '<div class="jj-f"><div class="l">Ganti nama</div><div class="v">' + g.length + '<small>×</small></div><div class="s">' + (g.length ? "terakhir " + jjTgl(g[0]) : "tidak pernah") + '</div></div>' +
+    '<div class="jj-f"><div class="l">Admin halaman</div><div class="v">' + (totA || "—") + (totA ? '<small> orang</small>' : '') + '</div><div class="s">' + (adm.length ? esc(adm.map(function(a){ return a.negara + " " + a.n; }).join(" · ")) : "tidak ditampilkan") + '</div></div>' +
+    '<div class="jj-f"><div class="l">Pemilik</div><div class="v" style="font-size:14px">' + (d.pemilik ? "Terkonfirmasi" : "Belum dikonfirmasi") + '</div><div class="s">' + (d.pemilik ? esc(d.pemilik) : "Meta tidak mencantumkan pemilik") + (verif ? " · ✔ bercentang" : "") + '</div></div>' +
+    (d.ig_username ? '<div class="jj-f"><div class="l">Instagram</div><div class="v">' + jjRingkasAngka(d.ig_followers) + '<small> pengikut</small></div><div class="s">@' + esc(d.ig_username) + (d.ig_verifikasi ? " ✔" : "") + '</div></div>' : '') +
+    (d.likes || d.kategori ? '<div class="jj-f"><div class="l">Halaman Facebook</div><div class="v">' + jjRingkasAngka(d.likes) + '<small> suka</small></div><div class="s">' + esc(d.kategori || "") + '</div></div>' : '') +
+    '</div>';
+  const t = d.tanda || [];
+  const LBL = {kuat: "Kuat", waspada: "Waspada", info: "Info"};
+  h += '<div class="jj-tanda">' + (t.length ? t.map(function(x){ return '<div class="jj-t ' + esc(x.j) + '"><i>' + (LBL[x.j] || "Info") + '</i><span>' + esc(x.t) + '</span></div>'; }).join("")
+    : '<div class="jj-t info"><i>Info</i><span>Tidak ada tanda menonjol dari rekam jejak halaman ini.</span></div>') + '</div>';
+  const ev = [];
+  if(d.dibuat) ev.push({t: d.dibuat, b: true});
+  g.forEach(function(x){ ev.push({t: x, b: false}); });
+  ev.sort(function(a, b){ return b.t - a.t; });
+  if(ev.length > 1) h += '<div class="jj-garis">Riwayat halaman<ol>' + ev.slice(0, 12).map(function(e){ return '<li class="' + (e.b ? "buat" : "") + '"><b>' + jjTgl(e.t) + '</b> — ' + (e.b ? "halaman dibuat" : "ganti nama") + '</li>'; }).join("") + (ev.length > 12 ? '<li>… ' + (ev.length - 12) + ' lagi</li>' : '') + '</ol></div>';
+  if(d.tentang) h += '<div class="jj-garis"><b>Tentang:</b> ' + esc(d.tentang) + '</div>';
+  h += '<div class="jj-cat">Fakta di atas 🟢 asli dari panel transparansi Meta. Label Kuat/Waspada/Info adalah 🔵 bacaan INTAI dari fakta itu, bukan vonis. Meta tidak menampilkan nama-nama lama, hanya tanggal ganti nama.</div>';
+  return h;
+}
+async function jejakMuat(el, segar){
+  if(!el) return;
+  const pid = String(el.dataset.pid || "").replace(/\D/g, "");
+  if(!pid) return;
+  if(!segar && JEJAK[pid]){ el.innerHTML = jejakHTML(JEJAK[pid]); return; }
+  const tb = el.querySelector(".jj-segar"); if(tb) tb.disabled = true;
+  if(!tb) el.innerHTML = '<div class="jj-muat">Mengambil rekam jejak dari Meta Ad Library… (±5 detik)</div>';
+  let r = null;
+  try{ r = await (await fetch("/api/pengiklan/jejak?id=" + encodeURIComponent(pid) + (segar ? "&segar=1" : ""))).json(); }catch(e){}
+  document.querySelectorAll('[data-pid="' + pid + '"].jj-slot, [data-pid="' + pid + '"].jj-kartu').forEach(function(x){
+    if(r && r.ok){ JEJAK[pid] = r; x.innerHTML = jejakHTML(r); jejakIsiNama(pid, r); }
+    else if(segar && JEJAK[pid]){ x.innerHTML = jejakHTML(JEJAK[pid]); toast("⚠️ " + esc((r && r.error) || "Gagal memperbarui")); }
+    else x.innerHTML = '<div class="jj-kepala"><b>Rekam jejak pengiklan</b></div><div class="jj-gagal">' + esc((r && r.error) || "Server tidak terhubung") + '<button onclick="event.stopPropagation();jejakMuat(this.closest(\'[data-pid]\'), false)">Coba lagi</button></div>';
+  });
+}
+function jejakIsiNama(pid, r){   /* profil belum terarsip → judul "Halaman <id>" diganti nama asli dari Meta */
+  const nm = r && r.data && r.data.nama, h1 = document.querySelector("#pf-isi .pf-judul h1");
+  if(!nm || !h1 || PF.pid !== pid || h1.textContent !== "Halaman " + pid) return;
+  h1.textContent = nm; document.title = "INTAI — " + nm;
+  const av = document.querySelector("#pf-isi .pf-ava"); if(av) av.innerHTML = pfInisial(nm);
+}
+function jejakSlot(pid, otomatis){
+  pid = String(pid || "").replace(/\D/g, "");
+  if(!pid) return "";
+  return JEJAK[pid] ? jejakHTML(JEJAK[pid])
+    : otomatis ? '<div class="jj-muat">Mengambil rekam jejak dari Meta Ad Library… (±5 detik)</div>'
+    : '<div class="jj-kepala"><b>Rekam jejak pengiklan</b><span class="jj-src">🟢 umur halaman · ganti nama · admin per negara</span></div><button class="tombol2" onclick="event.stopPropagation();jejakMuat(this.closest(\'[data-pid]\'), false)">Lihat rekam jejak halaman ini (±5 detik)</button>';
+}
 async function muatProfil(pid){
   const box = document.getElementById("pf-isi");
   if(!box) return;
@@ -4376,7 +4566,8 @@ async function muatProfil(pid){
     (pg.profil ? '<button class="ps-tb" data-u="' + esc(pg.profil) + '" onclick="buka(this.dataset.u)"><svg class=ik><use href=#ik-link></use></svg>Halaman Facebook</button>' : '') +
     '</div></div></div><div id="pf-progres" class="ps-progres" style="display:none"></div>';
   if(d.kosong){
-    box.innerHTML = h + '<div class="pf-catatan kuning"><b>Pengiklan ini belum ada di arsip INTAI.</b> Klik <b>Scan semua iklannya</b>: INTAI akan mengambil semua iklan halaman ini dari Meta Ad Library lalu menyusun profilnya.</div>';
+    box.innerHTML = h + '<div class="kartu jj-kartu" data-pid="' + esc(pid) + '">' + jejakSlot(pid, true) + '</div>' + '<div class="pf-catatan kuning"><b>Pengiklan ini belum ada di arsip INTAI.</b> Klik <b>Scan semua iklannya</b>: INTAI akan mengambil semua iklan halaman ini dari Meta Ad Library lalu menyusun profilnya.</div>';
+    if(!JEJAK[pid]) jejakMuat(box.querySelector(".jj-kartu"), false); else jejakIsiNama(pid, JEJAK[pid]);
     return;
   }
   h += d.scan_halaman
@@ -4433,8 +4624,10 @@ async function muatProfil(pid){
     '<div class="pf-dist"><div class="jd">Niche tempat muncul (klik untuk scan)</div>' + chips(R.niche, true) + '</div>' +
     '<div class="pf-dist"><div class="jd">Domain tujuan</div>' + chips(R.domain, false) + '</div>' +
     '<div class="pf-dist"><div class="jd">Tombol CTA</div>' + chips(R.cta, false) + '</div></div>';
-  box.innerHTML = h + '<div class="dash-grid pf-grid"><div class="kol">' + kiri + '</div><div class="kol">' + kanan + '</div></div>' + tabel +
+  box.innerHTML = h + '<div class="kartu jj-kartu" data-pid="' + esc(pid) + '">' + jejakSlot(pid, true) + '</div>' +
+    '<div class="dash-grid pf-grid"><div class="kol">' + kiri + '</div><div class="kol">' + kanan + '</div></div>' + tabel +
     '<footer><div>INTAI v1.1 · profil dari arsip scan · 🟢 data Meta · 🔵 hitungan INTAI · 🟠 model</div><div>Belanja iklan komersial tidak dirilis Meta — angka 🟠 adalah perkiraan</div></footer>';
+  if(!JEJAK[pid]) jejakMuat(box.querySelector(".jj-kartu"), false);
 }
 function pfKembali(){
   if(history.length > 1) history.back(); else ke("/pesaing");
@@ -4962,6 +5155,7 @@ function admGambarAkun(){
       '<span>' + esc(meta.join(" · ")) + '</span></div>' +
       '<div class="adm-ua"><button class="cs-tb" data-e="' + esc(a.email) + '" data-n="' + esc(nm) + '" onclick="admNama(this.dataset.e, this.dataset.n)">Ubah nama</button>' +
       '<button class="cs-tb" data-e="' + esc(a.email) + '" onclick="admKirimReset(this.dataset.e, this)" title="Kirim tautan buat password baru ke email pengguna">Kirim tautan reset</button>' +
+      '<button class="cs-tb" data-e="' + esc(a.email) + '" onclick="admPutus(this.dataset.e, this)" title="Paksa keluar dari semua perangkat (password tidak berubah)">Keluarkan perangkat</button>' +
       '<button class="cs-tb cs-bahaya" data-e="' + esc(a.email) + '" onclick="admReset(this.dataset.e)" title="Buat password sementara (kirim sendiri ke pengguna)">Password sementara</button></div></div>';
   }).join("") : '<div class="pf-kosong">Tidak ada akun yang cocok.</div>';
 }
@@ -5028,8 +5222,15 @@ async function admKirimReset(email, btn){   /* v1.4.5 */
   if(btn){ btn.disabled = true; btn.textContent = "Mengirim…"; }
   const d = await admKirim({aksi: "kirim_reset", email: email});
   if(btn){ btn.disabled = false; btn.textContent = "Kirim tautan reset"; }
-  if(d) toast("✓ Tautan reset terkirim ke <b>" + esc(email) + "</b> (berlaku " + (d.menit || 30) + " menit).");
+  if(d) toast("✓ Kode &amp; tautan reset terkirim ke <b>" + esc(email) + "</b> (berlaku " + (d.menit || 30) + " menit). Minta pengguna cek folder Spam juga.");
   admMuat();
+}
+async function admPutus(email, btn){   /* v1.4.7 */
+  if(!confirm("Keluarkan " + email + " dari semua perangkat?\n\nPasswordnya tidak berubah; pengguna cukup masuk lagi." + (AKUN && AKUN.email === email ? "\n\nIni akunmu sendiri — kamu juga akan keluar." : ""))) return;
+  if(btn){ btn.disabled = true; btn.textContent = "Memproses…"; }
+  const d = await admKirim({aksi: "putus_sesi", email: email});
+  if(btn){ btn.disabled = false; btn.textContent = "Keluarkan perangkat"; }
+  if(d) toast("✓ <b>" + esc(email) + "</b> dikeluarkan dari semua perangkat." + (d.permanen === false ? " (belum tersimpan permanen di database)" : ""));
 }
 async function admReset(email){
   if(!confirm("Reset password " + email + "?\n\nPassword lamanya langsung tidak berlaku. Kamu akan mendapat password sementara untuk dikirim ke pengguna.")) return;
@@ -5057,7 +5258,10 @@ function bukaAkunSaya(){
     '<button class="btn" onclick="asNama()">SIMPAN NAMA</button>' +
     '<hr><label>Password lama</label><input type="password" id="as-lama" autocomplete="current-password" placeholder="••••••••">' +
     '<label>Password baru (min. 6 karakter)</label><input type="password" id="as-baru" autocomplete="new-password" placeholder="••••••••">' +
-    '<button class="btn" onclick="asPw()">GANTI PASSWORD</button></div>' +
+    '<button class="btn" onclick="asPw()">GANTI PASSWORD</button>' +
+    '<div class="kunci-cat" style="margin-top:6px">Setelah password diganti, semua perangkat lain otomatis keluar.</div>' +
+    '<hr><label>Perangkat</label><div class="kunci-cat" style="margin:0 0 8px">Lupa keluar di HP/laptop lain, atau curiga akunmu dipakai orang? Keluarkan semua perangkat selain yang ini.</div>' +
+    '<button class="btn btn-garis" onclick="asKeluarSemua(this)">KELUARKAN SEMUA PERANGKAT LAIN</button></div>' +
     '<div class="pesan" id="pesan-auth"></div></div></div>';
 }
 async function asKirim(body){
@@ -5080,7 +5284,17 @@ async function asPw(){
   const d = await asKirim({aksi: "password", lama: lama, baru: baru});
   if(!d) return;
   document.getElementById("as-lama").value = ""; document.getElementById("as-baru").value = "";
-  pesan("Password diganti ✓ Pakai password baru saat masuk berikutnya.", true);
+  if(d.token){ TOKEN = d.token; LS.set("intai_token", TOKEN); }   /* v1.4.7: perangkat ini tetap masuk */
+  pesan("Password diganti ✓ Perangkat lain sudah dikeluarkan.", true);
+}
+async function asKeluarSemua(btn){   /* v1.4.7 */
+  if(!confirm("Keluarkan akun ini dari SEMUA perangkat lain?\n\nPerangkat ini tetap masuk. Perangkat lain harus masuk ulang dengan password.")) return;
+  if(btn) btn.disabled = true;
+  const d = await asKirim({aksi: "keluar_semua"});
+  if(btn) btn.disabled = false;
+  if(!d) return;
+  if(d.token){ TOKEN = d.token; LS.set("intai_token", TOKEN); }
+  pesan(d.permanen === false ? "Perangkat lain dikeluarkan ✓ (catatan: belum tersimpan permanen di database — bila server restart, ulangi)." : "Semua perangkat lain sudah dikeluarkan ✓", true);
 }
 
 /* ===== v1.3 P5: galeri iklan ===== */
@@ -5293,6 +5507,39 @@ function viewDariPath(p){
 /* v1.4.5: render data ditunda sampai animasi masuk / laci tutup selesai, supaya tidak menyendat gerakan */
 var VT = {v: null, sampai: 0};
 function tungguTransisi(){ const s = VT.sampai - performance.now(); return s > 0 ? new Promise(function(r){ setTimeout(r, s); }) : Promise.resolve(); }
+/* v1.4.7: navigasi bawah HP */
+function bnSinkron(v, tanpaAnim){
+  const bn = document.getElementById("bn");
+  if(!bn) return;
+  if(v === undefined) v = (typeof VT !== "undefined" && VT.v) || "dashboard";
+  const t = ["dashboard", "meta", "galeri", "tren"].indexOf(v) >= 0 ? v : "menu";
+  let akt = null;
+  bn.querySelectorAll("button").forEach(function(b){ const on = b.dataset.v === t; b.classList.toggle("on", on); if(on){ akt = b; b.setAttribute("aria-current", "page"); } else b.removeAttribute("aria-current"); });
+  const pil = bn.querySelector(".bn-pil");
+  if(!pil || !akt || !akt.offsetWidth) return;
+  if(tanpaAnim) bn.classList.add("tanpa-anim");
+  pil.style.setProperty("--x", akt.offsetLeft + "px");
+  pil.style.setProperty("--w", akt.offsetWidth + "px");
+  if(tanpaAnim) requestAnimationFrame(function(){ requestAnimationFrame(function(){ bn.classList.remove("tanpa-anim"); }); });
+}
+(function(){
+  function siap(){
+    const bn = document.getElementById("bn");
+    if(!bn) return;
+    bn.querySelectorAll("button[data-v]").forEach(function(b){
+      const sv = document.querySelector('#sb-nav [data-v="' + b.dataset.v + '"] svg'), i = b.querySelector("i");
+      if(sv && i && !i.firstChild) i.appendChild(sv.cloneNode(true));
+    });
+    bnSinkron(undefined, true);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", siap); else siap();
+  window.addEventListener("resize", function(){ bnSinkron(undefined, true); });
+  /* keyboard HP terbuka → sembunyikan bar supaya tidak menutupi kolom isian */
+  const hp = window.matchMedia ? matchMedia("(max-width:1024px)") : null;
+  function isian(el){ return el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|file)$/i.test(el.type || ""))); }
+  document.addEventListener("focusin", function(e){ if(hp && hp.matches && isian(e.target)) document.documentElement.classList.add("bn-sembunyi"); });
+  document.addEventListener("focusout", function(){ setTimeout(function(){ if(!isian(document.activeElement)) document.documentElement.classList.remove("bn-sembunyi"); }, 120); });
+})();
 function tampilView(v, push){
   if(VIEWS.indexOf(v) < 0) v = "dashboard";
   if(!document.getElementById("view-dashboard") || !document.getElementById("view-meta")) return;
@@ -5324,6 +5571,7 @@ function tampilView(v, push){
     if(hj) hj.textContent = v === "pengiklan" ? "Profil Pengiklan" : jdl;
   }
   if(window.__kalibrasiPil) requestAnimationFrame(function(){ window.__kalibrasiPil(); });
+  bnSinkron(v);
   if(v === "dashboard" && window.__kalibrasiHero) requestAnimationFrame(function(){ window.__kalibrasiHero(); });
   if(v === "dashboard" && typeof muatRingkasan === "function") muatRingkasan();
   if(v === "dashboard" && typeof muatArsip === "function") muatArsip();
@@ -5410,5 +5658,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a1ba1ad8d97d66',t:'MTc5MTkyOTk3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a21faa8e0baa09',t:'MTc5MTkzNDEzOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
