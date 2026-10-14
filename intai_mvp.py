@@ -408,10 +408,15 @@ def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3)
     if c and time.time() - c[0] < CACHE_V2_DTK:
         info = dict(c[2], cache=True, umur_cache=int(time.time() - c[0]))
         return _copy.deepcopy(c[1]), info
+    if rem_status()["rehat_detik"]:
+        raise MetaMenahan("rehat")   # HANYA bila Meta benar-benar menahan
+    # v1.5.2: jatah INTAI sendiri habis ≠ Meta menahan → tunggu jendela 60 dtk bergeser (maks ±20 dtk), lalu jalan.
     jatah = _rem_jatah()
-    if jatah <= 0:
-        raise MetaMenahan("rehat")
-    tugas = rencana_v2(kata_kunci, senada, jatah if jatah >= 6 else 3)
+    batas_tunggu = time.time() + 30
+    while jatah < 12 and time.time() < batas_tunggu:   # tunggu jatah penuh (12) maks 30 dtk; sisa → paket sebagian/hemat
+        time.sleep(2)
+        jatah = _rem_jatah()
+    tugas = rencana_v2(kata_kunci, senada, jatah if jatah >= 6 else 3)   # jatah tipis → mode hemat 3 pencarian
     jalur = max(1, min(jalur, len(tugas)))
     with _cf.ThreadPoolExecutor(jalur) as ex:
         sesi = list(ex.map(lambda _: buka_sesi(), range(jalur)))
