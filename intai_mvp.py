@@ -310,3 +310,154 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ===== v1.6 mesin tajam: banyak "halaman pertama" berbeda (paralel, ada batas waktu, ada rem) =====
+# Meta hanya memberi halaman pertama (±30 iklan) untuk pengunjung tanpa login — halaman lanjutan
+# (GraphQL AdLibrarySearchPaginationQuery) ditolak "Rate limit exceeded 1675004" bahkan di browser asli.
+# Jadi data ditambah dengan kata kunci utama × variasi media + kata kunci senada.
+# REM: bila IP kebanyakan permintaan, Meta TIDAK error — ia kirim halaman normal dengan
+#      "search_results_connection":{"count":2761,"edges":[]} (jumlah ada, isi kosong). Itu dideteksi → rehat.
+import copy as _copy
+import threading as _th
+
+MEDIA_UTAMA = ("all", "video", "image", "meme")
+REM = {"jejak": [], "rehat_sampai": 0.0, "kena": 0}
+REM_KUNCI = _th.Lock()
+REM_PER_MENIT = 24          # jatah permintaan Meta per 60 dtk untuk SELURUH server (±2 scan penuh)
+REM_PER_10MENIT = 90         # ±7 scan penuh per 10 menit; selebihnya otomatis mode hemat (3 permintaan)
+REM_REHAT_DTK = 15 * 60     # rehat sesudah ketahuan dibatasi (naik 2× tiap kena lagi, maks 60 mnt)
+CACHE_V2 = {}               # (kata, negara) -> (t, hasil, info)
+CACHE_V2_DTK = 20 * 60
+
+
+class MetaMenahan(RuntimeError):
+    """Meta sedang membatasi IP server ini (isi pencarian dikosongkan)."""
+
+
+def rem_status():
+    with REM_KUNCI:
+        kini = time.time()
+        REM["jejak"] = [t for t in REM["jejak"] if kini - t < 600]
+        return {"rehat_detik": max(0, int(REM["rehat_sampai"] - kini)),
+                "menit_ini": sum(1 for t in REM["jejak"] if kini - t < 60),
+                "sepuluh_menit": len(REM["jejak"]), "kena": REM["kena"]}
+
+
+def _rem_catat():
+    with REM_KUNCI:
+        REM["jejak"].append(time.time())
+
+
+def _rem_kena():
+    with REM_KUNCI:
+        if REM["rehat_sampai"] > time.time():
+            return   # permintaan paralel yang ditolak bersamaan = 1 kejadian, bukan 3
+        REM["kena"] += 1
+        lama = min(REM_REHAT_DTK * (2 ** (REM["kena"] - 1)), 3600)
+        REM["rehat_sampai"] = max(REM["rehat_sampai"], time.time() + lama)
+
+
+def _rem_pulih():
+    with REM_KUNCI:
+        REM["kena"] = 0
+
+
+def _rem_jatah():
+    """Berapa permintaan boleh dipakai scan ini (0 = sedang rehat)."""
+    st = rem_status()
+    if st["rehat_detik"]:
+        return 0
+    return max(0, min(REM_PER_MENIT - st["menit_ini"], REM_PER_10MENIT - st["sepuluh_menit"]))
+
+
+def ditahan_meta(html):
+    return bool(re.search(r'"search_results_connection":\{"count":[1-9]\d*,"edges":\[\]', html or ""))
+
+
+def _ambil_kartu(s, q, media, negara="ID"):
+    url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
+           f"&country={negara}&q={quote(q)}&search_type=keyword_unordered&media_type={media}")
+    _rem_catat()
+    html = _buka_url(s, url)
+    if len(html) < 50000:
+        raise RuntimeError("halaman pendek / ditolak")
+    if ditahan_meta(html):
+        _rem_kena()
+        raise MetaMenahan("Meta membatasi sementara")
+    return ekstrak_iklan(html)
+
+
+def rencana_v2(kata_kunci, senada, jatah):
+    """Urutan prioritas: data paling banyak per permintaan dulu."""
+    penuh = ([(kata_kunci, "all"), (kata_kunci, "video"), (kata_kunci, "image")]
+             + [(w, "all") for w in senada[:3]] + [(kata_kunci, "meme")]
+             + [(w, "all") for w in senada[3:6]] + [(w, "video") for w in senada[:2]])
+    return penuh[:max(0, min(jatah, len(penuh)))]
+
+
+def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3):
+    """Return (iklan_mentah, info). Tiap iklan diberi '_sumber' = kata senada yang menemukannya ('' = kata utama).
+    Rem: rehat → MetaMenahan; jatah menipis → paket diperkecil; gagal 3× beruntun → sisa dilewati."""
+    import concurrent.futures as _cf
+    t0 = time.time()
+    kata_kunci = kata_kunci.strip()
+    senada = [w for w in senada if w and w.lower() != kata_kunci.lower()][:6]
+    kunci = (kata_kunci.lower(), negara)
+    c = CACHE_V2.get(kunci)
+    if c and time.time() - c[0] < CACHE_V2_DTK:
+        info = dict(c[2], cache=True, umur_cache=int(time.time() - c[0]))
+        return _copy.deepcopy(c[1]), info
+    jatah = _rem_jatah()
+    if jatah <= 0:
+        raise MetaMenahan("rehat")
+    tugas = rencana_v2(kata_kunci, senada, jatah if jatah >= 6 else 3)
+    jalur = max(1, min(jalur, len(tugas)))
+    with _cf.ThreadPoolExecutor(jalur) as ex:
+        sesi = list(ex.map(lambda _: buka_sesi(), range(jalur)))
+    hasil, lihat, log = [], set(), []
+    gagal = [0]
+    ditahan = [False]
+
+    def kerja(i, q, media):
+        if time.time() - t0 > batas_waktu or gagal[0] >= 3 or ditahan[0]:
+            return q, media, None, "dilewati"
+        try:
+            ik = _ambil_kartu(sesi[i % jalur], q, media, negara)
+            gagal[0] = 0
+            return q, media, ik, "ok"
+        except MetaMenahan:
+            ditahan[0] = True
+            return q, media, None, "ditahan"
+        except Exception as e:
+            gagal[0] += 1
+            return q, media, None, str(e)[:60]
+
+    with _cf.ThreadPoolExecutor(jalur) as ex:
+        futs = [ex.submit(kerja, i, q, m) for i, (q, m) in enumerate(tugas)]
+        for f in _cf.as_completed(futs):
+            q, media, ik, st = f.result()
+            baru = 0
+            for o in ik or []:
+                aid = str(o.get("ad_archive_id") or "")
+                if aid and aid not in lihat:
+                    lihat.add(aid)
+                    o["_sumber"] = "" if q.lower() == kata_kunci.lower() else q
+                    hasil.append(o)
+                    baru += 1
+            log.append({"q": q, "media": media, "n": len(ik or []), "baru": baru, "status": st})
+    ok = sum(1 for l in log if l["status"] == "ok")
+    dipakai = sorted({q for q, _ in tugas if q.lower() != kata_kunci.lower()}, key=senada.index)
+    info = {"detik": round(time.time() - t0, 1), "senada": dipakai, "permintaan": len(tugas),
+            "berhasil": ok, "ditahan": ditahan[0], "log": log}
+    if not hasil and ditahan[0]:
+        raise MetaMenahan("Meta membatasi sementara")
+    if ok and not ditahan[0]:
+        _rem_pulih()
+    if hasil and not ditahan[0] and ok >= max(1, len(tugas) // 2):
+        CACHE_V2[kunci] = (time.time(), _copy.deepcopy(hasil), info)
+        for k in [k for k, v in CACHE_V2.items() if time.time() - v[0] > CACHE_V2_DTK]:
+            CACHE_V2.pop(k, None)
+        while len(CACHE_V2) > 12:   # RAM Render terbatas: buang yang paling tua
+            CACHE_V2.pop(min(CACHE_V2, key=lambda k: CACHE_V2[k][0]), None)
+    return hasil, info

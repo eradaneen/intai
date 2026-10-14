@@ -35,7 +35,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.8"
+VERSI = "1.5.0"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -1652,110 +1652,311 @@ def _ada_kata(pola_kata, *teks_list):
     return any(re.search(rx, t) for t in teks_list)
 
 
-def hitung_relevansi(kata, snap, o, b):
-    """Nilai kecocokan iklan thd kata kunci scan (0-100) — berantas niche luar.
-    Dicek ke: teks utama, judul, caption, deskripsi link, nama halaman, isi kartu,
-    kategori halaman, link (ter-decode) + keluarga kata senada bahasa ID.
-    v0.8: + anti-bocor v2–v2.3 (multi-kata, hiburan, lintas negara, katalog campuran,
-    produk-bukan-bahan). Bobot dasar & ambang label = v0.7."""
-    kata = (kata or "").strip().lower()
+# ===== v1.6 Relevansi v3 (mesin tajam) =====
+# 1) kata utuh + imbuhan (tas ≠ kualitas); 2) huruf hias dinormalkan (NFKC);
+# 3) POSISI: judul/nama halaman/tautan/deskripsi/judul kartu/awal teks = subjek; sekali di tengah teks panjang = sambil lalu;
+# 4) frasa multi-kata harus berdekatan; 5) sinonim ketat setara, "senada" (KELUARGA_KATA) maks Longgar;
+# 6) derau keras: novel/drama, bahasa asing, iklan artikel, iklan platform, politik; 7) konteks halaman.
+import unicodedata
+# Sinonim KETAT: barang yang sama (juga dipakai untuk perluasan kata kunci saat scan)
+SINONIM = [
+    ["tas", "tas wanita", "totebag", "sling bag", "tas selempang", "ransel", "tas pria", "tote bag", "bag", "handbag", "backpack", "clutch", "shoulder bag"],
+    ["hijab", "jilbab", "kerudung", "pashmina", "bergo", "khimar", "hijab instan", "ciput", "hijab segi empat"],
+    ["sepatu", "sepatu wanita", "sepatu pria", "sneakers", "sepatu anak", "pantofel", "sneaker", "shoes", "loafer", "boots", "running shoes"],
+    ["sandal", "sendal", "sandals", "slipper", "selop"],
+    ["kopi", "kopi susu", "biji kopi", "kopi bubuk", "arabika", "robusta", "kopi literan", "coffee", "espresso", "cold brew"],
+    ["madu", "madu murni", "madu hutan", "madu asli", "madu anak", "honey"],
+    ["skincare", "skin care", "serum", "moisturizer", "pelembab", "sunscreen", "tabir surya", "toner",
+     "facial wash", "sabun muka", "krim wajah", "face cream", "cleanser", "essence", "ampoule"],
+    ["mainan anak", "mainan edukasi", "mainan edukatif", "mainan bayi", "mainan", "toys", "toy", "mainan anak laki", "mainan anak perempuan"],
+    ["rak sepatu", "lemari sepatu", "rak sendal", "kabinet sepatu", "rak sepatu susun", "shoe rack", "shoebox"],
+    ["parfum", "perfume", "parfume", "eau de parfum", "edp", "fragrance", "minyak wangi"],
+    ["kaos", "t-shirt", "tshirt", "kaos polos", "tee"],
+    ["gamis", "abaya", "dress muslim", "longdress", "maxi dress"],
+    ["kemeja", "shirt", "hem", "blouse"],
+    ["celana", "jeans", "pants", "chino", "jogger", "kulot", "legging"],
+    ["jam tangan", "arloji", "watch", "smartwatch"],
+    ["helm", "helmet"],
+    ["kosmetik", "makeup", "make up", "lipstik", "lipstick", "lip tint", "cushion", "foundation", "bedak", "maskara"],
+    ["susu", "milk", "susu formula", "susu bubuk"],
+    ["popok", "diapers", "pampers", "popok bayi"],
+    ["suplemen", "supplement", "vitamin", "multivitamin", "kapsul herbal"],
+    ["pelangsing", "diet", "pelangsing badan", "fat burner", "slimming"],
+    ["kasur", "springbed", "spring bed", "matras", "mattress"],
+    ["kursi", "chair", "sofa", "bangku"],
+    ["meja", "table", "desk"],
+    ["lemari", "wardrobe", "kabinet", "cabinet"],
+    ["sabun", "soap", "body wash", "sabun mandi"],
+    ["shampoo", "sampo", "shampo", "hair tonic", "conditioner"],
+    ["hp", "handphone", "smartphone", "ponsel", "iphone", "android"],
+    ["laptop", "notebook", "macbook", "chromebook"],
+    ["earphone", "tws", "earbuds", "headset", "headphone"],
+    ["frozen food", "makanan beku", "nugget", "sosis", "dimsum"],
+    ["sambal", "sambel", "chili oil", "saus sambal"],
+    ["keripik", "kripik", "chips", "snack"],
+]
+
+PLATFORM = {"disney+", "disney+ hotstar", "netflix", "vidio", "prime video", "viu", "wetv", "iqiyi", "spotify", "youtube", "shopee", "tokopedia", "lazada", "tiktok", "tiktok shop", "blibli", "blibli.com", "bukalapak",
+            "shopeepay", "spaylater", "shopeefood indonesia", "shopeefood", "gopay", "gopay indonesia", "dana",
+            "ovo", "grab", "grabfood", "gojek", "alfamart", "indomaret", "akulaku", "kredivo", "temu", "zalora"}
+PLATFORM_GENERIK = re.compile(
+    r"belanja semua kebutuhan|download (aplikasi|shopee|sekarang)|yuk,? download|serbu rabu|xtra voucher|"
+    r"cek keranjang belanja|cod cek dulu|jaminan 100% uang kembali|bayar qris|aplikasi gopay|"
+    r"temukan koleksi .{0,40} di shopee|diskon shopee dari toko|apps\.apple\.com|play\.google\.com|itunes\.apple\.com", re.I)
+
+NOVEL_HAL = re.compile(r"novel|books?\b|reading|reads\b|story|stories|romance|drama|cerita|bacaan|webtoon|"
+                       r"komik|fiction|chapter|heartbeat|love ?story|happily ever|goodnovel|fizzo|dreame|"
+                       r"[\u3040-\u30ff\u4e00-\u9fff]", re.I)
+NOVEL_TEKS = re.compile(r"🔞|baca (gratis|selengkapnya|versi lengkap|bab)|klik (untuk|di sini untuk) membaca|"
+                        r"\bbab \d|\bchapter \d|instal dan baca|do not read in public|jangan membaca di tempat umum|"
+                        r"lire la version|drama pendek|short drama|full episode|tonton drama|nonton drama|"
+                        r"buku ini ada micin|makin dibaca makin|versi lengkapnya", re.I)
+POLITIK = re.compile(r"\b(bupati|gubernur|wali ?kota|partai|caleg|pemilu|pilkada|pileg|dprd?|kampanye|capres|cawapres|"
+                     r"relawan|psi|pdip|gerindra|golkar|nasdem|ganjar|prabowo|jokowi|anies)\b", re.I)
+NEGASI = re.compile(r"\b(bukan|tanpa|tidak pakai|gak pakai|ga pake|anti|selain)\s+(\S+\s+)?$")
+LOKAL = re.compile(r"\brp\.? ?\d|\d+ ?(rb|ribu|jt|juta|k)\b|\.co\.id|\.id\b|shopee|tokopedia|lazada|tiktok ?shop|blibli|"
+                   r"wa\.me/62|whatsapp|\bcod\b|ongkir|gratis ongkir|indonesia|jakarta|bandung|surabaya|bali|"
+                   r"jogja|yogyakarta|medan|semarang|makassar|malang|bekasi|tangerang|depok|bogor|official store|checkout", re.I)
+AFILIASI = re.compile(r"beli(nya)? ?di ?sini|cek harga|spill|link (produk|shopee|beli)|keranjang kuning|s\.shopee\.co\.id/", re.I)
+ARTIKEL = re.compile(r"\b(read more about|read tips|explore (helpful )?tips|learn (more )?about|"
+                     r"discover (helpful )?tips|explore how|tips for|curious about ways)\b", re.I)
+
+STOP_ID = set("yang dan di ke dari ini itu untuk dengan kamu aku kami bisa aja jadi udah sudah lagi buat "
+              "banget juga nya kak cek beli harga gratis ongkir promo diskon sekarang hanya mau tidak gak "
+              "nggak ada pakai sama atau karena biar langsung yuk dong deh".split())
+STOP_EN = set("the and for with you your our this that are is to of in on it get now new shop buy best "
+              "free all from more off sale today".split())
+STOP_ASING = set("le la les des et pour vous est une que du pas qui sur avec ir un kas ar par "
+                 "ang ng mga siya ko sa niya hindi el los las por para con una del que es o não com "
+                 "và của là có không được cho người der die das und nicht mit sie ist".split())
+
+
+def _norm(s):
+    s = unicodedata.normalize("NFKC", str(s or ""))
+    return s.lower()
+
+
+def pola_kata(w):
+    """kata utuh + imbuhan umum; frasa: sela spasi/strip, boleh ≤2 kata sisipan."""
+    bag = [re.escape(x) for x in re.split(r"[\s\-]+", w.strip()) if x]
+    if not bag:
+        return None
+    inti = r"(?:[\s\-]+\S+){0,2}?[\s\-]+".join(bag) if len(bag) > 1 else bag[0]
+    return re.compile(r"(?<![^\W_])" + inti + r"(?:nya|ku|mu|lah|kah|-" + bag[-1] + r")?(?![^\W_])")
+
+
+def keluarga_sinonim(kata):
+    """Kumpulan sinonim ketat untuk kata kunci (kata itu sendiri selalu di depan)."""
+    kata = _norm(kata).strip()
+    out = [kata]
+    for g in SINONIM:
+        if kata in g or any(kata == w for w in g):
+            out += [w for w in g if w != kata]
+    # kata kunci multi-kata yg mengandung anggota grup (mis. "tas wanita" → bag)
+    if len(out) == 1:
+        for g in SINONIM:
+            for w in g:
+                if " " not in w and len(w) > 3 and re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", kata):
+                    out += [kata.replace(w, x) for x in g if x != w and " " not in x][:4]
+                    break
+    lihat, hasil = set(), []
+    for w in out:
+        if w not in lihat:
+            lihat.add(w)
+            hasil.append(w)
+    return hasil
+
+
+def _bahasa(teks):
+    teks = re.sub(r"https?://\S+|\S+\.(com|id|co|net|org|me)\S*|@\S+|#\S+", " ", teks)
+    kata = re.findall(r"[a-zà-ÿāēīūčšžļņķģ]+", teks)
+    if len(kata) < 6:
+        return "pendek"
+    i = sum(1 for k in kata if k in STOP_ID)
+    e = sum(1 for k in kata if k in STOP_EN)
+    a = sum(1 for k in kata if k in STOP_ASING)
+    cjk = len(re.findall(r"[\u3040-\u30ff\u4e00-\u9fff\u0e00-\u0e7f]", teks))
+    if cjk > 8 and cjk > len(kata):
+        return "asing"
+    if a >= 3 and a > (i + e):
+        return "asing"
+    if i + e == 0 and a >= 1 and len(kata) >= 15:
+        return "asing"
+    if len(re.findall(r"[āēīūčšžļņķģőűñçãõøåæßğışřůěď]", teks)) > 3 and i < 3:
+        return "asing"
+    return "id" if i >= e else "en"
+
+
+def _t(snap, k):
+    v = snap.get(k) or ""
+    if isinstance(v, dict):
+        v = v.get("text") or ""
+    return str(v)
+
+
+def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
+    kata = _norm(kata).strip()
     if not kata:
         return {"nilai": 100, "label": "Relevan", "cocok": []}
-    token = [t for t in re.split(r"\s+", kata) if len(t) > 2]
-    if not token:
-        return {"nilai": 100, "label": "Relevan", "cocok": []}
+    snap = snap or {}
+    judul = _norm(bersih(_t(snap, "title")))
+    body = _norm(bersih(_t(snap, "body")))
+    ldesc = _norm(bersih(_t(snap, "link_description"))) + " " + _norm(_t(snap, "caption"))
+    nama_hal = _norm(o.get("page_name") or snap.get("page_name") or "")
+    link = _norm(unquote(str(snap.get("link_url") or ""))).replace("-", " ").replace("_", " ").replace("/", " ")
+    kartu = [_norm(str(c.get("title") or "") + " " + str(c.get("body") or "") + " " + str(c.get("link_description") or ""))
+             for c in (snap.get("cards") or []) if isinstance(c, dict)]
+    kategori = _norm(" ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or [])))
+    awal_body = body[:170]
+    kuat = " | ".join([judul, ldesc, " ".join(k[:120] for k in kartu), awal_body])
+    semua = " | ".join([judul, body, ldesc, " ".join(kartu)])
 
-    potongan = [teks(snap, "title"), teks(snap, "body"), teks(snap, "caption"),
-                teks(snap, "link_description"), b.get("teks") or "",
-                teks(snap, "additional_info"), teks(snap, "disclaimer_label"),
-                " ".join(str(x) for x in (snap.get("extra_texts") or [])),
-                " ".join(str(x.get("page_name") or "") for x in [snap.get("branded_content") or {}] if isinstance(x, dict)),
-                " ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or [])),
-                " ".join(str(x.get("name") or x.get("title") or "") for x in (o.get("menu_items") or []) if isinstance(x, dict))]
-    kartu_teks = []
-    for c in (snap.get("cards") or []):
-        if isinstance(c, dict):
-            kt = (str(c.get("title") or "") + " " + str(c.get("body") or "")
-                  + " " + str(c.get("link_description") or ""))
-            potongan.append(kt)
-            kartu_teks.append(kt.lower())
-    teks_utama = " ".join(str(p) for p in potongan).lower()
-    nama_hal = str(o.get("page_name") or snap.get("page_name") or "").lower()
-    link = unquote(str(snap.get("link_url") or "")).lower()
-
+    fam = keluarga_sinonim(kata)
+    pol = [(w, pola_kata(w)) for w in fam if pola_kata(w)]
+    pk = pol[0][1]
     skor, cocok = 0, []
-    frasa = kata in teks_utama
-    if frasa:
-        skor += 50
+
+    def ada(rx, t):
+        return bool(rx.search(t))
+
+    # 1) kata kunci persis
+    if ada(pk, kuat):
+        skor += 60
         cocok.append(kata)
-    jml_token = 0
-    for t in token:
-        if t in teks_utama:
-            skor += 20
-            jml_token += 1
-            if t not in cocok:
-                cocok.append(t)
-        elif t in nama_hal:
-            skor += 8
-            jml_token += 1
-            cocok.append(t + " (nama halaman)")
-        elif t in link:
-            skor += 10
-            jml_token += 1
-            cocok.append(t + " (tautan)")
-    # keluarga kata senada: "rak sepatu" nyambung ke iklan yang bilang "furniture"
-    # v2.1: kata query sendiri tidak dihitung lagi sebagai "senada" (dulu double-count)
-    for f in KELUARGA_KATA:
-        if any(w in kata for w in f):
-            for w in f:
-                if len(w) > 3 and w not in token and w != kata and (w in teks_utama or w in nama_hal or w in link):
-                    skor += 15
-                    cocok.append(w + " (senada)")
+    else:
+        n = len(pk.findall(semua))
+        if n >= 2:
+            skor += 45
+            cocok.append(f"{kata} ×{n}")
+        elif n == 1:
+            skor += 18
+            cocok.append(kata + " (sambil lalu)")
+    rapat = kata.replace(" ", "")
+    if ada(pk, nama_hal) or (len(rapat) >= 4 and rapat in nama_hal.replace(" ", "")):
+        skor += 25
+        cocok.append(kata + " (nama halaman)")
+    if ada(pk, link) or (len(rapat) >= 4 and rapat in link.replace(" ", "")):
+        skor += 15
+        cocok.append(kata + " (tautan)")
+    # tagar: #tasbahu #slingbag #rakSepatu → kuat
+    tagar = re.findall(r"#([a-z0-9_]{3,40})", semua)
+    if tagar and skor < 60:
+        for w in fam:
+            r_ = w.replace(" ", "")
+            if any(h == r_ or (len(r_) >= 3 and h.startswith(r_)) or (len(r_) >= 4 and h.endswith(r_)) for h in tagar):
+                skor += 45 if w == kata else 40
+                cocok.append("#" + r_ + " (tagar)")
+                break
+    # 2) sinonim ketat (hanya bila kata persis lemah)
+    if skor < 60:
+        for w, rx in pol[1:]:
+            if ada(rx, kuat) or ada(rx, nama_hal):
+                skor += 45
+                cocok.append(w + " (sinonim)")
+                break
+            if len(rx.findall(semua)) >= 2:
+                skor += 30
+                cocok.append(w + " (sinonim ×2)")
+                break
+    # 2b) senada (kategori tetangga) — hanya mengangkat sampai Longgar, tidak pernah Relevan
+    if skor < 15:
+        for f in keluarga:
+            if any(w in kata for w in f if len(w) > 2):
+                hit = next((w for w in f if len(w) > 3 and w not in kata and
+                            (ada(pola_kata(w), kuat) or ada(pola_kata(w), nama_hal))), None)
+                if hit:
+                    skor = 20
+                    cocok.append(hit + " (senada)")
                     break
-    # v2: multi-kata wajib semua token nyambung — satu kata saja tidak cukup
-    if len(token) >= 2 and jml_token < len(token):
-        skor = min(skor, 28)
-    # v2: penalti kategori hiburan (biang bocor: drama/game/novel)
-    for h in HIBURAN:
-        if _ada_kata(h, teks_utama, nama_hal):
-            skor = max(0, skor - (25 if frasa else 50))
-            cocok.append("hiburan: " + h)
-            break
-    # v2.1: katalog lintas negara
-    for l in LINTAS:
-        if _ada_kata(l, teks_utama, nama_hal):
+    # 3) multi-kata: kata-katanya ada tapi tidak berdekatan → sebutan lepas
+    token = [t for t in re.split(r"\s+", kata) if len(t) > 1]
+    if len(token) >= 2 and skor < 40:
+        if all(ada(pola_kata(t), semua) for t in token):
+            cocok.append("kata terpisah (bukan frasa)")
+    # 4) katalog campuran (DPA): mayoritas kartu bukan niche
+    if len(kartu) >= 3:
+        nyambung = sum(1 for k in kartu if any(ada(rx, k) for _, rx in pol))
+        if nyambung / len(kartu) < 0.3:
             skor = min(skor, 12)
-            cocok.append("lintas negara: " + l)
-            break
-    # v2.2: katalog campuran (DPA) — mayoritas kartu BUKAN niche query
-    if len(kartu_teks) >= 3:
-        senada = set(token)
-        for f in KELUARGA_KATA:
-            if any(w in kata for w in f):
-                senada.update(w for w in f if len(w) > 2)
-        nyambung = sum(1 for kt in kartu_teks if any(w in kt for w in senada))
-        if nyambung / len(kartu_teks) < 0.3:
-            skor = min(skor, 12)
-            cocok.append("katalog campuran: %d/%d kartu nyambung" % (nyambung, len(kartu_teks)))
-    # v2.3: "produk, bukan bahan" — kata kunci disebut sekadar bahan/varian rasa produk lain
-    if len(token) == 1 and skor >= 15:
+            cocok.append("katalog campuran: %d/%d kartu nyambung" % (nyambung, len(kartu)))
+    # 5) derau keras
+    hib_query = re.search(r"novel|buku|drama|film|komik|game", kata)
+    if not hib_query and (NOVEL_TEKS.search(semua) or (NOVEL_HAL.search(nama_hal) and not ada(pk, kuat))):
+        skor = min(skor, 5)
+        cocok.append("derau: novel/drama")
+    elif ARTIKEL.search(judul + " " + body[:200]) and not ada(pk, nama_hal):
+        skor = min(skor, 10)
+        cocok.append("derau: iklan artikel")
+    bhs = _bahasa(semua + " " + nama_hal)
+    if bhs == "asing":
+        skor = min(skor, 8)
+        cocok.append("derau: bahasa asing")
+    elif bhs in ("en", "pendek") and skor >= 40 and not LOKAL.search(semua + " " + link + " " + nama_hal):
+        skor = 38
+        cocok.append("pasar luar? (tanpa tanda Indonesia)")
+    if nama_hal.strip() in PLATFORM:
+        afiliasi = nama_hal.strip() == "shopee" and AFILIASI.search(semua) and skor >= 40 and not PLATFORM_GENERIK.search(semua)
+        if not afiliasi:
+            skor = min(skor, 10)
+            cocok.append("derau: iklan platform")
+    if POLITIK.search(nama_hal + " " + semua) and not re.search(r"partai|politik|caleg", kata):
+        skor = min(skor, 10)
+        cocok.append("derau: politik")
+    # penyangkal: semua sebutan kuat didahului "bukan/tanpa/anti" → bukan subjek iklan
+    m_all = list(pk.finditer(kuat))
+    if m_all and all(NEGASI.search(kuat[max(0, m.start() - 25):m.start()]) for m in m_all) and skor >= 40:
+        skor = min(skor, 18)
+        cocok.append("disangkal (bukan/tanpa)")
+    # 6) "produk, bukan bahan" (warisan v2.3)
+    if len(token) == 1 and skor >= 15 and not any("(sinonim)" in c or "(nama halaman)" in c for c in cocok):
         k = re.escape(kata)
-        bahan = (re.search(r"\b(dengan|plus|mengandung|berbahan|ekstrak|extract|diperkaya|topping|varian|rasa)\b[^.?!]{0,45}\b" + k + r"\b", teks_utama)
-                 or re.search(r"\b(ubi|singkong|ketela|kentang|roti|kue|donat|bakar|goreng|sate|ayam|ikan|daging|sosis|es|jus|teh|kopi|susu|yoghurt|granola|cokelat|coklat|permen|keripik|snack|biskuit|mie|sambal|saus|sabun|shampoo|lotion|serum|masker|lulur)\s+" + k + r"\b", teks_utama))
-        produk = (kata in nama_hal or kata in link
-                  or re.search(r"\b(minum|konsumsi|diminum|dimakan|pakai|dipakai|beli|order|pesan|checkout|ready|restock|manfaat|khasiat|ampuh)\b[^.?!]{0,40}\b" + k + r"\b", teks_utama)
-                  or re.search(r"\b" + k + r"\s+(asli|murni|hutan|super|premium|botol|gram|kg|ml|herbal|original|ori|termurah|terlaris)\b", teks_utama))
+        bahan = (re.search(r"\b(dengan|plus|mengandung|berbahan|ekstrak|extract|diperkaya|topping|varian|rasa)\b[^.?!]{0,45}\b" + k + r"\b", semua)
+                 or re.search(r"\b(ubi|singkong|kentang|roti|kue|donat|bakar|goreng|ayam|ikan|es|jus|teh|susu|yoghurt|granola|cokelat|coklat|permen|keripik|snack|biskuit|mie|sambal|saus|sabun|shampoo|lotion|serum|masker|lulur)\s+" + k + r"\b", semua))
+        produk = (ada(pk, nama_hal) or ada(pk, link) or ada(pk, judul)
+                  or re.search(r"\b(minum|konsumsi|diminum|pakai|beli|order|pesan|checkout|ready|restock|manfaat|khasiat|ampuh)\b[^.?!]{0,40}\b" + k + r"\b", semua)
+                  or re.search(r"\b" + k + r"\s+(asli|murni|hutan|super|premium|botol|gram|kg|ml|herbal|original|ori|termurah|terlaris)\b", semua))
         if bahan and not produk:
             skor = min(skor, 12)
-            cocok.append(kata + " sekadar bahan/varian, bukan produk utama")
+            cocok.append(kata + " sekadar bahan/varian")
     skor = max(0, min(100, skor))
-    if skor >= 40:
-        label = "Relevan"
-    elif skor >= 15:
-        label = "Longgar"
-    else:
-        label = "Lepas"
+    label = "Relevan" if skor >= 40 else ("Longgar" if skor >= 15 else "Lepas")
     return {"nilai": skor, "label": label, "cocok": cocok}
+
+
+def konteks_halaman(hasil):
+    lokal = set()
+    for r, o in hasil:
+        sn = o.get("snapshot") or {}
+        t = _norm(_t(sn, "body") + " " + _t(sn, "title") + " " + str(sn.get("link_url") or ""))
+        if _bahasa(t) == "id" or LOKAL.search(t):
+            lokal.add(str(o.get("page_id") or o.get("page_name")))
+    for r, o in hasil:
+        if any(c.startswith("pasar luar?") for c in r["cocok"]) and str(o.get("page_id") or o.get("page_name")) in lokal:
+            r["nilai"], r["label"] = 45, "Relevan"
+            r["cocok"] = [c for c in r["cocok"] if not c.startswith("pasar luar?")] + ["halaman lokal"]
+    """hasil: list of (rel_dict, objek). Halaman yang punya ≥1 iklan kuat (≥60, tanpa derau)
+    → iklan lain halaman itu yang menyebut kata kunci/sinonim walau lemah naik +25 (maks Relevan).
+    Iklan tanpa sebutan sama sekali naik ke Longgar saja (bukan Relevan) supaya tetap jujur."""
+    kuat = set()
+    for r, o in hasil:
+        if r["nilai"] >= 60 and not any(c.startswith("derau") for c in r["cocok"]):
+            kuat.add(str(o.get("page_id") or o.get("page_name")))
+    for r, o in hasil:
+        pid = str(o.get("page_id") or o.get("page_name"))
+        if pid not in kuat or r["nilai"] >= 40 or any(c.startswith("derau") or c.startswith("katalog") or c.startswith("disangkal") or "bahan" in c for c in r["cocok"]):
+            continue
+        if r["nilai"] >= 15:
+            r["nilai"] = min(100, r["nilai"] + 25)
+        else:
+            r["nilai"] = max(r["nilai"], 20)
+        r["cocok"].append("halaman niche (iklan lain halaman ini kuat)")
+        r["label"] = "Relevan" if r["nilai"] >= 40 else ("Longgar" if r["nilai"] >= 15 else "Lepas")
+    return hasil
+
+
+def hitung_relevansi(kata, snap, o, b):
+    """Nilai kecocokan iklan thd kata kunci scan (0-100) — v1.6 relevansi v3 (lihat blok di atas)."""
+    return _relevansi_v3(kata, snap, o, b, bersih_tpl, KELUARGA_KATA)
 
 
 def rincian(o, b):
@@ -2382,6 +2583,7 @@ def scan_dengan_antre(nilai, mode, email):
 def jalankan_scan(nilai, mode="cari", pemilik=None):
     """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
     s = mesin.buka_sesi()
+    perluasan = None
     if mode == "halaman":
         nilai = re.sub(r"\D", "", nilai)
         if not nilai:
@@ -2403,7 +2605,28 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             time.sleep(3)
     else:
         label = nilai
-        mentah = mesin.kumpul_iklan(s, nilai, "ID")  # 3 variasi media + iklan mati
+        # v1.6 mesin tajam: kata utama × 4 variasi media + kata senada (kamus sinonim → saran Shopee bila kurang)
+        senada = keluarga_sinonim(nilai)[1:]
+        if len(senada) < 4:
+            wadah = []
+            th = threading.Thread(target=lambda: wadah.extend(shp_saran(nilai)), daemon=True)
+            th.start()
+            th.join(4)   # saran Shopee hanya pelengkap: maks 4 detik, gagal = diabaikan
+            for w in list(wadah):
+                if w.lower() not in [x.lower() for x in senada] and w.lower() != nilai.lower().strip():
+                    senada.append(w)
+        try:
+            mentah, perluasan = mesin.kumpul_iklan_v2(nilai, "ID", senada[:6])
+        except mesin.MetaMenahan:
+            menit = max(1, round(mesin.rem_status()["rehat_detik"] / 60))
+            return {"ok": False, "ditahan": True,
+                    "error": f"Meta sedang membatasi pencarian dari server INTAI (bukan kesalahan Anda). "
+                             f"Coba lagi sekitar {menit} menit lagi — hasil tidak dikarang selama jeda ini."}
+        except Exception as e:
+            mentah, perluasan = [], {"galat": str(e)[:80]}
+        if not mentah:   # cadangan: cara lama (3 variasi media)
+            mentah = mesin.kumpul_iklan(s, nilai, "ID")
+            perluasan = dict(perluasan or {}, cadangan=True)
     if not mentah:
         return {"ok": False, "error": "Tidak ada iklan ditemukan (atau Ad Library sedang tidak merespons — coba lagi 1 menit)"}
     # A4 perapian: buang duplikat archive_id (ekstraksi bisa menangkap blok sama dua kali)
@@ -2454,11 +2677,15 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             pass
 
     out = []
+    pasangan_rel = []
     for b in rows:
         o = by_id.get(str(b["archive_id"]), {})
         if o:
             snap_r = o.get("snapshot") or {}
             rel = hitung_relevansi(nilai if mode == "cari" else "", snap_r, o, b)
+            pasangan_rel.append((rel, o))
+            if o.get("_sumber"):
+                rel["sumber"] = o["_sumber"]
         else:
             rel = {"nilai": 100, "label": "Relevan", "cocok": []}
         # A4: bersihkan token template {{...}} & tanggal aneh
@@ -2486,7 +2713,14 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             "status": status_iklan(umur, b["skor"]),
             "detail": rincian(o, b) if o else {"skor_detail": {"total": b["skor"]}, "raw": {}},
         })
+    if mode == "cari" and pasangan_rel:
+        konteks_halaman(pasangan_rel)   # v1.6: iklan lemah dari halaman yang jelas niche ikut naik
+        for x in out:
+            x["rel_nilai"] = (x.get("relevansi") or {}).get("nilai", x.get("rel_nilai"))
     rows_hidup = [b for b in rows if b.get("aktif") is not False] or rows
+    # v1.6: jumlah yang dicatat/ditampilkan = iklan aktif yang NYAMBUNG (Lepas = derau niche luar)
+    n_nyambung = len(rows_hidup) if mode != "cari" else sum(
+        1 for x in out if x.get("aktif") is not False and (x.get("relevansi") or {}).get("label") != "Lepas")
 
     # === GALI HARGA: DPA (kartu) + LP + Marketplace (paralel, best-effort) ===
     LP_MAKS, MP_MAKS = 8, 6
@@ -2709,7 +2943,7 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
     # catat ke riwayat mesin -> muncul otomatis di dashboard (/api/ringkasan)
     indeks_kini = {}
     for x in out:
-        if x.get("aktif") is False:
+        if x.get("aktif") is False or (x.get("relevansi") or {}).get("label") == "Lepas":
             continue
         aid = str((x.get("detail") or {}).get("archive_id") or "")
         if aid:
@@ -2719,7 +2953,7 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
     sejak_lalu = None
     for i_pm, pm in enumerate(daftar_pemilik or [""]):
         try:
-            sl = catat_scan(label, mode, len(rows_hidup), indeks_kini, pm)
+            sl = catat_scan(label, mode, n_nyambung, indeks_kini, pm)
         except Exception:
             sl = None
         if i_pm == 0:
@@ -2727,10 +2961,16 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
     # v1.0 P1: arsipkan semua iklan + pengiklan + potret niche (latar, best-effort)
     ARSIP_STATUS["antri"] = ARSIP_STATUS.get("antri", 0) + 1
     threading.Thread(target=arsipkan_scan, daemon=True, name="arsip",
-                     args=(out, label, mode, len(rows_hidup), ekonomi_niche)).start()
+                     args=(out, label, mode, n_nyambung, ekonomi_niche)).start()
+    # v1.6: data mentah Meta untuk iklan Lepas (disembunyikan default, tidak diarsip) tidak dikirim → respons ±40% lebih ringan
+    rows_kirim = []
+    for x in out:
+        if (x.get("relevansi") or {}).get("label") == "Lepas" and (x.get("detail") or {}).get("raw") is not None:
+            x = dict(x, detail={k: v for k, v in x["detail"].items() if k != "raw"})
+        rows_kirim.append(x)
 
     return {
-        "ok": True, "kata": label, "mode": mode, "jumlah": len(rows_hidup), "sejak_lalu": sejak_lalu,
+        "ok": True, "kata": label, "mode": mode, "jumlah": n_nyambung, "sejak_lalu": sejak_lalu,
         "label_tampil": _nama_dari_rows(out) if mode == "halaman" else None,   # v1.4.2: nama halaman, bukan ID mentah
         "jumlah_mati": sum(1 for b in rows if b.get("aktif") is False),
         "rata2": sum(x["umur"] for x in hidup) // max(len(hidup), 1),
@@ -2742,7 +2982,10 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
         "acuan": acuan,
         "waktu": waktu,
         "angle": angle,
-        "rows": out,
+        "perluasan": perluasan,
+        "jumlah_relevan": sum(1 for x in out if x.get("aktif") is not False
+                              and (x.get("relevansi") or {}).get("label") == "Relevan"),
+        "rows": rows_kirim,
     }
 
 
@@ -3316,12 +3559,13 @@ def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
     n_ev = 0
     try:
         iklan, lihat = [], set()
-        for x in out:
+        out_arsip = [x for x in out if (x.get("relevansi") or {}).get("label") != "Lepas"]   # v1.6: derau tidak diarsip
+        for x in out_arsip:
             b = baris_arsip_iklan(x, label, mode, kini)
             if b and b["archive_id"] not in lihat:
                 lihat.add(b["archive_id"])
                 iklan.append(b)
-        pengiklan = baris_arsip_pengiklan(out, label, kini)
+        pengiklan = baris_arsip_pengiklan(out_arsip, label, kini)
         snap = ringkas_snapshot(out, label, mode, jumlah, ekonomi_niche, kini)
         pid_scan = None
         if mode == "halaman":
@@ -3851,6 +4095,15 @@ def _pekerja_jadwal():
                 h = jalankan_scan(it["q"], it["mode"], pemilik=list(it.get("u") or []))
         except Exception as e:
             h = {"ok": False, "error": str(e)[:160]}
+        if h.get("ditahan"):
+            # v1.6: Meta sedang membatasi → item TIDAK dihitung gagal; pekerja berhenti, tick cron berikutnya melanjutkan
+            with kunci_jadwal:
+                st = JADWAL["status"]
+                st["item_kini"] = None
+                st["ditahan"] = _iso_kini()
+                setelan_tulis("jadwal_status", st)
+                JADWAL["thread"] = None
+            return
         with kunci_jadwal:
             st = JADWAL["status"]
             lama = st.setdefault("hasil", {}).get(it["k"]) or {}
@@ -3862,7 +4115,7 @@ def _pekerja_jadwal():
             setelan_tulis("jadwal_status", st)
             masih = bool(_sisa(st))
         if masih:
-            time.sleep(4)   # sopan ke Meta Ad Library
+            time.sleep(15)   # v1.6: sopan ke Meta Ad Library (1 scan = s/d 12 permintaan)
 
 
 def jadwal_tick(paksa=False, pemicu="cron", email=None):
@@ -4824,6 +5077,7 @@ def admin_data():
             "admin": ADMIN_DAFTAR, "cs": cs_kontak(), "jam": jam, "kunci_wajib": bool(JADWAL_KUNCI),
             "email": {"layanan": mail_layanan(), "kunci": bool(MAIL_KUNCI), "dari": MAIL_DARI if mail_layanan() == "brevo" else "",
                       "terakhir": dict(MAIL_STATUS), "menit": RESET_MENIT},
+            "shopee": {"jalur": dict(SHP_JALUR), "aff": shp_aff_aktif(), "per_jam": SHP_PER_JAM},   # v1.5.0
             "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"),
             "arsip": {k: arsip.get(k) for k in ("iklan", "iklan_aktif", "pengiklan", "snapshot", "niche") if k in arsip},
             "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"), "akhir": st.get("akhir"),
@@ -5168,6 +5422,686 @@ def admin_ubah(email_admin, d, basis=""):
     return {"ok": False, "error": "aksi tidak dikenal"}
 
 
+
+# =====================================================================
+# v1.5.0 — SCAN SHOPEE
+# Jalur (hasil riset, lihat riset/RISET-DATA-SCAN.md):
+#   S6/S8/S11  halaman versi pratinjau-link (UA facebookexternalhit) → kartu produk/toko
+#   S12        API Flash Sale (UA Chrome)  → historical_sold PASTI + stok
+#   saran      search_hint (UA Chrome)     → kata kunci yang diketik pembeli
+#   S4         Affiliate Open API resmi    → hanya bila env INTAI_SHOPEE_AFF_ID/SECRET diisi
+# Semua jalur tidak resmi KECUALI S4 → wajib gagal dengan tenang (tidak boleh menjatuhkan app).
+# =====================================================================
+import html as _htmlmod
+import hashlib as _hashlib_shp
+
+SHP_UA_BOT = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+SHP_UA_WEB = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+SHP_BASIS = "https://shopee.co.id"
+SHP_GAMBAR = "https://down-id.img.susercontent.com/file/"
+SHP_URUT = {"laris": "sales", "terkait": "relevancy", "baru": "ctime", "murah": "price"}
+SHP_URUT_LABEL = {"laris": "Terlaris", "terkait": "Terkait", "baru": "Terbaru", "murah": "Termurah"}
+SHP_LENCANA = {   # gambar flag-label di kartu → nama lencana (dicek visual 14 Okt 2026)
+    "id-11134258-7r98z-lykpu80ygbvs76": "Mall",
+    "id-11134258-7r98r-lyalscj1g30l0b": "Star+",
+    "id-11134258-7r98o-lyam4dmlnqcoba": "Star",
+    "id-11134258-7r98o-lyaltcbv221q54": "Supermarket",
+    "id-11134258-81ztn-mr1eubmw7wg09d": "Apotek",
+}
+SHP_TTL = {"cari": 30 * 60, "toko": 3 * 3600, "flash": 10 * 60, "saran": 12 * 3600, "nama": 24 * 3600}
+SHP_TTL_GAGAL = 3 * 60            # jalur ditutup → jangan dihantam berulang
+SHP_PER_JAM = 60                  # permintaan BARU (bukan dari cache) per akun per jam; admin bebas
+SHP_CACHE = {}                    # (jenis, kunci) → (waktu, data)
+SHP_GAGAL = {}                    # (jenis, kunci) → (waktu, pesan)
+SHP_KUOTA = {}                    # email → [waktu, ...]
+SHP_JALUR = {}                    # jalur → {ok, ms, waktu, pesan}  (untuk Admin → Status sistem)
+_shp_sem = threading.BoundedSemaphore(2)
+_shp_lock = threading.Lock()
+SHP_AFF_ID = os.environ.get("INTAI_SHOPEE_AFF_ID", "").strip()
+SHP_AFF_SECRET = os.environ.get("INTAI_SHOPEE_AFF_SECRET", "").strip()
+SHP_AFF_URL = "https://open-api.affiliate.shopee.co.id/graphql"
+SHP_FS_KUNCI = "shpfs_riwayat"    # setelan: {"hari": {"YYYY-MM-DD": {itemid: terjual}}} (14 hari)
+SHP_FS_HARI = 14
+
+
+class ShopeeTutup(Exception):
+    """Jalur Shopee menolak / berubah format — tampilkan pesan tenang, bukan error 500."""
+
+
+def _shp_catat(jalur, ok, t0, pesan=""):
+    SHP_JALUR[jalur] = {"ok": bool(ok), "ms": int((time.time() - t0) * 1000), "waktu": _iso_kini(),
+                        "pesan": str(pesan)[:160]}
+
+
+def _shp_cache_ambil(jenis, kunci):
+    with _shp_lock:
+        c = SHP_CACHE.get((jenis, kunci))
+        if c and time.time() - c[0] < SHP_TTL[jenis]:
+            return c[1]
+        g = SHP_GAGAL.get((jenis, kunci))
+        if g and time.time() - g[0] < SHP_TTL_GAGAL:
+            raise ShopeeTutup(g[1])
+    return None
+
+
+def _shp_cache_simpan(jenis, kunci, data):
+    with _shp_lock:
+        SHP_CACHE[(jenis, kunci)] = (time.time(), data)
+        SHP_GAGAL.pop((jenis, kunci), None)
+        if len(SHP_CACHE) > 300:   # buang yang paling tua
+            for k, _ in sorted(SHP_CACHE.items(), key=lambda kv: kv[1][0])[:60]:
+                SHP_CACHE.pop(k, None)
+
+
+def _shp_cache_gagal(jenis, kunci, pesan):
+    with _shp_lock:
+        SHP_GAGAL[(jenis, kunci)] = (time.time(), pesan)
+
+
+def shp_kuota(email):
+    """True bila akun masih boleh memicu permintaan baru ke Shopee."""
+    if is_admin(email):
+        return True
+    kini = time.time()
+    with _shp_lock:
+        daftar = [t for t in SHP_KUOTA.get(email, []) if kini - t < 3600]
+        if len(daftar) >= SHP_PER_JAM:
+            SHP_KUOTA[email] = daftar
+            return False
+        daftar.append(kini)
+        SHP_KUOTA[email] = daftar
+    return True
+
+
+def _shp_get(url, bot=True, timeout=20, referer=None):
+    if bot:
+        h = {"User-Agent": SHP_UA_BOT, "Accept-Language": "id-ID,id;q=0.9"}
+    else:
+        h = {"User-Agent": SHP_UA_WEB, "Accept": "application/json", "Accept-Language": "id-ID,id;q=0.9",
+             "Referer": referer or SHP_BASIS + "/", "X-API-SOURCE": "pc"}
+    if not _shp_sem.acquire(timeout=25):
+        raise ShopeeTutup("Antrean Shopee sedang penuh - coba lagi sebentar")
+    try:
+        return requests.get(url, headers=h, timeout=timeout)
+    except requests.RequestException as e:
+        raise ShopeeTutup("Shopee tidak bisa dihubungi (" + type(e).__name__ + ")")
+    finally:
+        _shp_sem.release()
+
+
+def _shp_teks(s):
+    s = re.sub(r"<script.*?</script>|<style.*?</style>", "", s, flags=re.S)
+    return [x.strip() for x in _htmlmod.unescape(re.sub(r"<[^>]+>", "\x00", s)).split("\x00") if x.strip()]
+
+
+def shp_angka(t):
+    """'428,6RB' → 428600 · '10RB+' → 10000 · '1,2JT' → 1200000 · '109' → 109 · gagal → None."""
+    m = re.search(r"(\d+(?:[.,]\d+)*)\s*(RB|JT|rb|jt|K|k|M)?", str(t or ""))
+    if not m:
+        return None
+    a, s = m.group(1), (m.group(2) or "").upper()
+    if s:
+        a = a.replace(".", "").replace(",", ".") if "," in a else a
+        try:
+            return int(round(float(a) * (1_000_000 if s in ("JT", "M") else 1000)))
+        except ValueError:
+            return None
+    try:
+        return int(re.sub(r"[.,]", "", a))
+    except ValueError:
+        return None
+
+
+def shp_kartu(t):
+    """Kartu produk dari halaman Shopee versi pratinjau-link → list dict (tanpa tebakan)."""
+    out, lihat = [], set()
+    for b in t.split('aria-label="Product card"')[1:]:
+        m = re.search(r'href="(/[^"]*?-i\.(\d+)\.(\d+))[?"]', b)
+        if not m or m.group(3) in lihat:
+            continue
+        lihat.add(m.group(3))
+        b = b[:b.rfind("<")] if "<" in b else b          # buang tag terpotong milik kartu berikutnya
+        tk = _shp_teks(b)
+        nama = None
+        for a in re.findall(r'<img[^>]*alt="([^"]+)"', b):
+            a = _htmlmod.unescape(a)
+            if a not in ("flag-label", "promotion price", "rating-star", "custom-overlay", "location-icon",
+                         "voucher-icon", "promotion-label-icon") and not a.startswith("location-") \
+                    and not re.fullmatch(r"-?\d+%|&gt;.*|>.*", a):
+                nama = a
+                break
+        if not nama:   # cadangan: token terpanjang sebelum harga
+            i = tk.index("Rp") if "Rp" in tk else len(tk)
+            nama = max(tk[:i], key=len, default="")
+        nama = re.sub(r"\s+", " ", nama).strip()
+        harga = [int(tk[i + 1].replace(".", "")) for i, x in enumerate(tk)
+                 if x == "Rp" and i + 1 < len(tk) and re.fullmatch(r"[\d.]+", tk[i + 1])]
+        h = harga[0] if harga else None
+        coret = harga[1] if len(harga) > 1 and harga[1] > (h or 0) else None
+        dsk = next((x for x in tk if re.fullmatch(r"-\d{1,2}%", x)), None)
+        diskon = int(dsk[1:-1]) if dsk else (90 if any(re.fullmatch(r">\s*90% off", x) for x in tk) else None)
+        if diskon is None and coret and h:
+            diskon = int(round((1 - h / coret) * 100))
+        rating = next((float(x) for x in tk if re.fullmatch(r"[1-5]\.\d", x)), None)
+        sold_t = next((x for x in tk if "terjual" in x.lower()), None)
+        kota = re.search(r'aria-label="location-([^"]{1,60})"', b)
+        flag = re.search(r'<img[^>]*src="[^"]*/file/([A-Za-z0-9_-]+)"[^>]*alt="flag-label"', b)
+        gb = re.search(r'src="(https://down-id\.img\.susercontent\.com/file/[A-Za-z0-9_-]+)', b)
+        # label promo = token pendek di antara harga dan rating
+        try:
+            awal = max(i for i, x in enumerate(tk) if x == "Rp") + 2
+        except ValueError:
+            awal = 0
+        label = []
+        for x in tk[awal:]:
+            if re.fullmatch(r"[1-5]\.\d", x) or (kota and x == _htmlmod.unescape(kota.group(1))):
+                break
+            if not re.fullmatch(r"-\d+%|>\s*90% off|\+ ?\d+|Ad|Iklan", x) and "terjual" not in x.lower() \
+                    and len(x) <= 34 and x not in label:
+                label.append(x)
+        out.append({
+            "itemid": m.group(3), "shopid": m.group(2), "nama": nama[:180],
+            "url": SHP_BASIS + "/product/" + m.group(2) + "/" + m.group(3),
+            "gambar": gb.group(1) if gb else "",
+            "harga": h, "harga_coret": coret, "diskon": diskon, "rating": rating,
+            "terjual_teks": sold_t, "terjual": shp_angka(sold_t) if sold_t else None,
+            "kota": _htmlmod.unescape(kota.group(1)) if kota else None,
+            "lencana": (SHP_LENCANA.get(flag.group(1), "Lencana") if flag else None),
+            "label": label[:4],
+            "iklan": ("Ad" in tk or "Iklan" in tk),
+        })
+    return out
+
+
+def _shp_halaman_kartu(url, jalur):
+    """Ambil halaman versi bot → kartu; SSR kadang kosong → coba ulang 1×."""
+    t0 = time.time()
+    terakhir = ""
+    for coba in range(2):
+        r = _shp_get(url, bot=True)
+        if r.status_code != 200:
+            terakhir = f"HTTP {r.status_code}"
+            if r.status_code in (403, 418, 429):
+                break
+        else:
+            k = shp_kartu(r.text)
+            if k:
+                _shp_catat(jalur, True, t0, f"{len(k)} kartu")
+                return k, r.text
+            terakhir = "0 kartu (format halaman berubah / SSR kosong)"
+        if coba == 0:
+            time.sleep(1.2)
+    _shp_catat(jalur, False, t0, terakhir)
+    raise ShopeeTutup("Shopee sedang tidak mengirim daftar produk (" + terakhir + "). Coba lagi beberapa menit lagi.")
+
+
+def _shp_kuartil(a, p):
+    if not a:
+        return None
+    a = sorted(a)
+    k = (len(a) - 1) * p
+    f = int(k)
+    c = min(f + 1, len(a) - 1)
+    return int(round(a[f] + (a[c] - a[f]) * (k - f)))
+
+
+def shp_ringkas(prod):
+    """Ringkasan JUJUR dari sampel kartu (bukan seluruh pasar)."""
+    hg = [p["harga"] for p in prod if p.get("harga")]
+    n = len(prod)
+    r = {"n": n}
+    if hg:
+        lo, hi = min(hg), max(hg)
+        r["harga"] = {"min": lo, "p25": _shp_kuartil(hg, .25), "median": _shp_kuartil(hg, .5),
+                      "p75": _shp_kuartil(hg, .75), "max": hi}
+        # histogram 8 kelompok, batas dibulatkan supaya mudah dibaca
+        import math
+        if hi > lo:
+            langkah = (hi - lo) / 8
+            pangkat = 10 ** max(0, int(math.log10(max(langkah, 1))))
+            langkah = max(pangkat, math.ceil(langkah / pangkat) * pangkat)
+            dasar = (lo // pangkat) * pangkat
+            ember = []
+            for i in range(8):
+                a, b = dasar + i * langkah, dasar + (i + 1) * langkah
+                ember.append({"dari": int(a), "sampai": int(b),
+                              "n": sum(1 for x in hg if a <= x < b or (i == 7 and x >= a))})
+                if b > hi:
+                    break
+            r["histogram"] = ember
+    dk = [p["diskon"] for p in prod if p.get("diskon")]
+    r["diskon"] = {"persen_produk": round(100 * len(dk) / n) if n else 0,
+                   "rata": round(sum(dk) / len(dk)) if dk else 0}
+    rt = [p["rating"] for p in prod if p.get("rating")]
+    r["rating_rata"] = round(sum(rt) / len(rt), 2) if rt else None
+    lc = {}
+    for p in prod:
+        lc[p.get("lencana") or "Biasa"] = lc.get(p.get("lencana") or "Biasa", 0) + 1
+    r["lencana"] = sorted(([k, v] for k, v in lc.items()), key=lambda x: -x[1])
+    kt = {}
+    for p in prod:
+        if p.get("kota"):
+            kt[p["kota"]] = kt.get(p["kota"], 0) + 1
+    r["kota"] = sorted(([k, v] for k, v in kt.items()), key=lambda x: -x[1])[:6]
+    r["kota_n"] = sum(kt.values())
+    tk = {}
+    for i, p in enumerate(prod):
+        d = tk.setdefault(p["shopid"], {"shopid": p["shopid"], "n": 0, "contoh": p["nama"][:70],
+                                        "posisi": i + 1, "lencana": p.get("lencana")})
+        d["n"] += 1
+    r["toko"] = sorted((v for v in tk.values() if v["n"] >= 2), key=lambda x: (-x["n"], x["posisi"]))[:6]
+    r["toko_unik"] = len(tk)
+    lb = {}
+    for p in prod:
+        for x in p.get("label") or []:
+            lb[x] = lb.get(x, 0) + 1
+    r["label"] = sorted(([k, v] for k, v in lb.items()), key=lambda x: -x[1])[:8]
+    r["terjual_tampil"] = sum(1 for p in prod if p.get("terjual") is not None)
+    return r
+
+
+def shp_saran(q):
+    """Kata kunci yang sedang diketik pembeli (search_hint). Gagal → []."""
+    q = q.strip().lower()[:60]
+    try:
+        c = _shp_cache_ambil("saran", q)
+    except ShopeeTutup:
+        return []
+    if c is not None:
+        return c
+    t0 = time.time()
+    try:
+        r = _shp_get(SHP_BASIS + "/api/v4/search/search_hint?keyword=" + quote(q) + "&search_type=0&version=1",
+                     bot=False, timeout=12)
+        kw = [str(x.get("keyword") or "").strip() for x in (r.json().get("keywords") or [])] if r.status_code == 200 else []
+        kw = [k for k in dict.fromkeys(kw) if k and k != q][:10]
+        _shp_catat("saran", r.status_code == 200, t0, f"HTTP {r.status_code}, {len(kw)} kata")
+    except (ShopeeTutup, ValueError, AttributeError) as e:
+        _shp_catat("saran", False, t0, str(e))
+        _shp_cache_gagal("saran", q, "saran tidak tersedia")
+        return []
+    _shp_cache_simpan("saran", q, kw)
+    return kw
+
+
+# ---- Affiliate Open API (resmi) — hanya aktif bila env diisi ----
+def shp_aff_aktif():
+    return bool(SHP_AFF_ID and SHP_AFF_SECRET)
+
+
+def shp_aff_kueri(query):
+    """POST graphql bertanda tangan SHA256. → (ok, data|pesan)."""
+    if not shp_aff_aktif():
+        return False, "Affiliate API belum diisi (env INTAI_SHOPEE_AFF_ID / INTAI_SHOPEE_AFF_SECRET)"
+    payload = json.dumps({"query": query}, separators=(",", ":"))
+    ts = str(int(time.time()))
+    sig = _hashlib_shp.sha256((SHP_AFF_ID + ts + payload + SHP_AFF_SECRET).encode()).hexdigest()
+    t0 = time.time()
+    try:
+        r = requests.post(SHP_AFF_URL, data=payload, timeout=20, headers={
+            "Content-Type": "application/json",
+            "Authorization": f"SHA256 Credential={SHP_AFF_ID},Timestamp={ts},Signature={sig}"})
+        d = r.json()
+    except (requests.RequestException, ValueError) as e:
+        _shp_catat("affiliate", False, t0, type(e).__name__)
+        return False, "Affiliate API tidak bisa dihubungi"
+    if d.get("errors"):
+        e = d["errors"][0] if isinstance(d["errors"], list) and d["errors"] else {}
+        kode = (e.get("extensions") or {}).get("code")
+        pesan = {10020: "tanda tangan ditolak - cek App ID/Secret", 10030: "batas permintaan Affiliate API tercapai",
+                 10035: "akun belum punya akses Open API"}.get(kode, str(e.get("message") or "error")[:100])
+        _shp_catat("affiliate", False, t0, f"{kode}: {pesan}")
+        return False, f"Affiliate API: {pesan}"
+    _shp_catat("affiliate", True, t0, "ok")
+    return True, d.get("data") or {}
+
+
+def shp_aff_cari(q, toko=None):
+    """Produk + angka terjual RESMI (field sales). toko=shopId → produk toko itu."""
+    filt = f'shopId:{int(toko)},' if toko else f'keyword:{json.dumps(q[:80])},'
+    query = ("{productOfferV2(" + filt + "sortType:2,page:1,limit:50){nodes{itemId shopId productName sales "
+             "priceMin priceMax ratingStar shopName imageUrl priceDiscountRate commissionRate}}}")
+    ok, d = shp_aff_kueri(query)
+    if not ok:
+        return None, d
+    out = []
+    for x in ((d.get("productOfferV2") or {}).get("nodes") or []):
+        try:
+            out.append({"itemid": str(x.get("itemId")), "shopid": str(x.get("shopId")),
+                        "nama": str(x.get("productName") or "")[:180], "terjual": _int(x.get("sales")),
+                        "harga": _int(float(x.get("priceMin") or 0)), "harga_max": _int(float(x.get("priceMax") or 0)),
+                        "rating": round(float(x.get("ratingStar") or 0), 2) or None,
+                        "toko": str(x.get("shopName") or "")[:80], "gambar": str(x.get("imageUrl") or ""),
+                        "diskon": _int(x.get("priceDiscountRate")), "komisi": x.get("commissionRate"),
+                        "url": SHP_BASIS + "/product/" + str(x.get("shopId")) + "/" + str(x.get("itemId"))})
+        except (TypeError, ValueError):
+            continue
+    return out, ""
+
+
+def shopee_cari(q, urut="laris", email=None):
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
+    if len(q) < 2:
+        return {"ok": False, "error": "Ketik kata kunci minimal 2 huruf"}
+    urut = urut if urut in SHP_URUT else "laris"
+    kunci = (q.lower(), urut)
+    try:
+        c = _shp_cache_ambil("cari", kunci)
+    except ShopeeTutup as e:
+        return {"ok": False, "tutup": True, "error": str(e)}
+    if c is not None:
+        return dict(c, cache=True)
+    if email and not shp_kuota(email):
+        return {"ok": False, "error": f"Batas {SHP_PER_JAM} scan Shopee baru per jam tercapai - hasil yang sudah pernah dibuka tetap bisa dilihat"}
+    url = SHP_BASIS + "/search?keyword=" + quote(q) + "&sortBy=" + SHP_URUT[urut] + ("&order=asc" if urut == "murah" else "")
+    try:
+        prod, _ = _shp_halaman_kartu(url, "cari")
+    except ShopeeTutup as e:
+        _shp_cache_gagal("cari", kunci, str(e))
+        return {"ok": False, "tutup": True, "error": str(e)}
+    for i, p in enumerate(prod):
+        p["posisi"] = i + 1
+    hasil = {"ok": True, "q": q, "urut": urut, "urut_label": SHP_URUT_LABEL[urut], "waktu": _iso_kini(),
+             "produk": prod, "ringkas": shp_ringkas(prod), "saran": shp_saran(q),
+             "sumber": "Halaman pencarian Shopee (versi pratinjau link) - " + str(len(prod)) + " produk teratas",
+             "aff": None, "aff_pesan": ""}
+    if shp_aff_aktif():
+        a, pesan = shp_aff_cari(q)
+        hasil["aff"], hasil["aff_pesan"] = a, pesan
+        if a:   # tempelkan angka terjual resmi ke kartu yang sama
+            peta = {x["itemid"]: x["terjual"] for x in a}
+            for p in prod:
+                if p["itemid"] in peta and peta[p["itemid"]] is not None:
+                    p["terjual_resmi"] = peta[p["itemid"]]
+    _shp_cache_simpan("cari", kunci, hasil)
+    return hasil
+
+
+def _shp_tgl(off=0):
+    return (datetime.now(WIB) - timedelta(days=off)).strftime("%Y-%m-%d")
+
+
+def shp_username_ke_id(nama):
+    """'glowfxbeauty' → '573351606' lewat halaman toko versi bot. Gagal → None."""
+    nama = nama.strip().strip("/").lower()
+    if not re.fullmatch(r"[a-z0-9_.-]{2,40}", nama) or nama in ("search", "shop", "product", "flash_sale", "mall", "m", "list"):
+        return None
+    try:
+        c = _shp_cache_ambil("nama", nama)
+    except ShopeeTutup:
+        return None
+    if c is not None:
+        return c
+    try:
+        r = _shp_get(SHP_BASIS + "/" + quote(nama), bot=True, timeout=15)
+    except ShopeeTutup:
+        return None
+    sid = None
+    if r.status_code == 200:
+        hit = {}
+        for x in re.findall(r'-i\.(\d{3,14})\.\d+', r.text):   # kartu produk milik toko ini = mayoritas
+            hit[x] = hit.get(x, 0) + 1
+        sid = max(hit, key=hit.get) if hit and max(hit.values()) >= 3 else None
+    if sid:
+        _shp_cache_simpan("nama", nama, sid)
+    else:
+        _shp_cache_gagal("nama", nama, "tidak ditemukan")
+    return sid
+
+
+def shopee_toko(shopid, email=None):
+    mentah = str(shopid or "").strip()[:200]
+    m = re.search(r"/shop/(\d{3,14})", mentah) or re.search(r"-i\.(\d{3,14})\.\d+", mentah) or re.search(r"/product/(\d{3,14})/", mentah)
+    if m:
+        sid = m.group(1)
+    elif re.fullmatch(r"\d{3,14}", mentah):
+        sid = mentah
+    else:
+        nama = re.sub(r"^(https?://)?(www\.)?shopee\.co\.id/", "", mentah).split("?")[0].strip("/")
+        sid = shp_username_ke_id(nama) if "/" not in nama else None
+        if not sid:
+            return {"ok": False, "error": "Toko tidak ditemukan - tempel link toko (shopee.co.id/namatoko), link produk, atau ID toko (angka)"}
+    try:
+        c = _shp_cache_ambil("toko", sid)
+    except ShopeeTutup as e:
+        return {"ok": False, "tutup": True, "error": str(e)}
+    if c is not None:
+        return dict(c, cache=True)
+    if email and not shp_kuota(email):
+        return {"ok": False, "error": f"Batas {SHP_PER_JAM} permintaan Shopee baru per jam tercapai"}
+    t0 = time.time()
+    try:
+        r = _shp_get(SHP_BASIS + "/shop/" + sid, bot=True)
+    except ShopeeTutup as e:
+        return {"ok": False, "tutup": True, "error": str(e)}
+    if r.status_code != 200:
+        _shp_catat("toko", False, t0, f"HTTP {r.status_code}")
+        _shp_cache_gagal("toko", sid, f"Profil toko tidak bisa dibuka (HTTP {r.status_code})")
+        return {"ok": False, "tutup": True, "error": f"Profil toko tidak bisa dibuka (HTTP {r.status_code})"}
+    t = r.text
+    org = {}
+    for j in re.findall(r'<script[^>]*ld\+json[^>]*>(.*?)</script>', t, re.S):
+        try:
+            o = json.loads(j)
+        except ValueError:
+            continue
+        if isinstance(o, dict) and o.get("@type") == "Organization":
+            org = o
+            break
+    if not org:
+        _shp_catat("toko", False, t0, "tanpa data Organization")
+        return {"ok": False, "tutup": True, "error": "Format profil toko Shopee berubah - data toko belum bisa dibaca"}
+    ag = org.get("aggregateRating") or {}
+    pg = re.search(r'([\d.,]+\s*(?:RB|JT|rb|jt)?)\s*(?:<[^>]*>\s*)*Pengikut', t)
+    tk = _shp_teks(t.split('aria-label="Product card"')[0])
+    live = "LIVE" in tk
+    vouc = []
+    for i, x in enumerate(tk):
+        if re.fullmatch(r"Diskon Rp[\d.,]+\s*(RB|JT)?|Diskon \d+%|Cashback.*|Gratis Ongkir.*", x) and len(vouc) < 6:
+            mn = tk[i + 1] if i + 1 < len(tk) and tk[i + 1].startswith("Min.") else ""
+            vouc.append((x + (" · " + mn if mn else "")).strip())
+    kamp = None
+    if live:
+        i = tk.index("LIVE")
+        kamp = next((x for x in tk[i + 1:i + 4] if len(x) > 6 and not x.isdigit()), None)
+    toko = {"shopid": sid, "nama": str(org.get("name") or "")[:100], "url": str(org.get("url") or SHP_BASIS + "/shop/" + sid),
+            "logo": str(org.get("image") or ""), "ulasan": _int(ag.get("ratingCount")),
+            "rating": round(float(ag.get("ratingValue")), 2) if ag.get("ratingValue") else None,
+            "pengikut": shp_angka(pg.group(1)) if pg else None, "pengikut_teks": pg.group(1).strip() if pg else None,
+            "live": live, "kampanye_live": kamp, "voucher": vouc}
+    toko["username"] = toko["url"].rstrip("/").rsplit("/", 1)[-1] if "/shop/" not in toko["url"] else None
+    _shp_catat("toko", True, t0, toko["nama"])
+    # 37 produk terlaris toko (S11)
+    try:
+        prod, _ = _shp_halaman_kartu(SHP_BASIS + "/shop/" + sid + "/search?sortBy=sales", "toko_laris")
+        laris_pesan = ""
+    except ShopeeTutup as e:
+        prod, laris_pesan = [], str(e)
+    for i, p in enumerate(prod):
+        p["posisi"] = i + 1
+    # riwayat harian pengikut & ulasan (untuk pertumbuhan) → setelan shptoko:<id>
+    riw = []
+    ok, v = setelan_baca("shptoko:" + sid)
+    if ok and isinstance(v, list):
+        riw = [x for x in v if isinstance(x, list) and len(x) == 3]
+    hari = _shp_tgl()
+    if toko["ulasan"] or toko["pengikut"]:
+        riw = [x for x in riw if x[0] != hari] + [[hari, toko["pengikut"], toko["ulasan"]]]
+        riw = sorted(riw)[-90:]
+        setelan_tulis("shptoko:" + sid, riw)
+    tumbuh = None
+    if len(riw) >= 2:
+        a, b = riw[0], riw[-1]
+        try:
+            hr = max(1, (datetime.strptime(b[0], "%Y-%m-%d") - datetime.strptime(a[0], "%Y-%m-%d")).days)
+        except ValueError:
+            hr = 1
+        tumbuh = {"sejak": a[0], "hari": hr,
+                  "pengikut": (b[1] - a[1]) if (a[1] is not None and b[1] is not None) else None,
+                  "ulasan": (b[2] - a[2]) if (a[2] is not None and b[2] is not None) else None}
+    hasil = {"ok": True, "toko": toko, "produk": prod, "laris_pesan": laris_pesan, "ringkas": shp_ringkas(prod) if prod else None,
+             "riwayat": riw, "tumbuh": tumbuh, "waktu": _iso_kini(), "aff": None, "aff_pesan": ""}
+    if shp_aff_aktif():
+        a, pesan = shp_aff_cari("", toko=sid)
+        hasil["aff"], hasil["aff_pesan"] = a, pesan
+        if a:
+            peta = {x["itemid"]: x["terjual"] for x in a}
+            for p in prod:
+                if peta.get(p["itemid"]) is not None:
+                    p["terjual_resmi"] = peta[p["itemid"]]
+    _shp_cache_simpan("toko", sid, hasil)
+    return hasil
+
+
+def _shp_fs_riwayat():
+    ok, v = setelan_baca(SHP_FS_KUNCI)
+    return (v if ok and isinstance(v, dict) and isinstance(v.get("hari"), dict) else {"hari": {}}), ok
+
+
+def _shp_fs_ambil():
+    """Semua item sesi Flash Sale yang sedang berjalan (± 50–120 item). → (sesi, items)"""
+    ref = SHP_BASIS + "/flash_sale"
+    t0 = time.time()
+    r = _shp_get(SHP_BASIS + "/api/v4/flash_sale/get_all_sessions", bot=False, referer=ref, timeout=15)
+    try:
+        ss = ((r.json() or {}).get("data") or {}).get("sessions") or [] if r.status_code == 200 else []
+    except ValueError:
+        ss = []
+    if not ss:
+        _shp_catat("flash", False, t0, f"sesi kosong (HTTP {r.status_code})")
+        raise ShopeeTutup(f"Daftar sesi Flash Sale tidak tersedia (HTTP {r.status_code})")
+    kini = time.time()
+    sesi = next((s for s in ss if (s.get("start_time") or 0) <= kini < (s.get("end_time") or 0)), ss[0])
+    pid = sesi.get("promotionid")
+    items, lihat = [], set()
+    for off in (0, 50, 100):
+        r = _shp_get(SHP_BASIS + f"/api/v4/flash_sale/flash_sale_get_items?offset={off}&limit=50&promotionid={pid}"
+                     "&sort_soldout=true&need_personalize=true", bot=False, referer=ref, timeout=15)
+        try:
+            it = ((r.json() or {}).get("data") or {}).get("items") or [] if r.status_code == 200 else []
+        except ValueError:
+            it = []
+        baru = [x for x in it if x.get("itemid") and x["itemid"] not in lihat]
+        for x in baru:
+            lihat.add(x["itemid"])
+        items += baru
+        if len(it) < 50 or not baru:
+            break
+    if not items:
+        _shp_catat("flash", False, t0, "0 item")
+        raise ShopeeTutup("Item Flash Sale tidak tersedia saat ini")
+    _shp_catat("flash", True, t0, f"{len(items)} item")
+    jadwal = [{"mulai": s.get("start_time"), "akhir": s.get("end_time"), "promotionid": s.get("promotionid"),
+               "berjalan": (s.get("start_time") or 0) <= kini < (s.get("end_time") or 0)} for s in ss]
+    return {"promotionid": pid, "mulai": sesi.get("start_time"), "akhir": sesi.get("end_time"), "jadwal": jadwal}, items
+
+
+def shopee_flash(paksa=False):
+    """Radar Flash Sale: terjual PASTI (historical_sold) + delta terhadap potret harian sebelumnya."""
+    try:
+        c = None if paksa else _shp_cache_ambil("flash", "-")
+    except ShopeeTutup as e:
+        return {"ok": False, "tutup": True, "error": str(e)}
+    if c is not None:
+        return dict(c, cache=True)
+    try:
+        sesi, items = _shp_fs_ambil()
+    except ShopeeTutup as e:
+        _shp_cache_gagal("flash", "-", str(e))
+        return {"ok": False, "tutup": True, "error": str(e)}
+    riw, siap = _shp_fs_riwayat()
+    hari = _shp_tgl()
+    lalu = sorted((d for d in riw["hari"] if d < hari), reverse=True)
+    out = []
+    for x in items:
+        iid = str(x.get("itemid"))
+        rc = (x.get("item_rating") or {}).get("rating_counts") or []
+        fs_stok, stok = _int(x.get("flash_sale_stock")), _int(x.get("stock"))
+        hs = _int(x.get("historical_sold"))
+        d = {"itemid": iid, "shopid": str(x.get("shopid")), "nama": str(x.get("name") or "")[:180],
+             "gambar": SHP_GAMBAR + str(x.get("image")) if x.get("image") else "",
+             "harga": int(round((x.get("price") or 0) / 100000)) or None,
+             "harga_coret": int(round((x.get("price_before_discount") or 0) / 100000)) or None,
+             "diskon": _int(x.get("raw_discount")), "terjual": hs,
+             "stok_fs": fs_stok, "laku_sesi": (fs_stok - stok) if (fs_stok is not None and stok is not None and fs_stok >= stok) else None,
+             "rating": round(float((x.get("item_rating") or {}).get("rating_star") or 0), 2) or None,
+             "ulasan": _int(rc[0]) if rc else None, "resmi": bool(x.get("is_shop_official")),
+             "star": bool(x.get("is_shop_preferred_plus") or x.get("is_shop_preferred")),
+             "url": SHP_BASIS + "/product/" + str(x.get("shopid")) + "/" + iid, "delta": None, "delta_hari": None}
+        if hs is not None:
+            for tgl in lalu:
+                v = riw["hari"][tgl].get(iid)
+                if v is not None:
+                    d["delta"] = hs - v
+                    try:
+                        d["delta_hari"] = (datetime.strptime(hari, "%Y-%m-%d") - datetime.strptime(tgl, "%Y-%m-%d")).days
+                    except ValueError:
+                        d["delta_hari"] = None
+                    break
+        out.append(d)
+    # simpan / gabungkan potret hari ini (angka terbaru per item)
+    if siap:
+        hr = dict(riw["hari"].get(hari) or {})
+        for d in out:
+            if d["terjual"] is not None:
+                hr[d["itemid"]] = d["terjual"]
+        riw["hari"][hari] = hr
+        for tgl in sorted(riw["hari"])[:-SHP_FS_HARI]:
+            riw["hari"].pop(tgl, None)
+        setelan_tulis(SHP_FS_KUNCI, riw)
+    n_delta = sum(1 for d in out if d["delta"] is not None)
+    hasil = {"ok": True, "sesi": sesi, "produk": out, "waktu": _iso_kini(), "potret_hari": sorted(riw["hari"]),
+             "n_delta": n_delta, "pembanding": next((t for t in lalu), None), "riwayat_siap": bool(siap)}
+    _shp_cache_simpan("flash", "-", hasil)
+    return hasil
+
+
+def shopee_potret_latar():
+    """Dipanggil dari jadwal_tick: ambil potret Flash Sale 1× per hari tanpa memperlambat cron."""
+    riw, siap = _shp_fs_riwayat()
+    if not siap or _shp_tgl() in riw["hari"]:
+        return
+    threading.Thread(target=lambda: shopee_flash(paksa=True), daemon=True, name="shopee-potret").start()
+
+
+def shopee_uji():
+    """Admin → Status sistem: uji semua jalur Shopee langsung dari server ini."""
+    hasil = []
+
+    def uji(nama, fn):
+        t0 = time.time()
+        try:
+            ket = fn()
+            hasil.append({"jalur": nama, "ok": True, "ms": int((time.time() - t0) * 1000), "ket": ket})
+        except Exception as e:   # sengaja lebar: ini alat diagnosa
+            hasil.append({"jalur": nama, "ok": False, "ms": int((time.time() - t0) * 1000), "ket": str(e)[:160]})
+
+    uji("Pencarian (kartu produk)", lambda: f"{len(_shp_halaman_kartu(SHP_BASIS + '/search?keyword=madu&sortBy=sales', 'cari')[0])} kartu")
+    uji("Terlaris toko", lambda: f"{len(_shp_halaman_kartu(SHP_BASIS + '/shop/150222332/search?sortBy=sales', 'toko_laris')[0])} kartu")
+    uji("Flash Sale", lambda: f"{len(_shp_fs_ambil()[1])} item")
+
+    def _saran():
+        with _shp_lock:
+            SHP_CACHE.pop(("saran", "madu"), None)
+            SHP_GAGAL.pop(("saran", "madu"), None)
+        k = shp_saran("madu")
+        if not k:
+            raise ShopeeTutup("0 saran")
+        return f"{len(k)} kata kunci"
+    uji("Saran kata kunci", _saran)
+
+    def _aff():
+        if not shp_aff_aktif():
+            raise ShopeeTutup("belum diisi (env INTAI_SHOPEE_AFF_ID / INTAI_SHOPEE_AFF_SECRET)")
+        a, p = shp_aff_cari("madu")
+        if a is None:
+            raise ShopeeTutup(p)
+        return f"{len(a)} produk dengan angka terjual resmi"
+    uji("Affiliate Open API (resmi)", _aff)
+    return {"ok": True, "hasil": hasil, "waktu": _iso_kini()}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a):
         pass
@@ -5333,6 +6267,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
             else:
                 self.json_ok(admin_data())
+        elif u.path == "/api/shopee/cari":   # v1.5.0
+            prm = parse_qs(u.query)
+            self.json_ok(shopee_cari(prm.get("q", [""])[0], prm.get("urut", ["laris"])[0], self.email))
+        elif u.path == "/api/shopee/toko":
+            self.json_ok(shopee_toko(parse_qs(u.query).get("id", [""])[0], self.email))
+        elif u.path == "/api/shopee/flash":
+            self.json_ok(shopee_flash())
+        elif u.path == "/api/admin/shopee-uji":
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            else:
+                self.json_ok(shopee_uji())
         elif u.path == "/api/jadwal":
             self.tulis(200, json.dumps(jadwal_publik(self.email), ensure_ascii=False), "application/json")
         elif u.path == "/api/jadwal/tick":
@@ -5340,6 +6286,10 @@ class Handler(BaseHTTPRequestHandler):
             if JADWAL_KUNCI and not hmac.compare_digest(kunci.encode(), JADWAL_KUNCI.encode()):
                 self.tulis(403, json.dumps({"ok": False, "pesan": "kunci salah"}), "application/json")
                 return
+            try:   # v1.5.0: potret Flash Sale Shopee 1×/hari (thread latar, tidak memperlambat cron)
+                shopee_potret_latar()
+            except Exception as e:
+                print("[INTAI SHOPEE] potret latar gagal:", type(e).__name__)
             self.tulis(200, json.dumps(jadwal_tick()), "application/json")   # ringkas (< 200 byte) utk cron-job.org
         elif u.path == "/api/galeri":
             prm = {k: v[0] for k, v in parse_qs(u.query).items()}

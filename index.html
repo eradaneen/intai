@@ -394,6 +394,141 @@
   .hs-tahap{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
   .hs-tahap span{font-size:10.5px;font-weight:700;color:rgba(218,241,222,.6);padding:4px 10px;border-radius:999px;border:1px solid rgba(218,241,222,.12)}
   .hs-tahap span.kini{color:var(--g950);background:var(--g300);border-color:var(--g300)}
+/* ===== v1.5.0: Scan Shopee ===== */
+#view-shopee{--line2:rgba(11,43,38,.06);--accent2:#163832;--accent-soft:#DAF1DE}
+#view-shopee .sp-beta{display:inline-block;vertical-align:middle;font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;background:#DAF1DE;color:#235347;border-radius:999px;padding:4px 10px;margin-left:6px;transform:translateY(-3px)}
+#view-shopee .sp-tabs{display:inline-flex;gap:4px;padding:5px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin:0 0 14px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#view-shopee .sp-tabs::-webkit-scrollbar{display:none}
+#view-shopee .sp-tabs button{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:800;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .25s,color .25s}
+#view-shopee .sp-tabs button svg{width:15px;height:15px}
+#view-shopee .sp-tabs button:hover{color:var(--ink)}
+#view-shopee .sp-tabs button.on{background:#0B2B26;color:#DAF1DE}
+#view-shopee .sp-sek{display:none}
+#view-shopee .sp-sek.on{display:block;animation:muncul .3s var(--ease) both}
+#view-shopee .sp-form{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:7px 7px 7px 16px;box-shadow:var(--shadow)}
+#view-shopee .sp-form > svg{width:18px;height:18px;color:var(--accent);flex:0 0 auto}
+#view-shopee .sp-form input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;font-size:15px;font-weight:600;color:var(--ink);padding:10px 2px}
+#view-shopee .sp-form input::placeholder{color:#8DA39A;font-weight:500}
+#view-shopee .sp-form select{border:1px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-size:12.5px;font-weight:800;background:#F6FBF7;color:var(--ink);flex:0 0 auto}
+#view-shopee .sp-form .btn{flex:0 0 auto;padding:11px 20px}
+#view-shopee .sp-riw{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 2px 14px;min-height:8px}
+#view-shopee .sp-riw .lbl{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-right:2px}
+#view-shopee .sp-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.18s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-shopee .sp-chip:hover{background:#DAF1DE;border-color:#BEDCC6}
+#view-shopee .sp-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#view-shopee .sp-chip i{font-style:normal;font-size:10px;color:var(--faint);font-weight:800;margin-left:4px}
+#view-shopee .sp-chip.on i{color:rgba(255,255,255,.75)}
+#view-shopee .sp-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);line-height:1.6;margin:0 2px 12px}
+#view-shopee .sp-info b{color:var(--ink)}
+#view-shopee .sp-info .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+#view-shopee .sp-aksi button,#view-shopee .sp-kecil{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:.18s;white-space:nowrap}
+#view-shopee .sp-aksi button:hover,#view-shopee .sp-kecil:hover{background:#DAF1DE}
+#view-shopee .sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+#view-shopee .sp-p{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);min-width:0;transition:transform .2s var(--ease),box-shadow .2s}
+#view-shopee .sp-p:hover{transform:translateY(-2px);box-shadow:0 16px 26px -18px rgba(11,43,38,.4)}
+#view-shopee .sp-th{position:relative;display:block;aspect-ratio:1/1;background:#EAF4EC;overflow:hidden}
+#view-shopee .sp-th img{width:100%;height:100%;object-fit:cover;display:block}
+#view-shopee .sp-th .sp-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8EB69B;font-size:10.5px;font-weight:800}
+#view-shopee .sp-th img + .sp-ph{display:none}
+#view-shopee .sp-pos{position:absolute;top:7px;left:7px;background:#0B2B26;color:#DAF1DE;font-size:10.5px;font-weight:900;border-radius:999px;padding:3px 8px;box-shadow:0 4px 10px rgba(5,31,32,.3)}
+#view-shopee .sp-lc{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:900;border-radius:6px;padding:2px 6px;background:#fff;color:#235347;border:1px solid #CFE3D4}
+#view-shopee .sp-lc.mall{background:#163832;color:#DAF1DE;border-color:#163832}
+#view-shopee .sp-bd{padding:9px 10px 10px;display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+#view-shopee .sp-nm{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none;min-height:32px}
+#view-shopee .sp-nm:hover{text-decoration:underline}
+#view-shopee .sp-hg{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+#view-shopee .sp-hg b{font-size:14px;font-weight:900;color:#0B2B26;letter-spacing:-.3px}
+#view-shopee .sp-hg s{font-size:10.5px;color:var(--faint)}
+#view-shopee .sp-hg i{font-style:normal;font-size:10px;font-weight:900;color:#2F7D64;background:#E4F0EA;border-radius:6px;padding:1px 5px}
+#view-shopee .sp-mt{font-size:10.5px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#view-shopee .sp-mt .bintang{color:#B7791F;font-weight:800}
+#view-shopee .sp-lb{display:flex;gap:4px;flex-wrap:wrap}
+#view-shopee .sp-lb span{font-size:9.5px;font-weight:800;color:#557069;background:#F1F8F2;border-radius:6px;padding:2px 6px}
+#view-shopee .sp-tj{font-size:11px;color:var(--ink);font-weight:800;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#view-shopee .sp-tj small{font-weight:700;color:var(--faint);font-size:10px}
+#view-shopee .sp-tj .naik{color:#2F7D64}
+#view-shopee .sp-kaki{margin-top:auto;padding-top:6px;display:flex;gap:6px}
+#view-shopee .sp-kaki button,#view-shopee .sp-kaki a{flex:1;text-align:center;border:1px solid var(--line);background:#F6FBF7;color:var(--accent);border-radius:10px;padding:6px 4px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;white-space:nowrap}
+#view-shopee .sp-kaki button:hover,#view-shopee .sp-kaki a:hover{background:#DAF1DE}
+#view-shopee .sp-tata{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+#view-shopee .sp-tata .kol{min-width:0}
+#view-shopee .sp-hist{display:flex;align-items:flex-end;gap:5px;height:120px;padding:18px 0 0}
+#view-shopee .sp-hist .bt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;position:relative}
+#view-shopee .sp-hist .bt .b{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#8EB69B,#235347);min-height:3px}
+#view-shopee .sp-hist .bt .b.nol{background:#E6F2E9}
+#view-shopee .sp-hist .bt .n{position:absolute;top:-16px;font-size:9.5px;font-weight:900;color:#235347}
+#view-shopee .sp-hist .bt .lb{font-size:8.5px;font-weight:800;color:var(--faint);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#view-shopee .sp-kuart{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+#view-shopee .sp-kuart div{background:#F6FBF7;border:1px solid #DCEBE0;border-radius:12px;padding:8px 9px;min-width:0}
+#view-shopee .sp-kuart small{display:block;font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#557069}
+#view-shopee .sp-kuart b{font-size:13.5px;font-weight:900;color:#051F20}
+#view-shopee .sp-bar{display:flex;flex-direction:column;gap:7px}
+#view-shopee .sp-bar .r{display:grid;grid-template-columns:92px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;font-weight:700;color:var(--ink)}
+#view-shopee .sp-bar .r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-shopee .sp-bar .r i{display:block;height:9px;border-radius:999px;background:#E6F2E9;overflow:hidden}
+#view-shopee .sp-bar .r i em{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#235347,#8EB69B)}
+#view-shopee .sp-bar .r b{text-align:right;font-size:11px;color:#235347}
+#view-shopee .sp-fakta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+#view-shopee .sp-f{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);min-width:0}
+#view-shopee .sp-f .l{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#557069}
+#view-shopee .sp-f .v{font-size:20px;font-weight:900;color:#051F20;margin-top:4px;letter-spacing:-.5px;line-height:1.15;overflow-wrap:anywhere}
+#view-shopee .sp-f .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+#view-shopee .sp-tk{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
+#view-shopee .sp-tk:last-child{border-bottom:0}
+#view-shopee .sp-tk .no{width:26px;height:26px;border-radius:9px;background:#DAF1DE;color:#235347;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+#view-shopee .sp-tk .tx{flex:1;min-width:0;font-size:11.5px;color:var(--muted);line-height:1.45}
+#view-shopee .sp-tk .tx b{display:block;color:var(--ink);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-shopee .sp-tk .sp-kecil{flex:0 0 auto}
+#view-shopee .sp-kosong{background:var(--card);border:1px dashed #CFE3D4;border-radius:20px;padding:30px 22px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.75}
+#view-shopee .sp-kosong b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+#view-shopee .sp-kosong .sp-riw{justify-content:center;margin-bottom:0}
+#view-shopee .sp-galat{background:#FBF3E2;border:1px solid #E8D9B8;color:#6B4A0E;border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.65;margin-bottom:12px}
+#view-shopee .sp-galat b{display:block;font-size:13.5px;margin-bottom:2px}
+#view-shopee .sp-muat{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;color:var(--muted);font-size:12.5px;font-weight:700}
+#view-shopee .sp-muat i{width:18px;height:18px;border-radius:50%;border:2.5px solid #DAF1DE;border-top-color:#235347;animation:sp-putar .8s linear infinite;flex:0 0 auto}
+@keyframes sp-putar{to{transform:rotate(360deg)}}
+#view-shopee .sp-cat{font-size:11px;color:var(--muted);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+#view-shopee .sp-toko-kep{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#view-shopee .sp-toko-kep .sp-lg{width:64px;height:64px;border-radius:18px;background:#EAF4EC;overflow:hidden;flex:0 0 auto;border:1px solid var(--line)}
+#view-shopee .sp-toko-kep .sp-lg img{width:100%;height:100%;object-fit:cover;display:block}
+#view-shopee .sp-toko-kep .sp-tnama{flex:1 1 220px;min-width:0}
+#view-shopee .sp-toko-kep .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+#view-shopee .sp-toko-kep h2{font-size:19px;letter-spacing:-.4px;color:var(--ink);margin:0}
+#view-shopee .sp-toko-kep .sp-sb{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#view-shopee .sp-live{background:#B5443A;color:#fff;font-size:9.5px;font-weight:900;letter-spacing:.6px;border-radius:6px;padding:2px 7px}
+#view-shopee .sp-vouc{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+#view-shopee .sp-vouc span{font-size:10.5px;font-weight:800;color:#235347;background:#F1F8F2;border:1px dashed #BEDCC6;border-radius:8px;padding:4px 8px}
+#view-shopee .sp-sesi{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#view-shopee .sp-sesi span{font-size:11px;font-weight:800;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#fff}
+#view-shopee .sp-sesi span.on{background:#0B2B26;color:#DAF1DE;border-color:#0B2B26}
+#view-shopee .sp-legenda{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;margin:22px 2px 6px;padding-top:14px;border-top:1px dashed var(--line);font-size:11px;color:var(--muted)}
+#view-shopee .sp-legenda b{font-weight:400}
+#view-shopee .sp-legenda-ket{flex-basis:100%;line-height:1.65;color:var(--faint)}
+#view-shopee .sp-legenda-ket b{font-weight:800;color:var(--muted)}
+#view-shopee .sp-saran{display:flex;gap:6px;flex-wrap:wrap}
+#view-shopee .sp-tabel{width:100%;border-collapse:collapse;font-size:11.5px}
+#view-shopee .sp-tabel th{text-align:left;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--faint);padding:6px 6px;border-bottom:1px solid var(--line)}
+#view-shopee .sp-tabel td{padding:7px 6px;border-bottom:1px solid var(--line2);color:var(--ink);vertical-align:top}
+#view-shopee .sp-tabel td.n{text-align:right;font-weight:800;white-space:nowrap}
+#view-shopee .sp-tabel a{color:var(--ink);text-decoration:none}
+#view-shopee .sp-tabel a:hover{text-decoration:underline}
+#view-shopee .sp-geser{overflow-x:auto}
+@media (max-width:1100px){#view-shopee .sp-tata{grid-template-columns:1fr}}
+@media (max-width:640px){
+  #view-shopee .sp-tabs{display:flex;width:100%}
+  #view-shopee .sp-tabs button{flex:1 1 0;justify-content:center;padding:9px 6px;font-size:11.5px;gap:5px}
+  #view-shopee .sp-form{flex-wrap:wrap;padding:7px 7px 7px 13px}
+  #view-shopee .sp-form input{flex:1 1 calc(100% - 40px);font-size:16px}
+  #view-shopee .sp-form select{flex:1 1 auto}
+  #view-shopee .sp-form .btn{flex:1 1 auto;justify-content:center}
+  #view-shopee .sp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #view-shopee .sp-fakta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #view-shopee .sp-info .sp-aksi{margin-left:0;width:100%}
+  #view-shopee .sp-bar .r{grid-template-columns:78px 1fr 30px}
+  #view-shopee .sp-toko-kep .sp-tnama{flex:1 1 calc(100% - 80px)}
+  #view-shopee .sp-toko-kep .sp-aksi{margin-left:0;width:100%}
+  #view-shopee .sp-toko-kep .sp-aksi > *{flex:1 1 0;text-align:center}
+}
 /* v1.4.7 M7: Rekam jejak pengiklan */
 .jj-kartu{margin-bottom:14px}
 .jj-kepala{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -426,6 +561,11 @@
 .jj-gagal{font-size:12px;color:#7A5410;background:#FBF3E2;border:1px solid #E8D9B8;border-radius:12px;padding:9px 12px;line-height:1.55}
 .jj-gagal button{margin-left:6px;border:0;background:none;color:#235347;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
 @media (max-width:640px){.jj-fakta{grid-template-columns:1fr 1fr}.jj-f .v{font-size:15px}}
+#view-meta .perluas{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:12px}
+#view-meta .perluas .pl-k{color:#8EB69B;font-weight:600;margin-right:2px;cursor:help}
+#view-meta .perluas .pl-c{background:#163832;color:#DAF1DE;border-radius:999px;padding:3px 10px}
+#view-meta .perluas .pl-c b{color:#8EB69B;font-weight:700}
+#view-meta .perluas .pl-s{color:#8EB69B;opacity:.75;margin-left:auto}
 </style>
 <style>
 #view-meta {
@@ -1429,7 +1569,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Mesin Meta aktif · <span class="v-intai">v1.4</span><br>Shopee &amp; TikTok: disiapkan</div>
+    <div class="sb-foot">Meta aktif · Shopee beta · <span class="v-intai">v1.5</span><br>TikTok: disiapkan</div>
   </aside>
 
   <nav class="bn" id="bn" aria-label="Navigasi cepat">
@@ -1454,7 +1594,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
         <div class="hs-tabs" role="tablist" id="hs-tabs">
           <span class="hs-ind" id="hs-ind"></span>
           <button type="button" class="hs-tab on" data-p="meta" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Meta Ad Library <span class="hs-st ok">Aktif</span></button>
-          <button type="button" class="hs-tab" data-p="shopee" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Shopee <span class="hs-st">Tahap 2</span></button>
+          <button type="button" class="hs-tab" data-p="shopee" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Shopee <span class="hs-st ok">Beta</span></button>
           <button type="button" class="hs-tab" data-p="tiktok" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>TikTok <span class="hs-st">Tahap 3</span></button>
         </div>
 
@@ -1467,7 +1607,15 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
           <div class="hs-bawah" id="hs-chips"></div>
           <div class="hs-info">Menyisir iklan yang sedang tayang di <b>Meta Ad Library</b> (Facebook &amp; Instagram) · ±20 detik per scan · ketik <b>ID halaman</b> (angka) untuk intip satu kompetitor.</div>
         </div>
-        <div class="hs-panel" data-panel="shopee"><div class="hs-segera"><div class="ik-bulat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg></div><div><b>Mesin Shopee — tahap 2</b><span>Peringkat produk, harga, dan toko pesaing di Shopee. Dikerjakan setelah mesin Meta tuntas.</span></div><button type="button" class="hs-btn" onclick="ke('/shopee')">Lihat rencana <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button></div></div>
+        <div class="hs-panel" data-panel="shopee">
+          <form class="hs-form" id="hs-form-shp" autocomplete="off">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>
+            <input id="hs-q-shp" type="text" placeholder="Ketik produk — misal: madu anak, serum wajah, rak sepatu" aria-label="Kata kunci Shopee">
+            <button type="submit" class="hs-btn">Scan <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
+          </form>
+          <div class="hs-bawah" id="hs-chips-shp"></div>
+          <div class="hs-info">Membaca <b>±40 produk terlaris Shopee</b> untuk kata kunci itu: peta harga, diskon, jenis toko, kota, dan toko dominan · ±5 detik · ada juga <b>Radar Flash Sale</b> dan <b>Intip toko</b> di halaman Scan Shopee.</div>
+        </div>
         <div class="hs-panel" data-panel="tiktok"><div class="hs-segera"><div class="ik-bulat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg></div><div><b>Mesin TikTok — tahap 3</b><span>Video &amp; iklan TikTok Shop yang sedang naik daun. Menyusul setelah Shopee.</span></div><button type="button" class="hs-btn" onclick="ke('/tiktok')">Lihat rencana <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button></div></div>
       </div>
     </section>
@@ -1603,6 +1751,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     <span class="jt">Indikator Niche</span>
     <span class="ket">Sentuh judul untuk penjelasan · pita warna = asal data</span>
   </div>
+  <div class="perluas" id="perluas" style="display:none"></div>
   <div class="kartus" id="kpis"></div>
 
   <div class="judul-bagian">
@@ -1854,7 +2003,8 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
               <details><summary>Kenapa aplikasi lambat saat pertama dibuka?</summary><div>Server gratis INTAI "tidur" kalau 15 menit tidak ada pengunjung. Saat dibuka lagi, server butuh ±1 menit untuk bangun. Setelah itu kecepatan kembali normal.</div></details>
               <details><summary>Apakah dataku terlihat akun lain?</summary><div>Tidak. Riwayat scan, Pesaing Dipantau, ⭐ Pantauan, Ekspor CSV, dan jadwal scan otomatis hanya milik akunmu. <b>Galeri Iklan</b> dan <b>profil pengiklan</b> adalah arsip bersama karena isinya data publik dari Meta Ad Library.</div></details>
               <details><summary>Cara membuka file CSV di Excel atau Google Sheets?</summary><div>Buka menu <b>Ekspor CSV</b>. Pilih unduhan <b>Excel</b> (file <code>…_excel.csv</code>, klik dua kali) atau <b>Google Sheets</b> (File → Impor → Unggah file <code>…_sheets.csv</code>), atau tekan <b>Salin</b> lalu tempel di sel A1.</div></details>
-              <details><summary>Kapan Scan Shopee &amp; TikTok tersedia?</summary><div>Masih disiapkan. Saat ini mesin yang aktif adalah Meta Ad Library.</div></details>
+              <details><summary>Apa yang bisa dilakukan Scan Shopee?</summary><div>Scan Shopee (beta) membaca ±40 produk teratas untuk satu kata kunci: urutan Terlaris versi Shopee, harga, diskon, jenis toko (Mall/Star), kota pengirim, dan toko dominan. Ada juga <b>Radar Flash Sale</b> dengan angka terjual pasti dan <b>Intip toko</b> untuk melihat pengikut, ulasan, dan 37 produk terlaris pesaing. Angka terjual per produk di hasil pencarian belum selalu tersedia, dan INTAI tidak mengarangnya.</div></details>
+              <details><summary>Kapan Scan TikTok tersedia?</summary><div>Masih disiapkan. Saat ini yang aktif adalah Meta Ad Library dan Shopee (beta).</div></details>
               <details><summary>Lupa password?</summary><div>Di layar Masuk, ketuk <b>Lupa password? Reset lewat email</b>, lalu isi email akunmu. Kami kirim <b>kode 6 angka</b> dan tautan (berlaku 30 menit, sekali pakai). Ketik kodenya di layar yang sama, lalu buat password baru. Email masuk folder <b>Spam</b>? Kodenya tetap bisa dipakai. Email tidak sampai? Ketuk <b>Hubungi CS</b>.</div></details>
             </div>
           </div>
@@ -1937,27 +2087,52 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
       <div id="pf-isi"><div class="chart-kosong" style="color:var(--faint);padding:40px 0">Memuat profil…</div></div>
     </div>
 
-    <!-- v0.9: modul Shopee (mesin disiapkan, tanpa data) -->
-    <div id="view-shopee" class="view-modul" style="display:none">
-      <div class="mk">
-        <div class="mk-ikon" style="background:#FDEBE5;color:#D9472B"><svg class=ik><use href=#ik-bag></use></svg></div>
-        <div class="mk-badge"><i></i> Mesin disiapkan</div>
-        <h1>Scan Shopee — sedang dibangun</h1>
-        <div class="mk-sub">Halaman ini sudah jadi rumah modul Shopee. Yang belum ada adalah mesin pengambil datanya — dan INTAI <b>tidak</b> akan memasang data palsu sebagai penggantinya.</div>
-        <div class="mk-list">
-          <div class="mk-b"><svg class=ik><use href=#ik-box></use></svg><div><b>Struktur modul siap.</b> Nanti di sini: ranking produk, harga, dan pola jualan Shopee — format yang sama dengan modul Meta.</div></div>
-          <div class="mk-b"><svg class=ik><use href=#ik-shield></use></svg><div><b>Riset jalur data sedang berjalan.</b> Shopee menjaga halamannya dengan anti-bot ketat; INTAI hanya akan memakai jalur yang sah dan stabil.</div></div>
-          <div class="mk-b"><svg class=ik><use href=#ik-check></use></svg><div><b>Prinsip: jujur.</b> Selama mesinnya belum jadi, statusnya tetap "disiapkan" — bukan demo berisi angka karangan.</div></div>
+    <!-- v1.5.0: Scan Shopee (data asli dari Shopee, label 🟢🔵🟠) -->
+    <div id="view-shopee" style="display:none">
+      <div class="sapaan-bar">
+        <div>
+          <h1>Scan Shopee <span class="sp-beta">Beta</span></h1>
+          <div class="sub2">Lihat produk yang paling laku untuk satu kata kunci, peta harga dan diskonnya, siapa toko yang menguasai halaman pertama, plus radar Flash Sale dengan angka terjual pasti.</div>
         </div>
-        <div class="mk-kini">
-          <div class="k">Yang sudah bisa dipakai sekarang</div>
-          Banyak iklan Meta mengarah ke Shopee (shopee.co.id / shope.ee). Scan kata kunci di <b>Scan Meta</b>, lalu klik chip <code>Marketplace</code> di atas tabel — terlihat siapa saja yang mengirim iklannya ke marketplace, lengkap dengan umur iklan, status, dan skor.
-        </div>
-        <div class="mk-aksi">
-          <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
-          <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
-        </div>
-        <div class="mk-foot"><div>INTAI <span class="v-intai">v1.4</span> · modul Shopee · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
+      </div>
+      <div class="sp-tabs" role="tablist" id="sp-tabs">
+        <button type="button" data-t="cari" onclick="shpTab('cari')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Cari produk</button>
+        <button type="button" data-t="flash" onclick="shpTab('flash')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Radar Flash Sale</button>
+        <button type="button" data-t="toko" onclick="shpTab('toko')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>Intip toko</button>
+      </div>
+
+      <section class="sp-sek" data-sek="cari">
+        <form class="sp-form" id="sp-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="sp-q" type="search" placeholder="Kata kunci produk — misal: madu anak, serum wajah, rak sepatu" aria-label="Kata kunci Shopee">
+          <select id="sp-urut" aria-label="Urutan">
+            <option value="laris">Terlaris</option><option value="terkait">Terkait</option><option value="baru">Terbaru</option><option value="murah">Termurah</option>
+          </select>
+          <button type="submit" class="btn" id="sp-btn">Scan</button>
+        </form>
+        <div class="sp-riw" id="sp-riw"></div>
+        <div id="sp-cari-isi"></div>
+      </section>
+
+      <section class="sp-sek" data-sek="flash">
+        <div id="sp-flash-isi"></div>
+      </section>
+
+      <section class="sp-sek" data-sek="toko">
+        <form class="sp-form" id="sp-toko-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M5.5 12.5V20h13v-7.5"/></svg>
+          <input id="sp-toko-q" type="search" placeholder="Tempel link toko / link produk / ID toko — misal: shopee.co.id/namatoko" aria-label="Toko Shopee">
+          <button type="submit" class="btn" id="sp-toko-btn">Intip</button>
+        </form>
+        <div class="sp-riw" id="sp-toko-riw"></div>
+        <div id="sp-toko-isi"></div>
+      </section>
+
+      <div class="sp-legenda">
+        <span><b>🟢</b> angka langsung dari Shopee</span>
+        <span><b>🔵</b> dihitung INTAI dari sampel yang tampil</span>
+        <span><b>🟠</b> sinyal / perkiraan, baca sebagai arah</span>
+        <span class="sp-legenda-ket">Shopee menampilkan ±40 produk teratas per kata kunci, jadi ringkasan di sini adalah <b>sampel halaman pertama</b>, bukan seluruh pasar. Jalur data Shopee tidak resmi: bila Shopee menutupnya, halaman ini memberi tahu dengan jelas, tidak mengarang angka.</span>
       </div>
     </div>
 
@@ -2483,6 +2658,7 @@ function initPilNavigasi(){
     document.querySelectorAll("#hero-scan .hs-panel").forEach(function(x){ x.classList.toggle("on", x.dataset.panel === p); });
     geserInd(tabs.querySelector(".hs-tab.on"));
     if(p === "meta"){ const q = document.getElementById("hs-q"); if(q) setTimeout(function(){ q.focus({preventScroll:true}); }, 60); }
+    if(p === "shopee"){ isiChipHeroShp(); const q = document.getElementById("hs-q-shp"); if(q) setTimeout(function(){ q.focus({preventScroll:true}); }, 60); }
   }
   semua.forEach(function(t){ t.addEventListener("click", function(){ pilih(t.dataset.p); }); });
   window.__kalibrasiHero = function(){ geserInd(tabs.querySelector(".hs-tab.on"), true); };
@@ -2499,7 +2675,23 @@ function initPilNavigasi(){
     const halaman = /^\d{6,}$/.test(q);
     ke("/meta?q=" + encodeURIComponent(q) + (halaman ? "&mode=halaman" : ""));
   });
+  document.getElementById("hs-form-shp").addEventListener("submit", function(e){   /* v1.5.0 */
+    e.preventDefault();
+    const q = (document.getElementById("hs-q-shp").value || "").trim();
+    if(q.length < 2){ document.getElementById("hs-q-shp").focus(); toast("Ketik dulu produk yang mau diintip di Shopee."); return; }
+    ke("/shopee?q=" + encodeURIComponent(q));
+  });
+  document.getElementById("hs-chips-shp").addEventListener("click", function(e){
+    const b = e.target.closest(".hs-chip");
+    if(b && b.dataset.kata) ke("/shopee?q=" + encodeURIComponent(b.dataset.kata));
+  });
 })();
+function isiChipHeroShp(){   /* v1.5.0: chip kata kunci Shopee terakhir (per akun, perangkat ini) */
+  const el = document.getElementById("hs-chips-shp"); if(!el || typeof shpRiw !== "function") return;
+  const r = shpRiw().q, daftar = r.length ? r.slice(0, 6) : ["madu anak", "serum wajah", "rak sepatu"];
+  el.innerHTML = '<span class="lbl">' + (r.length ? "Terakhir di Shopee" : "Coba") + '</span>' + daftar.map(function(k){
+    return '<button type="button" class="hs-chip" data-kata="' + esc(k) + '">' + esc(k) + '</button>'; }).join("");
+}
 
 /* chip "terakhir dipantau" dari riwayat scan asli (dipanggil muatRingkasan) */
 function isiChipHero(daftar){
@@ -3412,14 +3604,14 @@ function eksporCSV(){
 function ekSlug(t){ return String(t || "scan").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "scan"; }
 function ekNamaFile(e, target){
   const tgl = String(e.waktu || "").slice(0, 10);
-  return "intai_" + (e.mode === "halaman" ? "halaman-" : e.mode === "galeri" ? "galeri-" : "") + ekSlug(e.q) + "_" + tgl + "_" + target + ".csv";
+  return "intai_" + (e.mode === "halaman" ? "halaman-" : e.mode === "galeri" ? "galeri-" : String(e.mode || "").indexOf("shopee") === 0 ? e.mode + "-" : "") + ekSlug(e.q) + "_" + tgl + "_" + target + ".csv";
 }
 /* satu sel → teks CSV/TSV. target: excel (; + desimal koma) · sheets (, + desimal titik) · tsv (salin) */
 function ekSel(v, target, namaKol){
   if(v === "" || v == null) return "";
   if(typeof v === "number"){ const t = String(v); return target === "excel" ? t.replace(".", ",") : t; }
   let t = String(v).replace(/[\r\n\t]+/g, " ");
-  if((namaKol === "id_iklan" || namaKol === "page_id") && /^\d{6,}$/.test(t)) t = '="' + t + '"';      // cegah angka panjang jadi 1,23E+15
+  if((namaKol === "id_iklan" || namaKol === "page_id" || namaKol === "itemid" || namaKol === "shopid") && /^\d{6,}$/.test(t)) t = '="' + t + '"';      // cegah angka panjang jadi 1,23E+15
   else if(/^[=+\-@]/.test(t)) t = "'" + t;                                   // cegah dibaca sebagai rumus
   if(target === "tsv") return t;
   return '"' + t.replace(/"/g, '""') + '"';
@@ -3498,7 +3690,7 @@ function ekGambar(){
       '<div class="ek-atas"><div>' +
         '<div class="ek-judul">' + esc(pantau ? "Pantauan ⭐" : galeri ? "Galeri · " + e.q : e.mode === "halaman" ? "Halaman " + e.q : e.q) +
           ' <span class="ek-chip">' + esc(e.sumber || "Scan Meta") + '</span>' +
-          ' <span class="ek-chip">' + (pantau ? "Iklan berbintang" : galeri ? "Arsip iklan" : e.mode === "halaman" ? "Intip Kompetitor" : "Kata Kunci") + '</span></div>' +
+          ' <span class="ek-chip">' + (pantau ? "Iklan berbintang" : galeri ? "Arsip iklan" : e.mode === "halaman" ? "Intip Kompetitor" : e.mode === "shopee-flash" ? "Flash Sale" : e.mode === "shopee-toko" ? "Produk Toko" : "Kata Kunci") + '</span></div>' +
         '<div class="ek-meta">' + ekWaktu(e.waktu) + ' · <b>' + e.baris.length + ' baris</b> dari ' + e.total + (pantau ? ' iklan dipantau (' : galeri ? ' iklan di arsip (' : ' iklan hasil scan (') + aktif + ' aktif' + (mati ? ' · ' + mati + ' mati' : '') + ') · ' + e.kol.length + ' kolom</div>' +
         '<div class="ek-filter">Filter saat ekspor: ' + esc(e.filter || "—") + '</div>' +
       '</div></div>' +
@@ -4033,23 +4225,35 @@ async function scan(){
     DATA.forEach((x, i) => { x._id = i; });
     HOOKS = (d.angle && d.angle.top_hooks) || [];
     // KPI — dihitung dari iklan yang MASIH tayang (iklan mati = bahan analisis "tumbang" saja)
-    const HIDUP = DATA.filter(x => x.aktif !== false);
+    // v1.6: iklan "Lepas" (niche luar) tidak ikut KPI di scan kata kunci
+    const HIDUP = DATA.filter(x => x.aktif !== false && (MODE === "halaman" || !x.relevansi || x.relevansi.label !== "Lepas"));
     const unik = new Set(HIDUP.map(x => x.halaman)).size;
+    (function(){
+      const el = document.getElementById("perluas"), p = d.perluasan;
+      if(!el) return;
+      if(!p || MODE === "halaman" || !(p.senada || []).length){ el.style.display = "none"; el.innerHTML = ""; return; }
+      const per = {};
+      DATA.forEach(x => { const s = x.relevansi && x.relevansi.label !== "Lepas" && x.relevansi.sumber; if(s) per[s] = (per[s] || 0) + 1; });
+      el.style.display = "";
+      el.innerHTML = '<span class="pl-k" title="Meta hanya memberi ±30 iklan per pencarian. INTAI ikut mencari kata senada lalu menyaring ulang semuanya dengan kata kunci Anda.">🔎 Diperluas dengan</span>' +
+        p.senada.map(w => '<span class="pl-c">' + esc(w) + (per[w] ? ' <b>+' + per[w] + '</b>' : '') + '</span>').join("") +
+        '<span class="pl-s">' + (p.berhasil != null ? p.berhasil + '/' + p.permintaan + ' pencarian · ' : '') + (p.detik != null ? p.detik + ' dtk' : '') + '</span>';
+    })();
     const video = HIDUP.filter(x => String(x.format).toUpperCase() === "VIDEO").length;
     const ctwa = HIDUP.filter(x => x.funnel === "CTWA/WA").length;
     const ph = d.peta_harga || {jumlah_titik: 0};
     const wkt = d.waktu || {per_bulan:{}, baru_7hari:0, panas_3hari:0};
     const en = d.ekonomi_niche || {bulanan_min:0, bulanan_max:0, median_bulanan:0};
     document.getElementById("kpis").innerHTML =
-      '<div class="kpi"><div class="k">Iklan Aktif</div><div class="v">' + d.jumlah + '</div><div class="s">' + esc(namaNiche(d.kata)) + (d.jumlah_mati ? ' · 🪦 ' + d.jumlah_mati + ' mati' : '') + '</div></div>' +
+      '<div class="kpi"><div class="k">Iklan Aktif</div><div class="v">' + HIDUP.length + '</div><div class="s">' + esc(namaNiche(d.kata)) + (d.jumlah_mati ? ' · 🪦 ' + d.jumlah_mati + ' mati' : '') + '</div></div>' +
       '<div class="kpi"><div class="k">Pengiklan Unik</div><div class="v">' + unik + '</div><div class="s">halaman berbeda</div></div>' +
       '<div class="kpi"><div class="k">Rata2 Umur</div><div class="v">' + d.rata2 + '</div><div class="s">hari tayang</div></div>' +
       '<div class="kpi"><div class="k">Tertua</div><div class="v">' + d.tertua.hari + 'h</div><div class="s">' + esc(d.tertua.nama) + '</div></div>' +
       '<div class="kpi"><div class="k">Rentang Harga</div><div class="v">' + (ph.jumlah_titik ? fmtHarga(ph.termurah.harga) + '–' + fmtHarga(ph.termahal.harga) : '—') + '</div><div class="s">' + ph.jumlah_titik + ' titik harga · median ' + (ph.median ? fmtHarga(ph.median) : '—') + '</div></div>' +
       '<div class="kpi" title="Estimasi TOTAL belanja iklan semua pengiklan di niche ini per bulan — MODEL 🟠, bukan data Meta"><div class="k">Est. Belanja Iklan Niche</div><div class="v" style="color:#9BE7C4">' + (en.bulanan_max ? fmtHarga(en.bulanan_min) + '–' + fmtHarga(en.bulanan_max) : '—') + '</div><div class="s">per bulan (model) · median ' + (en.median_bulanan ? fmtHarga(en.median_bulanan) : '—') + '</div></div>' +
       '<div class="kpi"><div class="k">Baru ≤7 Hari</div><div class="v" style="color:' + (wkt.baru_7hari ? '#FFB4A6' : 'inherit') + '">' + wkt.baru_7hari + '</div><div class="s">⚡ ' + wkt.panas_3hari + ' mulai ≤3 hari</div></div>' +
-      '<div class="kpi"><div class="k">Video</div><div class="v">' + Math.round(video/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + video + ' iklan</div></div>' +
-      '<div class="kpi" title="CTWA = Click-to-WhatsApp — iklan yang tujuannya chat WA (penjualan via chat)"><div class="k">CTWA/WA</div><div class="v">' + Math.round(ctwa/Math.max(d.jumlah,1)*100) + '%</div><div class="s">' + ctwa + ' iklan</div></div>';
+      '<div class="kpi"><div class="k">Video</div><div class="v">' + Math.round(video/Math.max(HIDUP.length,1)*100) + '%</div><div class="s">' + video + ' iklan</div></div>' +
+      '<div class="kpi" title="CTWA = Click-to-WhatsApp — iklan yang tujuannya chat WA (penjualan via chat)"><div class="k">CTWA/WA</div><div class="v">' + Math.round(ctwa/Math.max(HIDUP.length,1)*100) + '%</div><div class="s">' + ctwa + ' iklan</div></div>';
     const pf = {}, pm = {};
     HIDUP.forEach(x => { pf[x.funnel] = (pf[x.funnel]||0)+1; pm[x.format] = (pm[x.format]||0)+1; });
     hitungChart(pf, "ch-funnel");
@@ -5174,6 +5378,7 @@ function admGambarSistem(){
     admR("Tabel setelan", ya(s.setelan_siap, "siap", "belum: jalankan SUPABASE-JADWAL.sql")) +
     admR("Arsip iklan", a.iklan != null ? esc(a.iklan) + " iklan · " + esc(a.iklan_aktif || 0) + " aktif · " + esc(a.pengiklan || 0) + " pengiklan" : "—") +
     admR("Potret &amp; niche", a.snapshot != null ? esc(a.snapshot) + " potret · " + esc(a.niche || 0) + " niche" : "—") +
+    admR("Jalur data Shopee", shpAdmBaris(s)) +
     admR("Admin", esc((s.admin || []).join(", "))) +
     admR("Kontak CS", (cs.wa ? "WA +" + esc(cs.wa) : '<span class="buruk">WA belum diatur</span> <small style="color:var(--faint)">(INTAI_CS_WA)</small>') + "<br>" + (cs.email ? esc(cs.email) : '<span class="buruk">email disembunyikan</span>'));
   {   /* v1.4.5: layanan email reset password */
@@ -5577,7 +5782,7 @@ function tampilView(v, push){
     el.classList.remove("view-masuk"); void el.offsetWidth; el.classList.add("view-masuk");
     clearTimeout(el.__tvm); el.__tvm = setTimeout(function(){ el.classList.remove("view-masuk"); }, 420);
   })();
-  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Modul Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : v === "galeri" ? "INTAI — Galeri Iklan" : "INTAI — Dashboard";
+  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Scan Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : v === "galeri" ? "INTAI — Galeri Iklan" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
     const items = nav.querySelectorAll(".sb-item");
@@ -5605,6 +5810,7 @@ function tampilView(v, push){
     try{ history.pushState({v: v}, "", url); }catch(e){}
   }
   if(v === "galeri") muatGaleri();
+  if(v === "shopee"){ const o = push === false ? shpDariUrl(location.search) : (window.__shpOpsi || {}); window.__shpOpsi = null; shpMasuk(o); }   /* v1.5.0: setelah pushState */
   window.scrollTo(0, 0);
   sbKlipUlang();
 }
@@ -5624,6 +5830,373 @@ function isiScanDari(q, m){
     scan();
   }
 }
+/* ===================== v1.5.0: SCAN SHOPEE ===================== */
+const SHP = {tab: "cari", q: "", urut: "laris", cari: null, flash: null, toko: null, tokoQ: "", lencana: "", fsUrut: "terjual",
+             muat: {cari: false, flash: false, toko: false}, galat: {cari: "", flash: "", toko: ""}, pasang: false};
+const SHP_URUT_LBL = {laris: "Terlaris", terkait: "Terkait", baru: "Terbaru", murah: "Termurah"};
+function shpRp(n){ return n == null || n === "" ? "—" : "Rp" + Number(n).toLocaleString("id-ID"); }
+function shpRpS(n){
+  if(n == null) return "—";
+  if(n >= 1e6) return (Math.round(n / 1e5) / 10).toLocaleString("id-ID") + "jt";
+  if(n >= 1e3) return Math.round(n / 1e3).toLocaleString("id-ID") + "rb";
+  return String(n);
+}
+function shpN(n){ return n == null ? "—" : Number(n).toLocaleString("id-ID"); }
+function shpGbr(u, kecil){
+  u = String(u || "");
+  if(!/^https:\/\/[a-z0-9.-]*susercontent\.com\//.test(u)) return "";
+  return (kecil && /\/file\/[A-Za-z0-9_-]+$/.test(u)) ? u + "_tn" : u;
+}
+function shpJam(t){
+  try{ return new Date(t * 1000).toLocaleTimeString("id-ID", {hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta"}).replace(".", ":"); }catch(e){ return "—"; }
+}
+function shpWaktu(iso){
+  try{ return new Date(iso).toLocaleString("id-ID", {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta"}) + " WIB"; }catch(e){ return ""; }
+}
+/* riwayat kecil per akun (perangkat ini): kata kunci & toko yang pernah dibuka */
+function shpRiwKunci(){ return "intai_shp_v1:" + ((AKUN && AKUN.email) || "-"); }
+function shpRiw(){ try{ const v = JSON.parse(localStorage.getItem(shpRiwKunci()) || "{}"); return {q: v.q || [], toko: v.toko || []}; }catch(e){ return {q: [], toko: []}; } }
+function shpRiwTambah(jenis, nilai){
+  const r = shpRiw();
+  if(jenis === "q") r.q = [nilai].concat(r.q.filter(function(x){ return x.toLowerCase() !== nilai.toLowerCase(); })).slice(0, 8);
+  else r.toko = [nilai].concat(r.toko.filter(function(x){ return x.id !== nilai.id; })).slice(0, 8);
+  try{ localStorage.setItem(shpRiwKunci(), JSON.stringify(r)); }catch(e){}
+}
+function shpUrl(){
+  const p = new URLSearchParams();
+  if(SHP.tab !== "cari") p.set("tab", SHP.tab);
+  if(SHP.tab === "cari" && SHP.q){ p.set("q", SHP.q); if(SHP.urut !== "laris") p.set("urut", SHP.urut); }
+  if(SHP.tab === "toko" && SHP.tokoQ) p.set("toko", SHP.tokoQ);
+  const s = p.toString();
+  return "/shopee" + (s ? "?" + s : "");
+}
+function shpSimpanUrl(){
+  if(location.pathname.indexOf("/shopee") !== 0) return;
+  try{ history.replaceState({v: "shopee"}, "", shpUrl()); }catch(e){}
+}
+function shpPasang(){
+  if(SHP.pasang) return;
+  SHP.pasang = true;
+  document.getElementById("sp-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    const q = (document.getElementById("sp-q").value || "").trim();
+    if(q.length < 2){ document.getElementById("sp-q").focus(); toast("Ketik kata kunci produk minimal 2 huruf."); return; }
+    shpCari(q, document.getElementById("sp-urut").value);
+  });
+  document.getElementById("sp-urut").addEventListener("change", function(){
+    if(SHP.q) shpCari(SHP.q, this.value);
+  });
+  document.getElementById("sp-toko-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    const q = (document.getElementById("sp-toko-q").value || "").trim();
+    if(!q){ document.getElementById("sp-toko-q").focus(); toast("Tempel link toko, link produk, atau ID toko."); return; }
+    shpToko(q);
+  });
+}
+/* dipanggil tampilView("shopee") — opsi dari URL (ke("/shopee?q=…") / muat awal) */
+function shpMasuk(opsi){
+  shpPasang();
+  opsi = opsi || {};
+  if(opsi.tab) SHP.tab = opsi.tab;
+  shpTab(SHP.tab, true);
+  const urut = opsi.urut || "laris";
+  if(opsi.q && !(SHP.cari && opsi.q === SHP.q && urut === SHP.urut)){
+    shpCari(opsi.q, urut);
+  } else if(opsi.toko && !(SHP.toko && opsi.toko === SHP.tokoQ)){
+    shpToko(opsi.toko);
+  } else {
+    shpGambarSemua();
+    shpSimpanUrl();
+  }
+}
+function shpDariUrl(cari){
+  const p = new URLSearchParams(cari == null ? location.search : cari), o = {};
+  const t = p.get("tab"); if(t === "flash" || t === "toko" || t === "cari") o.tab = t;
+  const q = (p.get("q") || "").trim(); if(q){ o.q = q; o.tab = "cari"; }
+  const u = p.get("urut"); if(u && SHP_URUT_LBL[u]) o.urut = u;
+  const tk = (p.get("toko") || "").trim(); if(tk && !q){ o.toko = tk; o.tab = "toko"; }
+  return o;
+}
+function shpTab(t, diam){
+  SHP.tab = t;
+  document.querySelectorAll("#sp-tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.t === t); });
+  document.querySelectorAll("#view-shopee .sp-sek").forEach(function(s){ s.classList.toggle("on", s.dataset.sek === t); });
+  if(t === "flash" && !SHP.flash && !SHP.muat.flash && !SHP.galat.flash) shpFlash();
+  shpGambarSemua();
+  if(!diam) shpSimpanUrl();
+}
+function shpGambarSemua(){
+  if(SHP.tab === "cari") shpGambarCari();
+  else if(SHP.tab === "flash") shpGambarFlash();
+  else shpGambarToko();
+}
+function shpMuatHTML(t){ return '<div class="sp-muat"><i></i>' + t + '</div>'; }
+function shpGalatHTML(pesan, ulang){
+  return '<div class="sp-galat"><b>Shopee belum mengirim data</b>' + esc(pesan || "Coba lagi beberapa menit lagi.") +
+    (ulang ? ' <button class="sp-kecil" style="margin-left:6px" onclick="' + ulang + '">Coba lagi</button>' : '') +
+    '<div style="margin-top:6px;font-size:11px;opacity:.85">Ini bukan error di akunmu. Jalur Shopee tidak resmi bisa menutup sementara, dan INTAI sengaja tidak menampilkan angka karangan sebagai gantinya.</div></div>';
+}
+function shpChipRiw(){
+  const r = shpRiw();
+  const daftar = r.q.length ? r.q : ["madu anak", "serum wajah", "rak sepatu", "hijab instan"];
+  return '<span class="lbl">' + (r.q.length ? "Terakhir" : "Coba") + '</span>' + daftar.map(function(k){
+    return '<button type="button" class="sp-chip" onclick="shpCari(this.dataset.k)" data-k="' + esc(k) + '">' + esc(k) + '</button>'; }).join("");
+}
+
+/* ---------- Cari produk ---------- */
+async function shpCari(q, urut){
+  q = String(q || "").trim(); urut = SHP_URUT_LBL[urut] ? urut : "laris";
+  if(q.length < 2) return;
+  SHP.q = q; SHP.urut = urut; SHP.lencana = ""; SHP.galat.cari = "";
+  if(SHP.tab !== "cari") shpTab("cari", true);
+  document.getElementById("sp-q").value = q;
+  document.getElementById("sp-urut").value = urut;
+  shpSimpanUrl();
+  SHP.muat.cari = true; shpGambarCari();
+  const btn = document.getElementById("sp-btn"); btn.disabled = true;
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/cari?q=" + encodeURIComponent(q) + "&urut=" + urut)).json(); }catch(e){}
+  btn.disabled = false; SHP.muat.cari = false;
+  if(SHP.q !== q || SHP.urut !== urut) return;   /* sudah diganti permintaan lain */
+  if(d && d.ok){ SHP.cari = d; shpRiwTambah("q", q); }
+  else { SHP.cari = null; SHP.galat.cari = (d && d.error) || "Server INTAI tidak terhubung."; }
+  shpGambarCari();
+}
+function shpKartuProduk(p, ops){
+  ops = ops || {};
+  const g = shpGbr(p.gambar, true);
+  const lc = p.lencana ? '<span class="sp-lc' + (p.lencana === "Mall" ? " mall" : "") + '">' + esc(p.lencana) + '</span>' : (p.resmi ? '<span class="sp-lc mall">Mall</span>' : "");
+  let tj = "";
+  if(ops.flash){
+    tj = '<div class="sp-tj" title="🟢 historical_sold dari Shopee">🟢 ' + shpN(p.terjual) + ' terjual</div>' +
+      (p.delta != null ? '<div class="sp-tj"><span class="naik" title="🔵 selisih dua angka pasti">🔵 +' + shpN(p.delta) + '</span><small>sejak ' + (p.delta_hari === 1 ? "kemarin" : p.delta_hari + " hari lalu") + '</small></div>' : "") +
+      (p.laku_sesi != null ? '<div class="sp-tj"><small title="🟠 stok flash sale awal dikurangi stok sekarang">🟠 ±' + shpN(p.laku_sesi) + ' laku di sesi ini</small></div>' : "");
+  } else if(p.terjual_resmi != null){
+    tj = '<div class="sp-tj" title="🟢 Shopee Affiliate API (resmi)">🟢 ' + shpN(p.terjual_resmi) + ' terjual</div>';
+  } else if(p.terjual_teks){
+    tj = '<div class="sp-tj" title="🟢 teks dari kartu Shopee">🟢 ' + esc(p.terjual_teks) + '</div>';
+  }
+  const meta = [];
+  if(p.rating) meta.push('<span class="bintang">★ ' + String(p.rating).replace(".", ",") + '</span>' + (p.ulasan ? ' <small>(' + shpRpS(p.ulasan).replace("rb", "rb") + ')</small>' : ""));
+  if(p.kota) meta.push(esc(p.kota));
+  if(p.iklan) meta.push('<span title="Kartu ini iklan berbayar di Shopee">Iklan</span>');
+  return '<div class="sp-p">' +
+    '<a class="sp-th" href="' + esc(p.url) + '" target="_blank" rel="noopener">' +
+      (g ? '<img loading="lazy" referrerpolicy="no-referrer" src="' + esc(g) + '" alt="" onerror="this.remove()">' : "") +
+      '<span class="sp-ph">tanpa gambar</span>' +
+      (p.posisi ? '<span class="sp-pos" title="🟢 urutan dari Shopee">#' + p.posisi + '</span>' : "") + lc + '</a>' +
+    '<div class="sp-bd">' +
+      '<a class="sp-nm" href="' + esc(p.url) + '" target="_blank" rel="noopener" title="' + esc(p.nama) + '">' + esc(p.nama) + '</a>' +
+      '<div class="sp-hg"><b>' + shpRp(p.harga) + '</b>' + (p.harga_coret ? '<s>' + shpRp(p.harga_coret) + '</s>' : "") + (p.diskon ? '<i>-' + p.diskon + '%</i>' : "") + '</div>' +
+      (meta.length ? '<div class="sp-mt">' + meta.join(" · ") + '</div>' : "") +
+      ((p.label || []).length ? '<div class="sp-lb">' + p.label.slice(0, 3).map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("") + '</div>' : "") +
+      tj +
+      (ops.tanpaToko ? "" : '<div class="sp-kaki"><button type="button" onclick="shpToko(\'' + esc(p.shopid) + '\')">Intip toko</button><a href="' + esc(p.url) + '" target="_blank" rel="noopener">Shopee ↗</a></div>') +
+    '</div></div>';
+}
+function shpBar(rows, total){
+  const maks = Math.max.apply(null, rows.map(function(r){ return r[1]; }).concat([1]));
+  return '<div class="sp-bar">' + rows.map(function(r){
+    return '<div class="r"><span title="' + esc(r[0]) + '">' + esc(r[0]) + '</span><i><em style="width:' + Math.max(4, Math.round(100 * r[1] / maks)) + '%"></em></i><b>' + (total ? Math.round(100 * r[1] / total) + "%" : r[1]) + '</b></div>';
+  }).join("") + '</div>';
+}
+function shpHist(rk){
+  const h = rk.histogram || [];
+  if(!h.length) return '<div class="chart-kosong">Harga terlalu seragam untuk dibuat peta.</div>';
+  const maks = Math.max.apply(null, h.map(function(x){ return x.n; }).concat([1]));
+  return '<div class="sp-hist">' + h.map(function(x){
+    return '<div class="bt" title="' + shpRp(x.dari) + ' – ' + shpRp(x.sampai) + ': ' + x.n + ' produk">' + (x.n ? '<span class="n">' + x.n + '</span>' : "") +
+      '<div class="b' + (x.n ? "" : " nol") + '" style="height:' + Math.max(3, Math.round(88 * x.n / maks)) + '%"></div><span class="lb">' + shpRpS(x.dari) + '</span></div>';
+  }).join("") + '</div>' +
+  '<div class="sp-kuart"><div><small>Bawah 25%</small><b>' + shpRpS(rk.harga.p25) + '</b></div><div><small>Tengah</small><b>' + shpRpS(rk.harga.median) + '</b></div><div><small>Atas 25%</small><b>' + shpRpS(rk.harga.p75) + '</b></div></div>';
+}
+function shpGambarCari(){
+  const el = document.getElementById("sp-cari-isi"); if(!el) return;
+  document.getElementById("sp-riw").innerHTML = shpChipRiw();
+  if(SHP.muat.cari){ el.innerHTML = shpMuatHTML('Membaca halaman pencarian Shopee untuk <b>“' + esc(SHP.q) + '”</b> (' + SHP_URUT_LBL[SHP.urut] + ')… biasanya 3–6 detik.'); return; }
+  if(SHP.galat.cari){ el.innerHTML = shpGalatHTML(SHP.galat.cari, "shpCari(SHP.q, SHP.urut)"); return; }
+  const d = SHP.cari;
+  if(!d){
+    el.innerHTML = '<div class="sp-kosong"><b>Mulai dari satu kata kunci</b>Urutan <b>Terlaris</b> = susunan produk yang dipakai Shopee sendiri untuk “paling laku”. INTAI membaca ±40 produk teratasnya, lalu merangkum harga, diskon, jenis toko, kota pengirim, dan toko yang paling sering muncul.</div>';
+    return;
+  }
+  const rk = d.ringkas || {}, semua = d.produk || [];
+  const pr = SHP.lencana ? semua.filter(function(p){ return (p.lencana || "Biasa") === SHP.lencana; }) : semua;
+  const lcChip = (rk.lencana || []).length > 1 ? '<div class="sp-riw" style="margin-top:0"><span class="lbl">Jenis toko</span><button class="sp-chip' + (SHP.lencana ? "" : " on") + '" onclick="SHP.lencana=\'\';shpGambarCari()">Semua <i>' + semua.length + '</i></button>' +
+    rk.lencana.map(function(x){ return '<button class="sp-chip' + (SHP.lencana === x[0] ? " on" : "") + '" onclick="SHP.lencana=this.dataset.l;shpGambarCari()" data-l="' + esc(x[0]) + '">' + esc(x[0]) + ' <i>' + x[1] + '</i></button>'; }).join("") + '</div>' : "";
+  const aff = d.aff && d.aff.length;
+  let kanan = "";
+  if(rk.harga) kanan += '<div class="kartu"><div class="judul-kartu"><b>Peta harga 🔵</b><span>' + rk.n + ' produk</span></div>' + shpHist(rk) +
+    '<div class="sp-cat">Termurah ' + shpRp(rk.harga.min) + ' · termahal ' + shpRp(rk.harga.max) + '. Setengah produk teratas dijual di antara <b>' + shpRp(rk.harga.p25) + '</b> dan <b>' + shpRp(rk.harga.p75) + '</b>, jadi di situ “harga pasar” kata kunci ini.</div></div>';
+  kanan += '<div class="kartu"><div class="judul-kartu"><b>Siapa yang menguasai 🔵</b><span>jenis toko</span></div>' + shpBar((rk.lencana || []).map(function(x){ return [x[0] === "Biasa" ? "Toko biasa" : x[0], x[1]]; }), rk.n) +
+    '<div class="sp-fakta" style="margin:12px 0 0"><div class="sp-f"><div class="l">Pakai diskon</div><div class="v">' + ((rk.diskon || {}).persen_produk || 0) + '%</div><div class="s">rata-rata potongan ' + ((rk.diskon || {}).rata || 0) + '%</div></div>' +
+    '<div class="sp-f"><div class="l">Rating rata-rata</div><div class="v">' + (rk.rating_rata ? String(rk.rating_rata).replace(".", ",") : "—") + '</div><div class="s">' + (rk.toko_unik || 0) + ' toko berbeda</div></div></div></div>';
+  if((rk.toko || []).length) kanan += '<div class="kartu"><div class="judul-kartu"><b>Toko dominan 🔵</b><span>muncul ≥2×</span></div>' + rk.toko.map(function(t, i){
+    return '<div class="sp-tk"><span class="no">' + t.n + '×</span><div class="tx"><b>' + esc(t.contoh) + '</b>' + (t.lencana ? esc(t.lencana) + " · " : "") + 'pertama di posisi #' + t.posisi + '</div><button class="sp-kecil" onclick="shpToko(\'' + esc(t.shopid) + '\')">Intip</button></div>';
+  }).join("") + '<div class="sp-cat">Satu toko yang mengisi banyak slot teratas = pemain kuat di kata kunci ini. Klik <b>Intip</b> untuk melihat pengikut, ulasan, dan 37 produk terlarisnya.</div></div>';
+  if((rk.kota || []).length) kanan += '<div class="kartu"><div class="judul-kartu"><b>Kota pengirim 🔵</b><span>' + rk.kota_n + ' dari ' + rk.n + ' kartu</span></div>' + shpBar(rk.kota, rk.kota_n) + '</div>';
+  if((rk.label || []).length) kanan += '<div class="kartu"><div class="judul-kartu"><b>Label promo terpakai 🟢</b><span>dari kartu</span></div>' + shpBar(rk.label, rk.n) + '</div>';
+  if((d.saran || []).length) kanan += '<div class="kartu"><div class="judul-kartu"><b>Yang diketik pembeli 🟢</b><span>saran pencarian Shopee</span></div><div class="sp-saran">' +
+    d.saran.map(function(k){ return '<button class="sp-chip" data-k="' + esc(k) + '" onclick="shpCari(this.dataset.k, SHP.urut)">' + esc(k) + '</button>'; }).join("") +
+    '</div><div class="sp-cat">Turunan kata kunci yang sering dicari. Pakai untuk judul produk, atau klik untuk scan niche turunannya.</div></div>';
+  const terjualCat = rk.terjual_tampil ? rk.terjual_tampil + " kartu menampilkan teks terjual." : "Versi halaman yang bisa dibaca server tidak menampilkan angka terjual per produk";
+  el.innerHTML =
+    '<div class="sp-info"><span><b>' + semua.length + ' produk teratas</b> untuk “' + esc(d.q) + '” · urut <b>' + esc(d.urut_label) + '</b> · ' + shpWaktu(d.waktu) + (d.cache ? ' <small>(tersimpan, segar ≤30 menit)</small>' : '') + '</span>' +
+      '<span class="sp-aksi"><button onclick="shpEkspor(\'cari\')">＋ Ekspor CSV</button><button onclick="shpCari(SHP.q, SHP.urut)" title="Ambil ulang (memakai kuota)">↻</button></span></div>' +
+    (d.aff_pesan ? '<div class="sp-galat" style="background:#EEF4F7;border-color:#D3E2EA;color:#2E4F63"><b>Angka terjual resmi belum aktif</b>' + esc(d.aff_pesan) + '</div>' : "") +
+    '<div class="sp-tata"><div class="kol">' + lcChip +
+      '<div class="sp-grid">' + pr.map(function(p){ return shpKartuProduk(p); }).join("") + '</div>' +
+      '<div class="sp-cat">🟢 Posisi, harga, diskon, rating, lencana, dan kota dibaca langsung dari kartu Shopee. ' + esc(terjualCat) +
+        (aff ? "; angka 🟢 terjual pada kartu berasal dari Shopee Affiliate API resmi." : ". Urutan <b>Terlaris</b> sendiri sudah merupakan peringkat penjualan versi Shopee. Untuk angka terjual pasti, buka tab <b>Radar Flash Sale</b> atau aktifkan Affiliate API.") + '</div>' +
+      (aff ? shpTabelAff(d.aff) : "") +
+    '</div><div class="kol">' + kanan + '</div></div>';
+}
+function shpTabelAff(a){
+  return '<div class="kartu" style="margin-top:14px"><div class="judul-kartu"><b>Terlaris menurut data resmi 🟢</b><span>Shopee Affiliate API</span></div><div class="sp-geser"><table class="sp-tabel"><thead><tr><th>#</th><th>Produk</th><th>Toko</th><th style="text-align:right">Harga</th><th style="text-align:right">Terjual</th></tr></thead><tbody>' +
+    a.slice(0, 50).map(function(x, i){ return '<tr><td>' + (i + 1) + '</td><td><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.nama) + '</a></td><td>' + esc(x.toko || "") + '</td><td class="n">' + shpRp(x.harga) + '</td><td class="n">' + shpN(x.terjual) + '</td></tr>'; }).join("") +
+    '</tbody></table></div></div>';
+}
+
+/* ---------- Radar Flash Sale ---------- */
+async function shpFlash(){
+  SHP.muat.flash = true; SHP.galat.flash = ""; shpGambarFlash();
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/flash")).json(); }catch(e){}
+  SHP.muat.flash = false;
+  if(d && d.ok) SHP.flash = d; else { SHP.flash = null; SHP.galat.flash = (d && d.error) || "Server INTAI tidak terhubung."; }
+  shpGambarFlash();
+}
+function shpGambarFlash(){
+  const el = document.getElementById("sp-flash-isi"); if(!el) return;
+  if(SHP.muat.flash){ el.innerHTML = shpMuatHTML("Membaca sesi Flash Sale Shopee yang sedang berjalan…"); return; }
+  if(SHP.galat.flash){ el.innerHTML = shpGalatHTML(SHP.galat.flash, "shpFlash()"); return; }
+  const d = SHP.flash; if(!d){ el.innerHTML = ""; return; }
+  const pr = (d.produk || []).slice();
+  const kunci = {terjual: function(p){ return p.terjual || 0; }, naik: function(p){ return p.delta == null ? -1 : p.delta; },
+                 sesi: function(p){ return p.laku_sesi == null ? -1 : p.laku_sesi; }, diskon: function(p){ return p.diskon || 0; }}[SHP.fsUrut] || function(p){ return p.terjual || 0; };
+  pr.sort(function(a, b){ return kunci(b) - kunci(a); });
+  const s = d.sesi || {}, kini = Date.now() / 1000;
+  const sisa = s.akhir ? Math.max(0, s.akhir - kini) : 0;
+  const totTerjual = pr.reduce(function(a, p){ return a + (p.terjual || 0); }, 0);
+  const totDelta = pr.reduce(function(a, p){ return a + (p.delta > 0 ? p.delta : 0); }, 0);
+  const totSesi = pr.reduce(function(a, p){ return a + (p.laku_sesi > 0 ? p.laku_sesi : 0); }, 0);
+  const chip = function(k, t){ return '<button class="sp-chip' + (SHP.fsUrut === k ? " on" : "") + '" onclick="SHP.fsUrut=\'' + k + '\';shpGambarFlash()">' + t + '</button>'; };
+  el.innerHTML =
+    '<div class="sp-info"><span><b>Sesi berjalan ' + shpJam(s.mulai) + '–' + shpJam(s.akhir) + ' WIB</b>' + (sisa ? ' · berakhir ±' + Math.floor(sisa / 3600) + 'j ' + Math.round((sisa % 3600) / 60) + 'm lagi' : '') + ' · ' + shpWaktu(d.waktu) + (d.cache ? ' <small>(tersimpan ≤10 menit)</small>' : '') + '</span>' +
+      '<span class="sp-aksi"><button onclick="shpEkspor(\'flash\')">＋ Ekspor CSV</button></span></div>' +
+    '<div class="sp-sesi">' + (s.jadwal || []).map(function(j){ return '<span class="' + (j.berjalan ? "on" : "") + '">' + shpJam(j.mulai) + '–' + shpJam(j.akhir) + (j.berjalan ? " · sekarang" : "") + '</span>'; }).join("") + '</div>' +
+    '<div class="sp-fakta" style="margin-top:14px">' +
+      '<div class="sp-f"><div class="l">Produk di sesi ini 🟢</div><div class="v">' + pr.length + '</div><div class="s">pilihan Shopee, bukan seluruh pasar</div></div>' +
+      '<div class="sp-f"><div class="l">Total terjual 🟢</div><div class="v">' + shpRpS(totTerjual).replace("rb", "rb") + '</div><div class="s">akumulasi sejak produk dibuat</div></div>' +
+      '<div class="sp-f"><div class="l">Naik sejak potret 🔵</div><div class="v">' + (d.n_delta ? "+" + shpN(totDelta) : "—") + '</div><div class="s">' + (d.n_delta ? d.n_delta + " produk dibandingkan " + trTglPendek(d.pembanding) : "potret pertama tersimpan hari ini") + '</div></div>' +
+      '<div class="sp-f"><div class="l">Laku di sesi ini 🟠</div><div class="v">±' + shpN(totSesi) + '</div><div class="s">stok flash sale awal − stok sekarang</div></div>' +
+    '</div>' +
+    '<div class="sp-riw" style="margin-top:0"><span class="lbl">Urutkan</span>' + chip("terjual", "Terjual total") + chip("naik", "Naik sejak kemarin") + chip("sesi", "Laku di sesi ini") + chip("diskon", "Diskon terbesar") + '</div>' +
+    '<div class="sp-grid">' + pr.map(function(p){ return shpKartuProduk(p, {flash: true}); }).join("") + '</div>' +
+    '<div class="sp-cat">🟢 <b>Terjual</b> = angka pasti dari Shopee (total sejak produk dibuat). 🔵 <b>Naik sejak kemarin</b> = selisih angka hari ini dengan potret INTAI sebelumnya. Potret diambil otomatis setiap pagi lewat pemicu cron, dan setiap kali halaman ini dibuka. ' +
+      (d.n_delta ? "" : "<b>Selisih muncul mulai besok</b> setelah ada potret pembanding. ") + '🟠 <b>Laku di sesi ini</b> bisa meleset bila penjual menambah stok di tengah sesi.</div>';
+}
+
+/* ---------- Intip toko ---------- */
+async function shpToko(q){
+  q = String(q || "").trim(); if(!q) return;
+  SHP.tokoQ = q; SHP.galat.toko = "";
+  if(SHP.tab !== "toko") shpTab("toko", true);
+  document.getElementById("sp-toko-q").value = q;
+  shpSimpanUrl();
+  SHP.muat.toko = true; shpGambarToko();
+  window.scrollTo({top: 0, behavior: "smooth"});
+  const btn = document.getElementById("sp-toko-btn"); btn.disabled = true;
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/toko?id=" + encodeURIComponent(q))).json(); }catch(e){}
+  btn.disabled = false; SHP.muat.toko = false;
+  if(SHP.tokoQ !== q) return;
+  if(d && d.ok){ SHP.toko = d; shpRiwTambah("toko", {id: d.toko.shopid, nama: d.toko.nama}); }
+  else { SHP.toko = null; SHP.galat.toko = (d && d.error) || "Server INTAI tidak terhubung."; }
+  shpGambarToko();
+}
+function shpGambarToko(){
+  const el = document.getElementById("sp-toko-isi"); if(!el) return;
+  const r = shpRiw();
+  document.getElementById("sp-toko-riw").innerHTML = r.toko.length ? '<span class="lbl">Pernah diintip</span>' + r.toko.map(function(t){
+    return '<button class="sp-chip" onclick="shpToko(\'' + esc(t.id) + '\')">' + esc(t.nama || t.id) + '</button>'; }).join("") : "";
+  if(SHP.muat.toko){ el.innerHTML = shpMuatHTML("Membaca profil toko dan 37 produk terlarisnya…"); return; }
+  if(SHP.galat.toko){ el.innerHTML = shpGalatHTML(SHP.galat.toko, "shpToko(SHP.tokoQ)"); return; }
+  const d = SHP.toko;
+  if(!d){
+    el.innerHTML = '<div class="sp-kosong"><b>Intip satu toko pesaing</b>Tempel link toko Shopee (<code>shopee.co.id/namatoko</code>), link salah satu produknya, atau klik <b>Intip toko</b> dari hasil pencarian. INTAI menampilkan pengikut, ulasan, rating, status LIVE, voucher, dan <b>37 produk terlarisnya</b> berurutan.</div>';
+    return;
+  }
+  const t = d.toko || {}, tb = d.tumbuh, lg = shpGbr(t.logo);
+  const tumbuhS = function(v, lbl){ return v == null ? "" : '<div class="s"><b style="color:' + (v >= 0 ? "#2F7D64" : "#B5443A") + '">' + (v >= 0 ? "+" : "") + shpN(v) + '</b> ' + lbl + ' dalam ' + tb.hari + ' hari 🔵</div>'; };
+  el.innerHTML =
+    '<div class="kartu" style="margin-bottom:14px"><div class="sp-toko-kep"><div class="sp-lg">' + (lg ? '<img src="' + esc(lg) + '" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '</div>' +
+      '<div class="sp-tnama"><h2>' + esc(t.nama) + '</h2><div class="sp-sb">' + (t.live ? '<span class="sp-live">LIVE</span>' + (t.kampanye_live ? " " + esc(t.kampanye_live) : "") : "") +
+        (t.username ? ' <span>@' + esc(t.username) + '</span>' : "") + ' <span>ID ' + esc(t.shopid) + '</span></div></div>' +
+      '<span class="sp-aksi"><button onclick="shpEkspor(\'toko\')">＋ Ekspor CSV</button><a class="sp-kecil" style="text-decoration:none" href="' + esc(t.url) + '" target="_blank" rel="noopener">Buka di Shopee ↗</a></span></div>' +
+      ((t.voucher || []).length ? '<div class="sp-vouc">' + t.voucher.map(function(v){ return '<span>🎟 ' + esc(v) + '</span>'; }).join("") + '</div>' : "") + '</div>' +
+    '<div class="sp-fakta">' +
+      '<div class="sp-f"><div class="l">Pengikut 🟢</div><div class="v">' + (t.pengikut_teks ? esc(t.pengikut_teks) : "—") + '</div>' + (tb ? tumbuhS(tb.pengikut, "pengikut") : '<div class="s">riwayat mulai dicatat hari ini</div>') + '</div>' +
+      '<div class="sp-f"><div class="l">Ulasan toko 🟢</div><div class="v">' + shpN(t.ulasan) + '</div>' + (tb ? tumbuhS(tb.ulasan, "ulasan") : '<div class="s">ulasan baru ≈ jejak pembelian</div>') + '</div>' +
+      '<div class="sp-f"><div class="l">Rating toko 🟢</div><div class="v">' + (t.rating ? "★ " + String(t.rating).replace(".", ",") : "—") + '</div><div class="s">dari ' + shpN(t.ulasan) + ' penilaian</div></div>' +
+      (d.ringkas && d.ringkas.harga ? '<div class="sp-f"><div class="l">Harga tengah 🔵</div><div class="v">' + shpRpS(d.ringkas.harga.median) + '</div><div class="s">' + shpRpS(d.ringkas.harga.min) + ' – ' + shpRpS(d.ringkas.harga.max) + ' · ' + (d.ringkas.diskon || {}).persen_produk + '% pakai diskon</div></div>' : "") +
+    '</div>' +
+    (d.aff_pesan ? '<div class="sp-galat" style="background:#EEF4F7;border-color:#D3E2EA;color:#2E4F63"><b>Angka terjual resmi belum aktif</b>' + esc(d.aff_pesan) + '</div>' : "") +
+    '<div class="kartu"><div class="judul-kartu"><b>Produk terlaris toko ini 🟢</b><span>' + (d.produk || []).length + ' produk · urutan penjualan Shopee</span></div>' +
+      ((d.produk || []).length ? '<div class="sp-grid">' + d.produk.map(function(p){ return shpKartuProduk(p, {tanpaToko: true}); }).join("") + '</div>'
+        : '<div class="chart-kosong">' + esc(d.laris_pesan || "Daftar produk terlaris belum terbaca.") + '</div>') +
+      '<div class="sp-cat">Urutan diambil dari halaman toko dengan urutan <b>Terlaris</b> versi Shopee. Pengikut &amp; ulasan dicatat sekali per hari setiap kali toko ini dibuka, jadi buka lagi besok untuk melihat <b>pertumbuhannya</b>.' + (tb ? " Riwayat sejak " + trTglPendek(tb.sejak) + "." : "") + '</div></div>';
+}
+
+/* ---------- Ekspor ke penampung "Ekspor CSV" (sidebar) ---------- */
+function shpEkspor(jenis){
+  let kol, baris, q, total, filter, mode;
+  if(jenis === "flash"){
+    const d = SHP.flash; if(!d) return;
+    kol = ["nama", "harga", "harga_coret", "diskon_persen", "terjual_total", "naik_sejak_potret", "hari_sejak_potret", "laku_sesi_ini_perkiraan", "stok_flash_sale", "rating", "ulasan", "mall", "shopid", "itemid", "link"];
+    baris = d.produk.map(function(p){ return [p.nama, ekAngka(p.harga), ekAngka(p.harga_coret), ekAngka(p.diskon), ekAngka(p.terjual), ekAngka(p.delta), ekAngka(p.delta_hari), ekAngka(p.laku_sesi), ekAngka(p.stok_fs), ekAngka(p.rating), ekAngka(p.ulasan), p.resmi ? "ya" : "", p.shopid, p.itemid, p.url]; });
+    q = "Flash Sale " + shpJam((d.sesi || {}).mulai) + "-" + shpJam((d.sesi || {}).akhir); total = baris.length; filter = "sesi Flash Sale yang sedang berjalan"; mode = "shopee-flash";
+  } else {
+    const d = jenis === "toko" ? SHP.toko : SHP.cari; if(!d) return;
+    let pr = d.produk || [];
+    if(jenis === "cari" && SHP.lencana) pr = pr.filter(function(p){ return (p.lencana || "Biasa") === SHP.lencana; });
+    kol = ["posisi", "nama", "harga", "harga_coret", "diskon_persen", "rating", "lencana", "kota", "label", "terjual_teks", "terjual_resmi", "shopid", "itemid", "link"];
+    baris = pr.map(function(p){ return [ekAngka(p.posisi), p.nama, ekAngka(p.harga), ekAngka(p.harga_coret), ekAngka(p.diskon), ekAngka(p.rating), p.lencana || "", p.kota || "", (p.label || []).join(" | "), p.terjual_teks || "", ekAngka(p.terjual_resmi), p.shopid, p.itemid, p.url]; });
+    if(jenis === "toko"){ q = (d.toko || {}).nama || "toko"; filter = "produk terlaris toko"; mode = "shopee-toko"; }
+    else { q = d.q; filter = "urut " + d.urut_label + (SHP.lencana ? " · " + SHP.lencana : ""); mode = "shopee"; }
+    total = (d.produk || []).length;
+  }
+  if(!baris.length){ toast("Tidak ada baris untuk diekspor."); return; }
+  const entri = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sumber: "Scan Shopee", q: q, mode: mode,
+                 waktu: new Date().toISOString(), total: total, filter: filter, kol: kol, baris: baris, unduh: {}};
+  const list = ekMuat(); list.unshift(entri);
+  if(!ekSimpan(list)){ ekBelumSiap(); return; }
+  ekBadge(true);
+  toast("✓ " + baris.length + " baris Shopee masuk ke <b>Ekspor CSV</b> di sidebar · <u style=\"cursor:pointer\" onclick=\"ke('/ekspor')\">buka ›</u>");
+}
+
+/* ---------- Admin → Status sistem: uji jalur Shopee ---------- */
+function shpAdmBaris(s){
+  const sh = s.shopee || {}, j = sh.jalur || {};
+  const nama = {cari: "Pencarian", toko: "Profil toko", toko_laris: "Terlaris toko", flash: "Flash Sale", saran: "Saran kata kunci", affiliate: "Affiliate API"};
+  const isi = Object.keys(nama).filter(function(k){ return j[k]; }).map(function(k){
+    return (j[k].ok ? '<span class="ok">✓ ' : '<span class="buruk">✗ ') + nama[k] + '</span> <small style="color:var(--faint)">' + esc(j[k].pesan || "") + ' · ' + j[k].ms + ' ms</small>';
+  });
+  return (isi.length ? isi.join("<br>") : '<small style="color:var(--faint)">belum dipakai sejak server menyala</small>') +
+    '<br>Affiliate API resmi: ' + (sh.aff ? '<span class="ok">✓ terisi</span>' : '<span class="buruk">✗ belum</span> <small style="color:var(--faint)">(INTAI_SHOPEE_AFF_ID + INTAI_SHOPEE_AFF_SECRET, opsional)</small>') +
+    '<br><button class="cs-tb" style="margin-top:8px" onclick="shpAdmUji(this)">Uji semua jalur sekarang</button><div id="adm-shp-uji"></div>';
+}
+async function shpAdmUji(btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = "Menguji… (±15 detik)";
+  let d = null;
+  try{ d = await (await fetch("/api/admin/shopee-uji")).json(); }catch(e){}
+  btn.disabled = false; btn.textContent = t;
+  const el = document.getElementById("adm-shp-uji"); if(!el) return;
+  if(!d || !d.ok){ el.innerHTML = '<span class="buruk">Gagal menguji: ' + esc((d && d.error) || "server tidak terhubung") + '</span>'; return; }
+  el.innerHTML = '<div style="margin-top:8px">' + d.hasil.map(function(h){
+    return (h.ok ? '<span class="ok">✓ ' : '<span class="buruk">✗ ') + esc(h.jalur) + '</span> <small style="color:var(--faint)">' + esc(h.ket) + ' · ' + h.ms + ' ms</small>'; }).join("<br>") + '</div>';
+}
+
 function ke(url){
   if(!MODE_SERVER){
     toast("Ini <b>file statis</b> (tanpa server) — hanya untuk lihat desain. Aplikasi INTAI yang <b>hidup</b>: panel preview proses INTAI di chat ini, alamat publik INTAI, atau <b>localhost:8765</b> di laptop.");
@@ -5657,6 +6230,8 @@ function ke(url){
   } else if(u.indexOf("/pengiklan/") === 0){
     bukaProfil(u.slice(11));
   } else if(u.indexOf("/shopee") === 0){
+    const qi = u.indexOf("?");
+    window.__shpOpsi = qi >= 0 ? shpDariUrl(u.slice(qi)) : {};
     tampilView("shopee");
   } else if(u.indexOf("/tiktok") === 0){
     tampilView("tiktok");
@@ -5672,9 +6247,9 @@ function ke(url){
   try{
     const p = new URLSearchParams(location.search);
     const q = (p.get("q") || "").trim();
-    if(q) isiScanDari(q, p.get("mode") || "");
+    if(q && viewDariPath(location.pathname) !== "shopee") isiScanDari(q, p.get("mode") || "");   /* v1.5.0: ?q= di /shopee milik Scan Shopee */
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a4dfc65992c649',t:'MTc5MTk2Mjk3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a8f1cdd8de5682',t:'MTc5MjAwNTY1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
