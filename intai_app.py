@@ -28,18 +28,26 @@ import time
 import webbrowser
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, quote, unquote
+from collections import OrderedDict
+from urllib.parse import urlparse, parse_qs, quote, unquote, urljoin
 
 import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.4.7"
+VERSI = "1.4.8"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
 lock = threading.RLock()   # reentrant: jalankan_scan dipanggil di bawah lock, catat_scan ikut lock
-img_cache = {}
+img_cache = OrderedDict()   # v1.4.7b: LRU dibatasi BYTE (dulu 300 item tanpa batas ukuran → RAM bisa habis)
+# v1.4.7b: scan diantre dengan kunci SENDIRI. Dulu memakai `lock` global yang juga dipakai cek sesi/login →
+# selama ada scan (±20 dtk), semua request user lain ikut tertahan ("situs hang").
+kunci_scan = threading.Lock()
+_kunci_scan_jalan = threading.Lock()
+SCAN_JALAN = set()          # akun yang scan-nya sedang berjalan (maks 1 per akun)
+SCAN_PER_JAM = 60           # per akun (admin bebas). "Cek semua pesaing" bisa 30 scan berurutan.
+SCAN_ANTRE_DTK = 240        # menunggu giliran scan maksimal 4 menit
 url_cache = {}
 AKUN_DB = {}    # email -> {"nama": str, "hash": sha256}
 TOKENS = {}     # v1.4: tidak dipakai lagi (sesi = token bertanda tangan, lihat buat_sesi)
@@ -2348,6 +2356,29 @@ def jejak_pengiklan(pid, segar=False):
     return {"ok": True, "cache": False, "diambil": c["t"], "data": data}
 
 
+def scan_dengan_antre(nilai, mode, email):
+    """v1.4.7b: 1 scan berjalan per akun + batas per jam + antre di kunci_scan (bukan `lock` global)."""
+    admin = is_admin(email)
+    with _kunci_scan_jalan:
+        if email in SCAN_JALAN:
+            return {"ok": False, "error": "Scan kamu sebelumnya masih berjalan. Tunggu sampai selesai, lalu coba lagi."}
+        if not admin and not _boleh_lupa("scan:" + email, SCAN_PER_JAM, 3600):
+            return {"ok": False, "error": f"Batas {SCAN_PER_JAM} scan per jam tercapai. Coba lagi nanti supaya Meta tidak memblokir INTAI."}
+        SCAN_JALAN.add(email)
+    try:
+        if not kunci_scan.acquire(timeout=SCAN_ANTRE_DTK):
+            return {"ok": False, "error": "Antrean scan sedang penuh (scan otomatis/pengguna lain). Coba lagi beberapa menit lagi."}
+        try:
+            return jalankan_scan(nilai, mode, pemilik=email)
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:300]}
+        finally:
+            kunci_scan.release()
+    finally:
+        with _kunci_scan_jalan:
+            SCAN_JALAN.discard(email)
+
+
 def jalankan_scan(nilai, mode="cari", pemilik=None):
     """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
     s = mesin.buka_sesi()
@@ -2456,7 +2487,6 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             "detail": rincian(o, b) if o else {"skor_detail": {"total": b["skor"]}, "raw": {}},
         })
     rows_hidup = [b for b in rows if b.get("aktif") is not False] or rows
-    tertua = max(rows_hidup, key=lambda x: x["umur_hari"])
 
     # === GALI HARGA: DPA (kartu) + LP + Marketplace (paralel, best-effort) ===
     LP_MAKS, MP_MAKS = 8, 6
@@ -2716,44 +2746,91 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
     }
 
 
-def ambil_gambar(target):
-    if target in img_cache:
-        return img_cache[target]
-    host = urlparse(target).netloc
-    if not any(h in host for h in ("fbcdn.net", "akamaihd.net", "facebook.com")):
-        return None
+# v1.4.7b: proxy media aman.
+#  - host dicek TEPAT (dulu "mengandung fbcdn.net" → fbcdn.net@127.0.0.1 / fbcdn.net.situsjahat.com lolos = SSRF)
+#  - hanya https port 443, tanpa user@, redirect diikuti manual & dicek ulang
+#  - gambar: maks 8 MB/file, cache LRU maks 48 MB total; isi bukan gambar ditolak
+#  - video: TIDAK lagi dimuat utuh ke RAM/cache — dialirkan potongan demi potongan + Range diteruskan ke CDN
+_HOST_GAMBAR = ("fbcdn.net", "akamaihd.net", "facebook.com")
+_HOST_VIDEO = ("fbcdn.net", "akamaihd.net")
+GAMBAR_MAKS = 8 * 1024 * 1024
+GAMBAR_CACHE_MAKS = 48 * 1024 * 1024
+VIDEO_MAKS = 400 * 1024 * 1024
+_kunci_img = threading.Lock()
+_img_byte = [0]
+
+
+def url_media_ok(url, izin):
     try:
-        r = requests.get(target, timeout=12, headers={
-            "User-Agent": mesin.UA, "Referer": "https://www.facebook.com/"})
-        if r.status_code != 200 or len(r.content) < 100:
-            return None
-        tipe = "image/jpeg" if r.content[:2] == b"\xff\xd8" else (
-            "image/png" if r.content[:4] == b"\x89PNG" else "image/webp")
-        data = (tipe, r.content)
-        if len(img_cache) < 300:
-            img_cache[target] = data
-        return data
+        p = urlparse(str(url or ""))
+        if p.scheme != "https" or p.username or p.password or p.port not in (None, 443):
+            return False
+        h = (p.hostname or "").lower().rstrip(".")
     except Exception:
-        return None
+        return False
+    return bool(h) and any(h == d or h.endswith("." + d) for d in izin)
 
 
-def ambil_video(target):
-    if target in img_cache:
-        return img_cache[target]
-    host = urlparse(target).netloc
-    if not any(h in host for h in ("fbcdn.net", "akamaihd.net")):
-        return None
-    try:
-        r = requests.get(target, timeout=30, headers={
-            "User-Agent": mesin.UA, "Referer": "https://www.facebook.com/"})
-        if r.status_code != 200 or len(r.content) < 1000:
+def _get_media(url, izin, **kw):
+    """GET stream tanpa redirect otomatis; tiap lompatan redirect dicek ulang (maks 3). None = ditolak."""
+    for _ in range(4):
+        if not url_media_ok(url, izin):
             return None
-        ctype = r.headers.get("Content-Type", "video/mp4").split(";")[0]
-        if not ctype.startswith("video/"):
-            ctype = "video/mp4"
-        data = (ctype, r.content)
-        if len(img_cache) < 300:
-            img_cache[target] = data
+        r = requests.get(url, allow_redirects=False, stream=True, **kw)
+        if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("Location"):
+            url = urljoin(url, r.headers["Location"])
+            r.close()
+            continue
+        return r
+    return None
+
+
+def _jenis_gambar(b, ctype):
+    if b[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if b[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if b[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return "image/webp"
+    if ctype.startswith("image/") and ctype != "image/svg+xml":
+        return ctype
+    return None
+
+
+def ambil_gambar(target):
+    with _kunci_img:
+        d = img_cache.get(target)
+        if d:
+            img_cache.move_to_end(target)
+            return d
+    try:
+        r = _get_media(target, _HOST_GAMBAR, timeout=12, headers={
+            "User-Agent": mesin.UA, "Referer": "https://www.facebook.com/", "Accept-Encoding": "identity"})
+        if r is None:
+            return None
+        with r:
+            if r.status_code != 200 or _int(r.headers.get("Content-Length"), 0) > GAMBAR_MAKS:
+                return None
+            buf = bytearray()
+            for ch in r.iter_content(65536):
+                buf += ch
+                if len(buf) > GAMBAR_MAKS:
+                    return None
+            ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        isi = bytes(buf)
+        tipe = _jenis_gambar(isi, ctype) if len(isi) >= 100 else None
+        if not tipe:
+            return None
+        data = (tipe, isi)
+        with _kunci_img:
+            if target not in img_cache:
+                img_cache[target] = data
+                _img_byte[0] += len(isi)
+                while _img_byte[0] > GAMBAR_CACHE_MAKS and img_cache:
+                    _, (_, lama) = img_cache.popitem(last=False)
+                    _img_byte[0] -= len(lama)
         return data
     except Exception:
         return None
@@ -3770,7 +3847,7 @@ def _pekerja_jadwal():
             it = sisa[0]
             st["item_kini"] = it["k"]
         try:
-            with lock:   # kunci yang sama dengan /scan → tidak pernah dua scan bersamaan
+            with kunci_scan:   # v1.4.7b: kunci khusus scan (sama dengan /scan) → tidak pernah dua scan bersamaan, situs tetap jalan
                 h = jalankan_scan(it["q"], it["mode"], pemilik=list(it.get("u") or []))
         except Exception as e:
             h = {"ok": False, "error": str(e)[:160]}
@@ -3894,6 +3971,8 @@ def jadwal_publik(email):
 def jadwal_simpan(email, d):
     if not _muat_jadwal():
         return {"ok": False, "error": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql di Supabase"}
+    if not isinstance(d, dict) or not isinstance(d.get("niche", []), list):   # v1.4.7b: dulu teks dihitung per huruf → "Maksimal 3 niche"
+        return {"ok": False, "error": "Format jadwal tidak valid (niche harus berupa daftar)."}
     cfg = _rapikan_cfg(d, ketat=True)
     if cfg is None:
         return {"ok": False, "error": f"Maksimal {NICHE_HARIAN_MAKS} niche harian per akun"}
@@ -4919,6 +4998,45 @@ def _boleh_lupa(kunci, maks, detik):
         return True
 
 
+# v1.4.7b: batas percobaan login (dulu tanpa batas → password bisa ditebak beruntun)
+LOGIN_GAGAL_AKUN = (8, 900)    # 8x salah per akun / 15 menit
+LOGIN_GAGAL_IP = (30, 900)     # 30x salah per IP / 15 menit
+
+
+_POLA_EMAIL = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,24}")
+
+
+def email_valid(email):
+    e = str(email or "")
+    return 6 <= len(e) <= 254 and len(e.split("@")[0]) <= 64 and bool(_POLA_EMAIL.fullmatch(e)) and ".." not in e
+
+
+def login_terkunci(email, ip):
+    """0 = boleh mencoba; >0 = sisa menit terkunci."""
+    now = time.time()
+    sisa = 0
+    with _kunci_lupa:
+        for kunci, (maks, detik) in (("lg:" + email, LOGIN_GAGAL_AKUN), ("lgip:" + ip, LOGIN_GAGAL_IP)):
+            j = [t for t in LUPA_JEJAK.get(kunci, []) if now - t < detik]
+            LUPA_JEJAK[kunci] = j
+            if len(j) >= maks:
+                sisa = max(sisa, int((j[0] + detik - now) // 60) + 1)
+    return sisa
+
+
+def login_catat(email, ip, berhasil):
+    with _kunci_lupa:
+        if berhasil:
+            LUPA_JEJAK.pop("lg:" + email, None)
+            return
+        now = time.time()
+        for kunci in ("lg:" + email, "lgip:" + ip):
+            LUPA_JEJAK.setdefault(kunci, []).append(now)
+        if len(LUPA_JEJAK) > 5000:
+            for k in list(LUPA_JEJAK)[:2500]:
+                LUPA_JEJAK.pop(k, None)
+
+
 def email_reset(email, basis):
     with lock:
         nama = (AKUN_DB.get(email) or {}).get("nama") or "Pengguna INTAI"
@@ -5095,6 +5213,58 @@ class Handler(BaseHTTPRequestHandler):
                 return False
         return True
 
+    def kirim_video(self, target):
+        """v1.4.7b: alirkan video dari CDN Meta (tanpa simpan di RAM). Range dari browser diteruskan apa adanya
+        → CDN yang memotong (termasuk "bytes=-500" yang dulu salah dilayani)."""
+        hdr = {"User-Agent": mesin.UA, "Referer": "https://www.facebook.com/", "Accept-Encoding": "identity"}
+        rng = (self.headers.get("Range") or "").strip()
+        if re.fullmatch(r"bytes=(\d+-\d*|-\d+)", rng):
+            hdr["Range"] = rng
+        r = None
+        try:
+            r = _get_media(target, _HOST_VIDEO, timeout=(10, 30), headers=hdr) if target else None
+        except Exception:
+            r = None
+        if r is None or r.status_code not in (200, 206, 416):
+            if r is not None:
+                r.close()
+            self.tulis(404, b"Gagal memuat video", "text/plain")
+            return
+        with r:
+            ctype = (r.headers.get("Content-Type") or "video/mp4").split(";")[0].strip().lower()
+            if ctype.startswith("text/") or "html" in ctype or "json" in ctype or "xml" in ctype:
+                self.tulis(404, b"Gagal memuat video", "text/plain")
+                return
+            if not ctype.startswith("video/"):
+                ctype = "video/mp4"
+            self.send_response(r.status_code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Accept-Ranges", "bytes")
+            for k in ("Content-Length", "Content-Range"):
+                if r.headers.get(k):
+                    self.send_header(k, r.headers[k])
+            self.send_header("Cache-Control", "private, max-age=3600")
+            self.end_headers()
+            terkirim = 0
+            try:
+                for ch in r.iter_content(65536):
+                    self.wfile.write(ch)
+                    terkirim += len(ch)
+                    if terkirim > VIDEO_MAKS:
+                        break
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+
+    def ip_klien(self):
+        """v1.4.7b: IP asli pengguna. Di Render: True-Client-IP (ditimpa Render) / CF-Connecting-IP (pemalsuan ditolak
+        Cloudflare). X-Forwarded-For paling kiri BISA DIPALSUKAN → hanya cadangan saat jalan lokal."""
+        for h in ("True-Client-IP", "CF-Connecting-IP"):
+            v = (self.headers.get(h) or "").strip()
+            if v and len(v) <= 64:
+                return v
+        xff = [x.strip() for x in (self.headers.get("X-Forwarded-For") or "").split(",") if x.strip()]
+        return xff[0][:64] if xff else self.client_address[0]
+
     def json_ok(self, obj):
         self.tulis(200, json.dumps(obj, ensure_ascii=False, default=str), "application/json")
 
@@ -5202,11 +5372,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(200, json.dumps({"ok": False, "error": "Input kosong"}),
                            "application/json")
                 return
-            with lock:
-                try:
-                    hasil = jalankan_scan(nilai, mode, pemilik=self.email)
-                except Exception as e:
-                    hasil = {"ok": False, "error": str(e)}
+            nilai = nilai[:200]
+            hasil = scan_dengan_antre(nilai, mode, self.email)
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
         elif u.path == "/img":
             target = parse_qs(u.query).get("u", [""])[0]
@@ -5216,36 +5383,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.tulis(404, b"Gagal memuat gambar", "text/plain")
         elif u.path == "/vid":
-            target = parse_qs(u.query).get("u", [""])[0]
-            data = ambil_video(target) if target else None
-            if not data:
-                self.tulis(404, b"Gagal memuat video", "text/plain")
-                return
-            ctype, isi = data
-            rng = self.headers.get("Range") or ""
-            if rng.startswith("bytes="):
-                try:
-                    a, b_ = rng[6:].split("-", 1)
-                    a = int(a) if a else 0
-                    b_ = int(b_) if b_ else len(isi) - 1
-                    b_ = min(b_, len(isi) - 1)
-                    potong = isi[a:b_ + 1]
-                    self.send_response(206)
-                    self.send_header("Content-Type", ctype)
-                    self.send_header("Accept-Ranges", "bytes")
-                    self.send_header("Content-Range", f"bytes {a}-{b_}/{len(isi)}")
-                    self.send_header("Content-Length", str(len(potong)))
-                    self.end_headers()
-                    self.wfile.write(potong)
-                    return
-                except Exception:
-                    pass
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Accept-Ranges", "bytes")
-            self.send_header("Content-Length", str(len(isi)))
-            self.end_headers()
-            self.wfile.write(isi)
+            self.kirim_video(parse_qs(u.query).get("u", [""])[0])
         else:
             self.tulis(404, "Not found", "text/plain")
 
@@ -5255,12 +5393,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if u.path == "/api/lupa":   # v1.4.5
             d = self.baca_json()
-            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
+            ip = self.ip_klien()
             self.json_ok(lupa_password(d.get("email"), ip, basis_url(self)))
             return
         if u.path == "/api/reset":   # v1.4.5
             d = self.baca_json()
-            ip = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or self.client_address[0]
+            ip = self.ip_klien()
             pakai_kode = bool(d.get("kode"))
             if (pakai_kode or not d.get("cek")) and not _boleh_lupa("r:" + ip, 20, 3600):
                 self.json_ok({"ok": False, "error": "Terlalu banyak percobaan. Coba lagi 1 jam lagi."})
@@ -5282,8 +5420,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         if u.path == "/api/login":
             d = self.baca_json()
-            email = str(d.get("email") or "").strip().lower()
-            pw = str(d.get("password") or "")
+            email = str(d.get("email") or "").strip().lower()[:254]
+            pw = str(d.get("password") or "")[:200]
+            ip = self.ip_klien()
+            tunggu = login_terkunci(email, ip)
+            if tunggu:
+                self.json_ok({"ok": False, "error": f"Terlalu banyak percobaan masuk. Coba lagi dalam {tunggu} menit, atau pakai Lupa password."})
+                return
             with lock:
                 akun = dict(AKUN_DB.get(email) or {})
             oke, upgrade = cek_pw(pw, akun.get("hash")) if akun else (False, False)  # hashing di luar lock
@@ -5300,9 +5443,11 @@ class Handler(BaseHTTPRequestHandler):
                              prefer="return=minimal,resolution=merge-duplicates")
                 tok = buat_sesi(email)   # v1.4.7: SETELAH upgrade hash (token terikat ke hash)
             if oke:
+                login_catat(email, ip, True)
                 self.tulis(200, json.dumps({"ok": True, "token": tok, "nama": nama, "email": email}),
                            "application/json", [self.cookie_sesi(tok, SESI_HARI * 86400)])
             else:
+                login_catat(email, ip, False)
                 self.tulis(200, json.dumps({"ok": False, "error": "Email atau password salah"}),
                            "application/json")
         elif u.path == "/api/register":
@@ -5314,16 +5459,22 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(200, json.dumps({"ok": False, "error": "Kolom Nama berisi email. Isi dengan nama kamu."}),
                            "application/json")
                 return
-            if not nama or len(pw) < 6 or "@" not in email or "." not in email.split("@")[-1]:
+            if not nama or len(pw) < 6:
                 self.tulis(200, json.dumps({"ok": False, "error": "Data belum lengkap (password min. 6 karakter)"}),
                            "application/json")
                 return
+            if not email_valid(email):   # v1.4.7b: dulu email berisi HTML / 300 karakter diterima
+                self.json_ok({"ok": False, "error": "Format email tidak valid. Contoh: nama@gmail.com"})
+                return
+            if len(nama) > 60 or len(pw) > 200:
+                self.json_ok({"ok": False, "error": "Nama maksimal 60 karakter, password maksimal 200 karakter."})
+                return
+            h_pw = hash_pw(pw)  # sekali saja (salt acak) — v1.4.7b: di LUAR lock (PBKDF2 ±0,1 dtk)
             with lock:
                 if email in AKUN_DB:
                     self.tulis(200, json.dumps({"ok": False, "error": "Email sudah terdaftar di mesin ini"}),
                                "application/json")
                     return
-                h_pw = hash_pw(pw)  # sekali saja (salt acak → tiap panggilan beda)
                 AKUN_DB[email] = {"nama": nama, "hash": h_pw}
             tok = buat_sesi(email)
             simpan_data()

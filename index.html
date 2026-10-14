@@ -2469,13 +2469,13 @@ function initPilNavigasi(){
   const ind = document.getElementById("hs-ind");
   const semua = Array.prototype.slice.call(tabs.querySelectorAll(".hs-tab"));
   function geserInd(el, langsung){
-    if(!el || !ind) return;
-    const sh = document.querySelector(".shell");
-    const k = sh ? (parseFloat(sh.style.zoom || "1") || 1) : 1;
-    const r = el.getBoundingClientRect(), w = tabs.getBoundingClientRect();
+    if(!el || !ind || !el.offsetWidth) return;   /* tersembunyi (view lain) → ukur nanti */
+    /* v1.4.7b: pakai ukuran tata letak (offset*), BUKAN getBoundingClientRect — rect ikut mengecil saat laci HP
+       "dorong & kecilkan" (scale .8) / animasi masuk halaman → pil sempat lebih kecil & bergeser dari teks.
+       offset* tidak terpengaruh transform maupun zoom, dan sudah relatif ke .hs-tabs (induk berposisi). */
     if(langsung) ind.style.transition = "none";
-    ind.style.width = (r.width / k) + "px";
-    ind.style.transform = "translate3d(" + ((r.left - w.left) / k - tabs.clientLeft) + "px,0,0)";
+    ind.style.width = el.offsetWidth + "px";
+    ind.style.transform = "translate3d(" + el.offsetLeft + "px,0,0)";
     if(langsung) requestAnimationFrame(function(){ ind.style.transition = ""; });
   }
   function pilih(p){
@@ -2490,6 +2490,7 @@ function initPilNavigasi(){
   setTimeout(window.__kalibrasiHero, 700);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(window.__kalibrasiHero);
   window.addEventListener("resize", window.__kalibrasiHero);
+  if(window.ResizeObserver) new ResizeObserver(function(){ window.__kalibrasiHero(); }).observe(tabs);   /* v1.4.7b: ukuran tombol berubah (font, rotasi, lebar 98%) → pil ikut */
 
   document.getElementById("hs-form").addEventListener("submit", function(e){
     e.preventDefault();
@@ -4007,7 +4008,8 @@ async function scan(){
     clearInterval(timerTahap);
     if(!d.ok){
       const pesan = d.error || "tidak diketahui";
-      const saran = /rate|1675004|terlalu/i.test(pesan) ? " Saran: tunggu ±1 menit, lalu scan lagi (Meta membatasi bertubi-tubi)." :
+      const saran = /masih berjalan|Antrean scan|scan per jam/i.test(pesan) ? "" :   /* v1.4.7b: pesan antre/batas sudah jelas */
+        /rate|1675004|terlalu/i.test(pesan) ? " Saran: tunggu ±1 menit, lalu scan lagi (Meta membatasi bertubi-tubi)." :
         /ID halaman/i.test(pesan) ? " Saran: ID halaman harus angka — ambil dari tombol di detail iklan." :
         /tidak merespons|timeout/i.test(pesan) ? " Saran: cek koneksi, atau coba lagi sebentar lagi." : " Saran: coba lagi — kalau terus gagal, ganti kata kunci dulu.";
       err.innerHTML = '<b>Gagal memindai:</b> ' + esc(pesan) + '\n<span style="color:#557069">' + saran + '</span>';
@@ -5534,11 +5536,27 @@ function bnSinkron(v, tanpaAnim){
   }
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", siap); else siap();
   window.addEventListener("resize", function(){ bnSinkron(undefined, true); });
-  /* keyboard HP terbuka → sembunyikan bar supaya tidak menutupi kolom isian */
+  /* keyboard HP terbuka → sembunyikan bar supaya tidak menutupi kolom isian.
+     v1.4.7b: hanya bila keyboard BENAR-BENAR terbuka (tinggi layar menyusut), bukan sekadar fokus —
+     di iPhone fokus dari kode (mis. tab Meta di Dashboard) tidak membuka keyboard, dulu bar ikut hilang. */
   const hp = window.matchMedia ? matchMedia("(max-width:1024px)") : null;
-  function isian(el){ return el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|file)$/i.test(el.type || ""))); }
-  document.addEventListener("focusin", function(e){ if(hp && hp.matches && isian(e.target)) document.documentElement.classList.add("bn-sembunyi"); });
-  document.addEventListener("focusout", function(){ setTimeout(function(){ if(!isian(document.activeElement)) document.documentElement.classList.remove("bn-sembunyi"); }, 120); });
+  const vv = window.visualViewport || null;
+  function isian(el){ return !!el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|range|file|color)$/i.test(el.type || "")) || el.isContentEditable); }
+  function tinggiKini(){ return vv ? vv.height * (vv.scale || 1) : window.innerHeight; }
+  let tinggiPenuh = Math.max(window.innerHeight, tinggiKini());
+  function cekKeyboard(){
+    const h = tinggiKini();
+    if(!isian(document.activeElement)) tinggiPenuh = Math.max(window.innerHeight, h);   /* patokan diperbarui hanya saat tidak mengetik */
+    const kb = !!(hp && hp.matches) && isian(document.activeElement) && h < tinggiPenuh - 120;
+    document.documentElement.classList.toggle("bn-sembunyi", kb);
+  }
+  let tKb = 0;
+  function cekNanti(){ cekKeyboard(); clearTimeout(tKb); tKb = setTimeout(cekKeyboard, 350); }   /* keyboard butuh ±300 ms untuk naik/turun */
+  if(vv) vv.addEventListener("resize", cekKeyboard);
+  window.addEventListener("resize", cekKeyboard);
+  window.addEventListener("orientationchange", function(){ tinggiPenuh = 0; setTimeout(function(){ tinggiPenuh = 0; cekKeyboard(); }, 400); });
+  document.addEventListener("focusin", cekNanti);
+  document.addEventListener("focusout", function(){ setTimeout(cekNanti, 60); });
 })();
 function tampilView(v, push){
   if(VIEWS.indexOf(v) < 0) v = "dashboard";
@@ -5658,5 +5676,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a21faa8e0baa09',t:'MTc5MTkzNDEzOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a4dfc65992c649',t:'MTc5MTk2Mjk3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
