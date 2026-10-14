@@ -461,3 +461,162 @@ def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3)
         while len(CACHE_V2) > 12:   # RAM Render terbatas: buang yang paling tua
             CACHE_V2.pop(min(CACHE_V2, key=lambda k: CACHE_V2[k][0]), None)
     return hasil, info
+
+
+# ===== v1.5.1 CADANGAN BERBAYAR: ScrapeCreators (aktif hanya bila env INTAI_SC_KUNCI diisi) =====
+# Dipakai HANYA saat Meta menahan IP server / pengumpul gratis gagal total. Isi data = Ad Library Meta yang sama
+# (objek mentah identik: ad_archive_id, snapshot, start_date…), jadi saringan & skor INTAI tetap berlaku.
+# Biaya: 1 kredit per permintaan (±30 iklan). Rem anggaran: INTAI_SC_HARIAN kredit/hari (default 200).
+SC_URL = "https://api.scrapecreators.com/v1/facebook/adLibrary"
+SC = {"kunci": (os.environ.get("INTAI_SC_KUNCI") or "").strip(),
+      "harian": int(os.environ.get("INTAI_SC_HARIAN") or 200),
+      "hari": "", "pakai": 0, "sisa": None, "galat": "", "t_galat": None, "t_ok": None}
+SC_KUNCI = _th.Lock()
+
+
+def sc_aktif():
+    return bool(SC["kunci"])
+
+
+def sc_hari_ini():
+    return datetime.fromtimestamp(time.time() + 7 * 3600, tz=timezone.utc).strftime("%Y-%m-%d")   # WIB
+
+
+def sc_status():
+    with SC_KUNCI:
+        if SC["hari"] != sc_hari_ini():
+            SC["hari"], SC["pakai"] = sc_hari_ini(), 0
+        return {"aktif": sc_aktif(), "harian": SC["harian"], "pakai_hari_ini": SC["pakai"], "hari": SC["hari"],
+                "sisa_saldo": SC["sisa"], "galat": SC["galat"], "t_galat": SC["t_galat"], "t_ok": SC["t_ok"]}
+
+
+def _sc_jatah(n):
+    """Pesan n kredit dari anggaran harian. Return jumlah yang boleh dipakai (0..n)."""
+    with SC_KUNCI:
+        if SC["hari"] != sc_hari_ini():
+            SC["hari"], SC["pakai"] = sc_hari_ini(), 0
+        boleh = max(0, min(n, SC["harian"] - SC["pakai"]))
+        SC["pakai"] += boleh
+        return boleh
+
+
+def _sc_get(jalur, prm):
+    if not sc_aktif():
+        raise RuntimeError("cadangan belum diatur")
+    r = requests.get(SC_URL + jalur, params=prm, headers={"x-api-key": SC["kunci"]}, timeout=45)
+    try:
+        d = r.json()
+    except ValueError:
+        d = {}
+    if r.status_code != 200 or not d.get("success", True):
+        pesan = str(d.get("message") or d.get("error") or f"HTTP {r.status_code}")[:120]
+        with SC_KUNCI:
+            SC["galat"], SC["t_galat"] = pesan, datetime.now(timezone.utc).isoformat()[:19]
+        raise RuntimeError(pesan)
+    with SC_KUNCI:
+        if d.get("credits_remaining") is not None:
+            SC["sisa"] = d.get("credits_remaining")
+        SC["galat"], SC["t_ok"] = "", datetime.now(timezone.utc).isoformat()[:19]
+    return d
+
+
+def _sc_daftar(d):
+    return [o for o in (d.get("searchResults") or d.get("results") or []) if isinstance(o, dict) and o.get("snapshot")]
+
+
+def sc_cari(q, negara="ID", media="ALL", cursor=None):
+    prm = {"query": q, "country": negara, "status": "ALL", "media_type": media, "search_type": "keyword_unordered"}
+    if cursor:
+        prm["cursor"] = cursor
+    d = _sc_get("/search/ads", prm)
+    return _sc_daftar(d), d.get("cursor")
+
+
+def kumpul_iklan_sc(kata_kunci, negara="ID", senada=(), maks=6):
+    """Cadangan: kata utama 3 halaman (cursor — halaman lanjutan yang tak bisa diambil gratis) + 3 kata senada.
+    Return (iklan, info) dengan format sama seperti kumpul_iklan_v2."""
+    import concurrent.futures as _cf
+    t0 = time.time()
+    kata_kunci = kata_kunci.strip()
+    senada = [w for w in senada if w and w.lower() != kata_kunci.lower()][:3]
+    kunci = (kata_kunci.lower(), negara)
+    c = CACHE_V2.get(kunci)
+    if c and time.time() - c[0] < CACHE_V2_DTK:
+        return _copy.deepcopy(c[1]), dict(c[2], cache=True, umur_cache=int(time.time() - c[0]))
+    kredit = _sc_jatah(maks)
+    if kredit <= 0:
+        raise RuntimeError("anggaran cadangan hari ini habis")
+    halaman_utama = min(3, kredit)                      # kata utama didahulukan (6 kredit → 3 halaman + 3 senada)
+    senada = senada[:kredit - halaman_utama]
+    hasil, lihat, log = [], set(), []
+    dipakai = [0]
+
+    def rantai_utama():
+        out, cur = [], None
+        for i in range(halaman_utama):
+            try:
+                ik, cur = sc_cari(kata_kunci, negara, "ALL", cur)
+                dipakai[0] += 1
+                out.append((kata_kunci, f"hal {i + 1}", ik, "ok"))
+            except Exception as e:
+                out.append((kata_kunci, f"hal {i + 1}", None, str(e)[:60]))
+                break
+            if not cur:
+                break
+        return out
+
+    def satu(w):
+        try:
+            ik, _ = sc_cari(w, negara, "ALL")
+            dipakai[0] += 1
+            return [(w, "hal 1", ik, "ok")]
+        except Exception as e:
+            return [(w, "hal 1", None, str(e)[:60])]
+
+    with _cf.ThreadPoolExecutor(1 + len(senada)) as ex:
+        futs = [ex.submit(rantai_utama)] + [ex.submit(satu, w) for w in senada]
+        for f in _cf.as_completed(futs):
+            for q, ket, ik, st in f.result():
+                baru = 0
+                for o in ik or []:
+                    aid = str(o.get("ad_archive_id") or "")
+                    if aid and aid not in lihat:
+                        lihat.add(aid)
+                        o["_sumber"] = "" if q.lower() == kata_kunci.lower() else q
+                        hasil.append(o)
+                        baru += 1
+                log.append({"q": q, "media": ket, "n": len(ik or []), "baru": baru, "status": st})
+    with SC_KUNCI:   # kredit yang dipesan tapi tidak terpakai dikembalikan ke anggaran
+        SC["pakai"] = max(0, SC["pakai"] - (kredit - dipakai[0]))
+    ok = sum(1 for l in log if l["status"] == "ok")
+    info = {"detik": round(time.time() - t0, 1), "senada": senada, "permintaan": len(log), "berhasil": ok,
+            "kredit": dipakai[0], "cadangan_berbayar": True, "log": log}
+    if hasil and ok:
+        CACHE_V2[kunci] = (time.time(), _copy.deepcopy(hasil), info)
+    return hasil, info
+
+
+def sc_halaman(page_id, negara="ID", maks=2):
+    """Cadangan untuk Intip Kompetitor / Pesaing Dipantau: semua iklan satu halaman (≤2 kredit)."""
+    kredit = _sc_jatah(maks)
+    out, lihat, cur, dipakai = [], set(), None, 0
+    for _ in range(kredit):
+        prm = {"pageId": page_id, "country": negara, "status": "ALL"}
+        if cur:
+            prm["cursor"] = cur
+        try:
+            d = _sc_get("/company/ads", prm)
+        except Exception:
+            break
+        dipakai += 1
+        for o in _sc_daftar(d):
+            aid = str(o.get("ad_archive_id") or "")
+            if aid and aid not in lihat:
+                lihat.add(aid)
+                out.append(o)
+        cur = d.get("cursor")
+        if not cur:
+            break
+    with SC_KUNCI:
+        SC["pakai"] = max(0, SC["pakai"] - (kredit - dipakai))
+    return out, dipakai

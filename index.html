@@ -2042,6 +2042,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
           </div>
           <div class="kol">
             <div class="kartu"><div class="judul-kartu"><b>Scan otomatis</b><span id="adm-put-tgl">—</span></div><div id="adm-putaran"></div></div>
+            <div class="kartu"><div class="judul-kartu"><b>Mesin scan Meta</b><span id="adm-mesin-t">—</span></div><div id="adm-mesin"></div></div>
           </div>
         </div>
       </div>
@@ -2062,7 +2063,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
             <div class="tr-atas"><select id="tr-niche" class="tr-sel" onchange="TR.niche=this.value;muatTrenNiche()"></select></div>
             <div class="tr-chips" id="tr-metrik"></div>
             <div id="tr-isi"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
-            <div class="tr-cat">🟢 Tiap titik dihitung dari iklan asli di scan hari itu (potret terakhir per hari, WIB). INTAI mengambil <b>halaman pertama</b> Ad Library × 3 format, kira-kira 40–90 iklan per scan. Jadi angka di sini adalah <b>sampel</b>: pakai untuk membaca <b>arah</b> (naik/turun, makin ramai/sepi), bukan jumlah total pasar.</div>
+            <div class="tr-cat">🟢 Tiap titik dihitung dari iklan asli di scan hari itu (potret terakhir per hari, WIB). INTAI mengambil <b>halaman pertama</b> Ad Library untuk kata kunci Anda dan beberapa kata senada (±100–250 iklan mentah per scan), lalu menyaring yang nyambung. Jadi angka di sini adalah <b>sampel</b>: pakai untuk membaca <b>arah</b> (naik/turun, makin ramai/sepi), bukan jumlah total pasar.</div>
           </div>
         </div>
         <div class="kol">
@@ -4237,7 +4238,9 @@ async function scan(){
       el.style.display = "";
       el.innerHTML = '<span class="pl-k" title="Meta hanya memberi ±30 iklan per pencarian. INTAI ikut mencari kata senada lalu menyaring ulang semuanya dengan kata kunci Anda.">🔎 Diperluas dengan</span>' +
         p.senada.map(w => '<span class="pl-c">' + esc(w) + (per[w] ? ' <b>+' + per[w] + '</b>' : '') + '</span>').join("") +
-        '<span class="pl-s">' + (p.berhasil != null ? p.berhasil + '/' + p.permintaan + ' pencarian · ' : '') + (p.detik != null ? p.detik + ' dtk' : '') + '</span>';
+        '<span class="pl-s">' + (p.cache ? '♻️ dari cache ' + Math.max(1, Math.round((p.umur_cache || 0) / 60)) + ' mnt lalu · ' : '') +
+        (p.cadangan_berbayar ? '<span title="Meta sedang membatasi server INTAI, jadi data Ad Library yang sama diambil lewat penyedia cadangan">💳 via cadangan · </span>' : '') +
+        (p.berhasil != null ? p.berhasil + '/' + p.permintaan + ' pencarian · ' : '') + (p.detik != null ? p.detik + ' dtk' : '') + '</span>';
     })();
     const video = HIDUP.filter(x => String(x.format).toUpperCase() === "VIDEO").length;
     const ctwa = HIDUP.filter(x => x.funnel === "CTWA/WA").length;
@@ -5390,6 +5393,7 @@ function admGambarSistem(){
       : '<span class="buruk">✗ gagal ' + esc(tr.t.slice(5)) + '</span><br><small style="color:var(--faint)">' + esc(tr.galat || "") + '</small>') : '<small style="color:var(--faint)">belum ada sejak server menyala</small>';
     document.getElementById("adm-server").innerHTML += admR("Email reset password", lay + "<br>" + akhir);
   }
+  admGambarMesin(s.mesin);
   document.getElementById("adm-pemicu").innerHTML = pemicuHTML(!!s.kunci_wajib, s.jam != null ? s.jam : 5);
   const p = s.putaran || {};
   document.getElementById("adm-put-tgl").textContent = p.tanggal ? trTglPendek(p.tanggal) + " · " + (p.pemicu === "manual" ? "manual" : "otomatis") : "belum pernah";
@@ -6175,6 +6179,63 @@ function shpEkspor(jenis){
   toast("✓ " + baris.length + " baris Shopee masuk ke <b>Ekspor CSV</b> di sidebar · <u style=\"cursor:pointer\" onclick=\"ke('/ekspor')\">buka ›</u>");
 }
 
+/* ---------- v1.5.1 Admin → Status sistem: mesin scan Meta (rem + cadangan berbayar) ---------- */
+const MJ_LABEL = {meta: ["🟢", "Meta langsung"], cache: ["♻️", "dari cache"], cadangan: ["💳", "cadangan berbayar"],
+  ditahan: ["⏸", "ditahan Meta"], gagal: ["✗", "gagal"], halaman: ["👁", "Intip / pantau pesaing"],
+  halaman_cadangan: ["💳", "Intip via cadangan"], pulih: ["▶", "rehat diakhiri"]};
+function admGambarMesin(m){
+  const el = document.getElementById("adm-mesin"); if(!el) return;
+  if(!m){ el.innerHTML = '<div class="pf-kosong">Data mesin belum tersedia (server versi lama?).</div>'; return; }
+  const r = m.rem || {}, b = m.batas || {}, sc = m.sc || {}, h = m.h24 || {};
+  document.getElementById("adm-mesin-t").textContent = r.rehat_detik ? "rehat" : "normal";
+  const status = r.rehat_detik
+    ? '<span class="buruk">⏸ Rehat ±' + Math.max(1, Math.round(r.rehat_detik / 60)) + ' menit lagi</span> <small style="color:var(--faint)">· ditahan ke-' + (r.kena || 1) + ' berturut</small>' +
+      '<br><button class="cs-tb" style="margin-top:6px" onclick="admMesinPulih(this)" title="Hapus masa rehat. Bila Meta masih menahan, scan berikut akan kena lagi dan rehatnya berlipat.">Akhiri rehat &amp; coba Meta lagi</button>'
+    : '<span class="ok">✓ Normal</span> <small style="color:var(--faint)">· Meta tidak sedang menahan</small>';
+  const beban = r.menit_ini + ' / ' + b.per_menit + ' per menit · ' + r.sepuluh_menit + ' / ' + b.per_10menit + ' per 10 menit' +
+    '<br><small style="color:var(--faint)">Lewat batas → scan otomatis mode hemat (3 pencarian). Cache ' + b.cache_menit + ' menit per kata kunci.</small>';
+  const total = Object.values(h).reduce(function(x, y){ return x + y; }, 0);
+  const ring = total ? Object.keys(MJ_LABEL).filter(function(k){ return h[k]; }).map(function(k){ return MJ_LABEL[k][0] + ' ' + h[k] + ' ' + MJ_LABEL[k][1]; }).join('<br>') : '<small style="color:var(--faint)">belum ada scan</small>';
+  const rata = m.rata_detik != null ? m.rata_detik + ' dtk · ' + m.rata_iklan + ' iklan mentah per scan' : '—';
+  let cad;
+  if(!sc.aktif) cad = '<span class="buruk">✗ belum diatur</span> <small style="color:var(--faint)">(opsional: INTAI_SC_KUNCI dari scrapecreators.com — dipakai hanya saat Meta menahan)</small>';
+  else cad = '<span class="ok">✓ ScrapeCreators aktif</span><br>Terpakai hari ini: <b>' + sc.pakai_hari_ini + ' / ' + sc.harian + '</b> kredit' +
+    (sc.sisa_saldo != null ? ' · saldo akun ' + Number(sc.sisa_saldo).toLocaleString("id-ID") + ' kredit' : '') +
+    (sc.galat ? '<br><span class="buruk">Galat terakhir: ' + esc(sc.galat) + '</span>' : '') +
+    '<br><button class="cs-tb" style="margin-top:6px" onclick="admScUji(this)">Uji kunci (1 kredit)</button><div id="adm-sc-uji">' + (ADM.scUji || '') + '</div>';
+  const jj = (m.jejak || []).slice(0, 12).map(function(x){
+    const L = MJ_LABEL[x.j] || ["•", x.j];
+    return '<div class="adm-it"><em>' + L[0] + '</em><div>' + esc(L[1]) + (x.k ? ' · <b>' + esc(x.k) + '</b>' : '') + (x.n ? ' · ' + x.n + ' iklan' : '') + (x.d != null ? ' · ' + x.d + ' dtk' : '') +
+      '<small>' + pfRelatif(x.t) + (x.ket ? ' · ' + esc(x.ket) : '') + '</small></div></div>';
+  }).join("");
+  el.innerHTML = admR("Status", status) + admR("Beban ke Meta", beban) + admR("24 jam terakhir", ring) + admR("Rata-rata scan langsung", rata) +
+    admR("Terakhir ditahan", m.ditahan_terakhir ? pfRelatif(m.ditahan_terakhir) : '<span class="ok">belum pernah tercatat</span>') +
+    admR("Cadangan berbayar", cad) +
+    '<div style="margin-top:10px;font-size:12px;font-weight:800;color:var(--ink)">Kejadian terakhir</div>' + (jj || '<div class="pf-kosong">Belum ada kejadian.</div>') +
+    '<button class="cs-tb" style="margin-top:10px" onclick="admMesinMuat(this)">Muat ulang</button>';
+}
+async function admMesinMuat(btn){
+  if(btn){ btn.disabled = true; }
+  try{ const d = await (await fetch("/api/admin/mesin")).json(); if(d && d.ok){ if(ADM.d && ADM.d.sistem) ADM.d.sistem.mesin = d; admGambarMesin(d); } }catch(e){ toast("Gagal memuat status mesin"); }
+  if(btn){ btn.disabled = false; }
+}
+async function admMesinPulih(btn){
+  btn.disabled = true;
+  try{ await fetch("/api/admin/mesin-pulih"); toast("Rehat diakhiri. Scan berikutnya mencoba Meta lagi."); }catch(e){}
+  admMesinMuat();
+}
+async function admScUji(btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = "Menguji…";
+  let d = null;
+  try{ d = await (await fetch("/api/admin/sc-uji")).json(); }catch(e){}
+  btn.disabled = false; btn.textContent = t;
+  ADM.scUji = (d && d.ok)
+    ? '<span class="ok">✓ Kunci bekerja: ' + d.iklan + ' iklan "kopi" dalam ' + d.detik + ' dtk' + (d.ada_halaman_lanjut ? ' · halaman lanjutan tersedia' : '') + '</span>'
+    : '<span class="buruk">✗ ' + esc((d && d.error) || "server tidak terhubung") + '</span>';
+  const el = document.getElementById("adm-sc-uji"); if(el) el.innerHTML = ADM.scUji;
+  if(d && d.ok) setTimeout(admMesinMuat, 400);
+}
+
 /* ---------- Admin → Status sistem: uji jalur Shopee ---------- */
 function shpAdmBaris(s){
   const sh = s.shopee || {}, j = sh.jalur || {};
@@ -6251,5 +6312,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a8f1cdd8de5682',t:'MTc5MjAwNTY1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4a937f48812008f',t:'MTc5MjAwODUzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

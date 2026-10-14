@@ -35,7 +35,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.0"
+VERSI = "1.5.1"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -2580,6 +2580,127 @@ def scan_dengan_antre(nilai, mode, email):
             SCAN_JALAN.discard(email)
 
 
+# ===== v1.5.1 JEJAK MESIN META — untuk /admin → Status sistem =====
+# Disimpan di intai_setelan["mesin_jejak"] (tanpa SQL baru) supaya tidak hilang saat Render tidur/restart:
+#   e   = 150 kejadian terakhir {t, j(enis), k(ata), n, d(etik), ket}
+#   rem = rehat_sampai + kena (restart tidak "lupa" sedang ditahan Meta)
+#   sc  = pemakaian kredit cadangan hari ini (anggaran harian tetap terjaga walau restart)
+MESIN_JEJAK = []
+_MJ = {"muat": False, "simpan_t": 0.0}
+_mj_kunci = threading.Lock()
+
+
+def _mj_muat():
+    if _MJ["muat"]:
+        return
+    _MJ["muat"] = True
+    try:
+        ok, v = setelan_baca("mesin_jejak")
+    except Exception:
+        ok, v = False, None
+    if not ok or not isinstance(v, dict):
+        return
+    with _mj_kunci:
+        MESIN_JEJAK[:0] = [e for e in (v.get("e") or []) if isinstance(e, dict)][-150:]
+    rem = v.get("rem") or {}
+    try:
+        if float(rem.get("rehat_sampai") or 0) > time.time():
+            with mesin.REM_KUNCI:
+                mesin.REM["rehat_sampai"] = max(mesin.REM["rehat_sampai"], float(rem["rehat_sampai"]))
+                mesin.REM["kena"] = max(mesin.REM["kena"], int(rem.get("kena") or 0))
+        sc = v.get("sc") or {}
+        if sc.get("hari") == mesin.sc_hari_ini():
+            with mesin.SC_KUNCI:
+                mesin.SC["hari"] = sc["hari"]
+                mesin.SC["pakai"] = max(mesin.SC["pakai"], int(sc.get("pakai") or 0))
+                if sc.get("sisa") is not None and mesin.SC["sisa"] is None:
+                    mesin.SC["sisa"] = sc.get("sisa")
+    except (TypeError, ValueError):
+        pass
+
+
+def _mj_simpan():
+    with _mj_kunci:
+        e = list(MESIN_JEJAK[-150:])
+    st = mesin.sc_status()
+    try:
+        setelan_tulis("mesin_jejak", {"e": e,
+                                      "rem": {"rehat_sampai": mesin.REM["rehat_sampai"], "kena": mesin.REM["kena"]},
+                                      "sc": {"hari": st["hari"], "pakai": st["pakai_hari_ini"], "sisa": st["sisa_saldo"]}})
+    except Exception:
+        pass
+
+
+def jejak_mesin(jenis, kata, n=0, detik=None, ket=""):
+    """jenis: meta | cache | cadangan | ditahan | gagal | halaman | halaman_cadangan"""
+    _mj_muat()
+    with _mj_kunci:
+        MESIN_JEJAK.append({"t": _iso_kini(), "j": jenis, "k": str(kata or "")[:40], "n": int(n or 0),
+                            "d": detik, "ket": str(ket or "")[:90]})
+        del MESIN_JEJAK[:-150]
+        segera = jenis in ("ditahan", "cadangan", "halaman_cadangan", "gagal") or time.time() - _MJ["simpan_t"] > 120
+        if segera:
+            _MJ["simpan_t"] = time.time()
+    if segera:   # jaringan di luar kunci, di thread latar → scan tidak melambat
+        threading.Thread(target=_mj_simpan, daemon=True, name="jejak-mesin").start()
+
+
+def mesin_status():
+    _mj_muat()
+    rem = mesin.rem_status()
+    with _mj_kunci:
+        e = list(MESIN_JEJAK)
+    batas = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    def baru(x):
+        try:
+            return datetime.fromisoformat(str(x["t"]).replace("Z", "+00:00")) >= batas
+        except (ValueError, KeyError):
+            return False
+    h24 = [x for x in e if baru(x)]
+    hit = {}
+    for x in h24:
+        hit[x["j"]] = hit.get(x["j"], 0) + 1
+    meta = [x for x in h24 if x["j"] == "meta" and x.get("d") is not None]
+    tahan = [x for x in e if x["j"] == "ditahan"]
+    return {"rem": rem,
+            "batas": {"per_menit": mesin.REM_PER_MENIT, "per_10menit": mesin.REM_PER_10MENIT,
+                      "rehat_menit": mesin.REM_REHAT_DTK // 60, "cache_menit": mesin.CACHE_V2_DTK // 60},
+            "sc": mesin.sc_status(),
+            "h24": hit,
+            "rata_detik": round(sum(x["d"] for x in meta) / len(meta), 1) if meta else None,
+            "rata_iklan": round(sum(x["n"] for x in meta) / len(meta)) if meta else None,
+            "ditahan_terakhir": tahan[-1]["t"] if tahan else None,
+            "jejak": e[-20:][::-1]}
+
+
+def mesin_pulih():
+    with mesin.REM_KUNCI:
+        mesin.REM["rehat_sampai"] = 0.0
+        mesin.REM["kena"] = 0
+    jejak_mesin("pulih", "", ket="rehat diakhiri manual oleh admin")
+    threading.Thread(target=_mj_simpan, daemon=True).start()
+    return {"ok": True, "rem": mesin.rem_status()}
+
+
+def sc_uji():
+    """Admin: uji kunci cadangan dengan 1 pencarian (1 kredit)."""
+    if not mesin.sc_aktif():
+        return {"ok": False, "error": "INTAI_SC_KUNCI belum diisi di Environment Render"}
+    if mesin._sc_jatah(1) < 1:
+        return {"ok": False, "error": "Anggaran cadangan hari ini habis (INTAI_SC_HARIAN)"}
+    t0 = time.time()
+    try:
+        ik, cur = mesin.sc_cari("kopi", "ID")
+    except Exception as e:
+        with mesin.SC_KUNCI:
+            mesin.SC["pakai"] = max(0, mesin.SC["pakai"] - 1)
+        return {"ok": False, "error": str(e)[:160]}
+    jejak_mesin("cadangan", "uji kunci", len(ik), round(time.time() - t0, 1), "uji dari /admin · 1 kredit")
+    return {"ok": True, "iklan": len(ik), "ada_halaman_lanjut": bool(cur), "detik": round(time.time() - t0, 1),
+            "sc": mesin.sc_status()}
+
+
 def jalankan_scan(nilai, mode="cari", pemilik=None):
     """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
     s = mesin.buka_sesi()
@@ -2590,11 +2711,18 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             return {"ok": False, "error": "ID halaman tidak valid"}
         label = f"halaman {nilai}"
         mentah, lihat_k = [], set()
-        for media in ("all", "video", "image"):  # variasi media + ikut iklan mati
+        t0_h = time.time()
+        ditahan_h = bool(mesin.rem_status()["rehat_detik"])   # sedang rehat → Meta tidak disentuh sama sekali
+        for media in (() if ditahan_h else ("all", "video", "image")):  # variasi media + ikut iklan mati
             url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
                    f"&country=ID&view_all_page_id={quote(nilai)}&search_type=page&media_type={media}")
             try:
+                mesin._rem_catat()
                 html = ambil_halaman_url(s, url)
+                if mesin.ditahan_meta(html):   # v1.5.1: isi dikosongkan Meta → rehat, berhenti
+                    mesin._rem_kena()
+                    ditahan_h = True
+                    break
                 for o in mesin.ekstrak_iklan(html):
                     aid = str(o.get("ad_archive_id") or "")
                     if aid and aid not in lihat_k:
@@ -2603,6 +2731,22 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             except Exception:
                 pass
             time.sleep(3)
+        if mentah:
+            jejak_mesin("halaman", nilai, len(mentah), round(time.time() - t0_h, 1))
+        elif ditahan_h:
+            jejak_mesin("ditahan", nilai, ket="Intip Kompetitor / Pesaing Dipantau")
+        if not mentah and mesin.sc_aktif():
+            try:
+                mentah, kr = mesin.sc_halaman(nilai, "ID")
+                if mentah:
+                    jejak_mesin("halaman_cadangan", nilai, len(mentah), round(time.time() - t0_h, 1), f"{kr} kredit")
+            except Exception as e:
+                jejak_mesin("gagal", nilai, ket="cadangan halaman: " + str(e)[:60])
+        if not mentah and ditahan_h:
+            menit = max(1, round(mesin.rem_status()["rehat_detik"] / 60))
+            return {"ok": False, "ditahan": True,
+                    "error": f"Meta sedang membatasi pencarian dari server INTAI (bukan kesalahan Anda). "
+                             f"Coba lagi sekitar {menit} menit lagi — hasil tidak dikarang selama jeda ini."}
     else:
         label = nilai
         # v1.6 mesin tajam: kata utama × 4 variasi media + kata senada (kamus sinonim → saran Shopee bila kurang)
@@ -2615,18 +2759,36 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             for w in list(wadah):
                 if w.lower() not in [x.lower() for x in senada] and w.lower() != nilai.lower().strip():
                     senada.append(w)
+        ditahan = False
         try:
             mentah, perluasan = mesin.kumpul_iklan_v2(nilai, "ID", senada[:6])
         except mesin.MetaMenahan:
+            mentah, perluasan, ditahan = [], {}, True
+        except Exception as e:
+            mentah, perluasan = [], {"galat": str(e)[:80]}
+        if mentah:
+            jejak_mesin("cache" if perluasan.get("cache") else "meta", nilai, len(mentah), perluasan.get("detik"),
+                        f"{perluasan.get('berhasil', '?')}/{perluasan.get('permintaan', '?')} pencarian")
+        elif ditahan:
+            jejak_mesin("ditahan", nilai, ket=f"rehat {max(1, round(mesin.rem_status()['rehat_detik'] / 60))} mnt")
+        # v1.5.1: Meta menahan / gagal total → cadangan berbayar (bila kunci diisi & anggaran harian masih ada)
+        if not mentah and mesin.sc_aktif():
+            try:
+                mentah, perluasan = mesin.kumpul_iklan_sc(nilai, "ID", senada[:6])
+                jejak_mesin("cadangan", nilai, len(mentah), perluasan.get("detik"),
+                            "dari cache" if perluasan.get("cache") else f"{perluasan.get('kredit', 0)} kredit")
+            except Exception as e:
+                jejak_mesin("gagal", nilai, ket="cadangan: " + str(e)[:70])
+        if not mentah and (ditahan or mesin.rem_status()["rehat_detik"]):
             menit = max(1, round(mesin.rem_status()["rehat_detik"] / 60))
             return {"ok": False, "ditahan": True,
                     "error": f"Meta sedang membatasi pencarian dari server INTAI (bukan kesalahan Anda). "
                              f"Coba lagi sekitar {menit} menit lagi — hasil tidak dikarang selama jeda ini."}
-        except Exception as e:
-            mentah, perluasan = [], {"galat": str(e)[:80]}
-        if not mentah:   # cadangan: cara lama (3 variasi media)
+        if not mentah:   # cadangan gratis terakhir: cara lama (3 variasi media)
             mentah = mesin.kumpul_iklan(s, nilai, "ID")
             perluasan = dict(perluasan or {}, cadangan=True)
+            if not mentah:
+                jejak_mesin("gagal", nilai, ket="semua jalur kosong")
     if not mentah:
         return {"ok": False, "error": "Tidak ada iklan ditemukan (atau Ad Library sedang tidak merespons — coba lagi 1 menit)"}
     # A4 perapian: buang duplikat archive_id (ekstraksi bisa menangkap blok sama dua kali)
@@ -5078,6 +5240,7 @@ def admin_data():
             "email": {"layanan": mail_layanan(), "kunci": bool(MAIL_KUNCI), "dari": MAIL_DARI if mail_layanan() == "brevo" else "",
                       "terakhir": dict(MAIL_STATUS), "menit": RESET_MENIT},
             "shopee": {"jalur": dict(SHP_JALUR), "aff": shp_aff_aktif(), "per_jam": SHP_PER_JAM},   # v1.5.0
+            "mesin": mesin_status(),   # v1.5.1: rem Meta + cadangan berbayar
             "sekarang_wib": datetime.now(WIB).strftime("%Y-%m-%d %H:%M"),
             "arsip": {k: arsip.get(k) for k in ("iklan", "iklan_aktif", "pengiklan", "snapshot", "niche") if k in arsip},
             "putaran": {"tanggal": st.get("tanggal"), "pemicu": st.get("pemicu"), "mulai": st.get("mulai"), "akhir": st.get("akhir"),
@@ -6279,6 +6442,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
             else:
                 self.json_ok(shopee_uji())
+        elif u.path in ("/api/admin/mesin", "/api/admin/mesin-pulih", "/api/admin/sc-uji"):   # v1.5.1
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            elif u.path == "/api/admin/mesin":
+                self.json_ok(dict(mesin_status(), ok=True))
+            elif u.path == "/api/admin/mesin-pulih":
+                self.json_ok(mesin_pulih())
+            else:
+                self.json_ok(sc_uji())
         elif u.path == "/api/jadwal":
             self.tulis(200, json.dumps(jadwal_publik(self.email), ensure_ascii=False), "application/json")
         elif u.path == "/api/jadwal/tick":
