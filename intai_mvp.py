@@ -371,13 +371,31 @@ def _rem_jatah():
     return max(0, min(REM_PER_MENIT - st["menit_ini"], REM_PER_10MENIT - st["sepuluh_menit"]))
 
 
+DITAHAN_MIN_COUNT = 30
+
+
 def ditahan_meta(html):
-    return bool(re.search(r'"search_results_connection":\{"count":[1-9]\d*,"edges":\[\]', html or ""))
+    """Meta menahan = 'count' besar tapi 'edges' kosong. v1.5.4: pencarian yang hasilnya memang sedikit
+    (uji 16 Okt: "dashcam 70mai official store" → count 3, edges [] SETIAP kali) BUKAN penahanan —
+    dulu salah dibaca → seluruh scan dihentikan + server rehat 15 menit."""
+    m_ = re.search(r'"search_results_connection":\{"count":(\d+),"edges":\[\]', html or "")
+    return bool(m_) and int(m_.group(1)) >= DITAHAN_MIN_COUNT
 
 
-def _ambil_kartu(s, q, media, negara="ID"):
-    url = ("https://www.facebook.com/ads/library/?active_status=all&ad_type=all"
-           f"&country={negara}&q={quote(q)}&search_type=keyword_unordered&media_type={media}")
+PAT_JUMLAH_META = re.compile(r'"search_results_connection":\{"count":(\d+)')
+
+
+def _ambil_kartu(s, q, media, negara="ID", status="all", wadah=None, opsi=""):
+    """opsi: "" = urutan bawaan Meta (impresi) · "rel" = urutan relevansi (jendela 30 iklan BERBEDA, uji 16 Okt:
+    28/28 baru, 6–12 Relevan) · "hal:<page_id>" = semua iklan aktif satu halaman pengiklan (tanpa kata kunci)."""
+    if opsi.startswith("hal:"):
+        url = (f"https://www.facebook.com/ads/library/?active_status={status}&ad_type=all"
+               f"&country={negara}&view_all_page_id={quote(opsi[4:])}&search_type=page&media_type={media}")
+    else:
+        url = (f"https://www.facebook.com/ads/library/?active_status={status}&ad_type=all"
+               f"&country={negara}&q={quote(q)}&search_type=keyword_unordered&media_type={media}")
+        if opsi == "rel":
+            url += "&sort_data[mode]=relevancy_monthly_grouped&sort_data[direction]=desc"
     _rem_catat()
     html = _buka_url(s, url)
     if len(html) < 50000:
@@ -385,24 +403,40 @@ def _ambil_kartu(s, q, media, negara="ID"):
     if ditahan_meta(html):
         _rem_kena()
         raise MetaMenahan("Meta membatasi sementara")
+    if wadah is not None:   # v1.5.4 M-3: perkiraan jumlah iklan yg cocok menurut Meta (angka di halaman, bukan karangan)
+        m_ = PAT_JUMLAH_META.search(html)
+        if m_:
+            wadah["total"] = int(m_.group(1))
     return ekstrak_iklan(html)
 
 
-def rencana_v2(kata_kunci, senada, jatah):
-    """Urutan prioritas: data paling banyak per permintaan dulu."""
-    penuh = ([(kata_kunci, "all"), (kata_kunci, "video"), (kata_kunci, "image")]
-             + [(w, "all") for w in senada[:3]] + [(kata_kunci, "meme")]
-             + [(w, "all") for w in senada[3:6]] + [(w, "video") for w in senada[:2]])
-    return penuh[:max(0, min(jatah, len(penuh)))]
+def rencana_v2(kata_kunci, senada, jatah, halaman=()):
+    """Urutan prioritas. Return [(kata, media, status, opsi)] — opsi lihat _ambil_kartu.
+    v1.5.3 perluas sampel: ±44% iklan dari active_status=all sudah MATI (tak terpakai utk Top 10).
+    v1.5.4 audit 92 niche (1.029 permintaan terekam): iklan RELEVAN baru per permintaan —
+      kata utama ±3,8 · senada yg memuat kata utama ±4,7 · senada tanpa kata utama ±3,3 —
+      sedangkan 'video aktif' & 'gambar aktif' hanya menambah ±4,8 & ±6,7 iklan baru. Slot boros itu diganti:
+      · kata utama URUTAN RELEVANSI (uji live 3 niche: 28 iklan baru, 6–12 Relevan per permintaan);
+      · halaman pengiklan khusus niche dari scan sebelumnya (maks 2; uji: 70mai 19 baru / 17 Relevan);
+      · kata senada (urutan belajar, lihat senada_urut di intai_app). Kurang → slot lama dipakai lagi.
+    Jumlah permintaan TETAP maks 12 — beban ke Meta tidak naik. Mode hemat (jatah tipis) = 3 permintaan utama."""
+    utama = [(kata_kunci, "all", "all", ""), (kata_kunci, "all", "active", ""), (kata_kunci, "video", "all", ""),
+             (kata_kunci, "all", "active", "rel")]
+    sn = [(w, "all", "active", "") for w in senada[:8]]
+    hl = [(str(nm or pid), "all", "active", "hal:" + str(pid)) for pid, nm in list(halaman)[:2] if pid]
+    cadangan = [(kata_kunci, "video", "active", ""), (kata_kunci, "image", "active", "")]
+    penuh = utama + sn[:2] + [(kata_kunci, "meme", "active", "")] + hl + sn[2:]
+    penuh += cadangan[:max(0, 12 - len(penuh))]
+    return penuh[:max(0, min(jatah, 12, len(penuh)))]   # maks 12 permintaan/scan (sama dgn v1.5.2)
 
 
-def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3):
+def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3, halaman=()):
     """Return (iklan_mentah, info). Tiap iklan diberi '_sumber' = kata senada yang menemukannya ('' = kata utama).
     Rem: rehat → MetaMenahan; jatah menipis → paket diperkecil; gagal 3× beruntun → sisa dilewati."""
     import concurrent.futures as _cf
     t0 = time.time()
     kata_kunci = kata_kunci.strip()
-    senada = [w for w in senada if w and w.lower() != kata_kunci.lower()][:6]
+    senada = [w for w in senada if w and w.lower() != kata_kunci.lower()][:8]
     kunci = (kata_kunci.lower(), negara)
     c = CACHE_V2.get(kunci)
     if c and time.time() - c[0] < CACHE_V2_DTK:
@@ -416,45 +450,58 @@ def kumpul_iklan_v2(kata_kunci, negara="ID", senada=(), batas_waktu=40, jalur=3)
     while jatah < 12 and time.time() < batas_tunggu:   # tunggu jatah penuh (12) maks 30 dtk; sisa → paket sebagian/hemat
         time.sleep(2)
         jatah = _rem_jatah()
-    tugas = rencana_v2(kata_kunci, senada, jatah if jatah >= 6 else 3)   # jatah tipis → mode hemat 3 pencarian
+    tugas = rencana_v2(kata_kunci, senada, jatah if jatah >= 6 else 3, halaman)   # jatah tipis → mode hemat 3 pencarian
     jalur = max(1, min(jalur, len(tugas)))
     with _cf.ThreadPoolExecutor(jalur) as ex:
         sesi = list(ex.map(lambda _: buka_sesi(), range(jalur)))
     hasil, lihat, log = [], set(), []
+    total_meta = {}
     gagal = [0]
     ditahan = [False]
 
-    def kerja(i, q, media):
+    def kerja(i, q, media, status="all", opsi=""):
         if time.time() - t0 > batas_waktu or gagal[0] >= 3 or ditahan[0]:
-            return q, media, None, "dilewati"
+            return q, media, status, opsi, None, "dilewati"
         try:
-            ik = _ambil_kartu(sesi[i % jalur], q, media, negara)
+            w_ = {}
+            ik = _ambil_kartu(sesi[i % jalur], q, media, negara, status, w_, opsi)
             gagal[0] = 0
-            return q, media, ik, "ok"
+            if ik is not None and w_.get("total") is not None and not opsi:
+                total_meta[(q.lower(), media, status)] = w_["total"]
+            return q, media, status, opsi, ik, "ok"
         except MetaMenahan:
             ditahan[0] = True
-            return q, media, None, "ditahan"
+            return q, media, status, opsi, None, "ditahan"
         except Exception as e:
             gagal[0] += 1
-            return q, media, None, str(e)[:60]
+            return q, media, status, opsi, None, str(e)[:60]
 
     with _cf.ThreadPoolExecutor(jalur) as ex:
-        futs = [ex.submit(kerja, i, q, m) for i, (q, m) in enumerate(tugas)]
+        futs = [ex.submit(kerja, i, *t) for i, t in enumerate(tugas)]
         for f in _cf.as_completed(futs):
-            q, media, ik, st = f.result()
+            q, media, status, opsi, ik, st = f.result()
             baru = 0
+            sumber = ("📄 " + q) if opsi.startswith("hal:") else ("" if q.lower() == kata_kunci.lower() else q)
             for o in ik or []:
                 aid = str(o.get("ad_archive_id") or "")
                 if aid and aid not in lihat:
                     lihat.add(aid)
-                    o["_sumber"] = "" if q.lower() == kata_kunci.lower() else q
+                    o["_sumber"] = sumber
                     hasil.append(o)
                     baru += 1
-            log.append({"q": q, "media": media, "n": len(ik or []), "baru": baru, "status": st})
+            log.append({"q": q, "media": media, "aktif_saja": status == "active", "n": len(ik or []), "baru": baru, "status": st,
+                        "urut": "relevansi" if opsi == "rel" else "", "halaman": opsi[4:] if opsi.startswith("hal:") else ""})
     ok = sum(1 for l in log if l["status"] == "ok")
-    dipakai = sorted({q for q, _ in tugas if q.lower() != kata_kunci.lower()}, key=senada.index)
+    dipakai = sorted({t[0] for t in tugas if t[0].lower() != kata_kunci.lower() and not t[3]}, key=senada.index)
     info = {"detik": round(time.time() - t0, 1), "senada": dipakai, "permintaan": len(tugas),
-            "berhasil": ok, "ditahan": ditahan[0], "log": log}
+            "berhasil": ok, "ditahan": ditahan[0], "log": log,
+            "halaman": ["📄 " + t[0] for t in tugas if t[3].startswith("hal:")]}
+    _ta = total_meta.get((kata_kunci.lower(), "all", "active"))
+    if _ta is not None:
+        info["meta_aktif"] = _ta   # v1.5.4 M-3: "Meta ±N iklan aktif cocok kata ini"
+    _tb = total_meta.get((kata_kunci.lower(), "all", "all"))
+    if _tb is not None:
+        info["meta_semua"] = _tb
     if not hasil and ditahan[0]:
         raise MetaMenahan("Meta membatasi sementara")
     if ok and not ditahan[0]:

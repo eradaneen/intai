@@ -25,6 +25,7 @@ import re
 import secrets
 import threading
 import time
+import zlib
 import webbrowser
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -35,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.2"
+VERSI = "1.5.4"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -1694,11 +1695,13 @@ SINONIM = [
     ["frozen food", "makanan beku", "nugget", "sosis", "dimsum"],
     ["sambal", "sambel", "chili oil", "saus sambal"],
     ["keripik", "kripik", "chips", "snack"],
+    ["obat lambung", "obat maag", "obat magh", "obat asam lambung", "asam lambung", "maag", "magh", "gerd", "lambung"],
+    ["obat jerawat", "jerawat", "acne", "anti acne", "acne spot"],
 ]
 
-PLATFORM = {"disney+", "disney+ hotstar", "netflix", "vidio", "prime video", "viu", "wetv", "iqiyi", "spotify", "youtube", "shopee", "tokopedia", "lazada", "tiktok", "tiktok shop", "blibli", "blibli.com", "bukalapak",
+PLATFORM = {"chatgpt", "openai", "disney+", "disney+ hotstar", "netflix", "vidio", "prime video", "viu", "wetv", "iqiyi", "spotify", "youtube", "shopee", "tokopedia", "lazada", "tiktok", "tiktok shop", "blibli", "blibli.com", "bukalapak",
             "shopeepay", "spaylater", "shopeefood indonesia", "shopeefood", "gopay", "gopay indonesia", "dana",
-            "ovo", "grab", "grabfood", "gojek", "alfamart", "indomaret", "akulaku", "kredivo", "temu", "zalora"}
+            "ovo", "grab", "grabfood", "gojek", "google", "google indonesia", "google gemini", "gemini", "alfamart", "indomaret", "akulaku", "kredivo", "temu", "zalora"}
 PLATFORM_GENERIK = re.compile(
     r"belanja semua kebutuhan|download (aplikasi|shopee|sekarang)|yuk,? download|serbu rabu|xtra voucher|"
     r"cek keranjang belanja|cod cek dulu|jaminan 100% uang kembali|bayar qris|aplikasi gopay|"
@@ -1707,52 +1710,120 @@ PLATFORM_GENERIK = re.compile(
 NOVEL_HAL = re.compile(r"novel|books?\b|reading|reads\b|story|stories|romance|drama|cerita|bacaan|webtoon|"
                        r"komik|fiction|chapter|heartbeat|love ?story|happily ever|goodnovel|fizzo|dreame|"
                        r"[\u3040-\u30ff\u4e00-\u9fff]", re.I)
+EKSPLISIT = re.compile(r"\b(tembus (pandang )?pakaian|kemaluan|meraba|mendesah|desahan|bercinta|gairah|kehidupan seks|ibu angkat|ayah angkat|perselingkuhan|selingkuh(an)?ku|kaisar langit|sekte|kultivasi|ceo dingin|istri kontrak)\b")
+DIALOG = re.compile(r"[\"“][^\"”\n]{4,160}[\"”]")
 NOVEL_TEKS = re.compile(r"🔞|baca (gratis|selengkapnya|versi lengkap|bab)|klik (untuk|di sini untuk) membaca|"
                         r"\bbab \d|\bchapter \d|instal dan baca|do not read in public|jangan membaca di tempat umum|"
                         r"lire la version|drama pendek|short drama|full episode|tonton drama|nonton drama|"
-                        r"buku ini ada micin|makin dibaca makin|versi lengkapnya", re.I)
+                        r"buku ini ada micin|makin dibaca makin|versi lengkapnya|click here to read|click to read|read more exciting|read on\s*👉|continue reading|lightreader|webnovel|"
+                        r"\bjin (?:di )?dalam lampu|suami jin", re.I)
+# v1.5.3 kampanye donasi / galang dana
+DONASI = re.compile(r"\b(?:yuk|ayo|mari) (?:donasi|berdonasi|wakaf|sedekah)\b|\b(?:yuk|ayo|mari) bantu (?:mereka|sesama|saudara|adik.adik|yatim|dhuafa|korban|para|kucing|anabul|hewan)\b|\bdonasi (?:sekarang|terbaik)\b|\b(?:galang|penggalangan) dana\b|\bkitabisa\b|"
+                    r"\b(?:butuh|membutuhkan) bantuan (?:teman|kita|kamu|orang|para)\b|\b(?:kucing|anjing|hewan|anak|lansia|warga|santri|yatim|dhuafa)[a-z0-9 .+]{0,25} (?:butuh|membutuhkan) bantuan\b|"
+                    r"\b(?:yuk|ayo) wakaf\b|\bwakaf al.?qur|"
+                    r"\bdonate (?:now|today|here)\b|\b(?:emergency|humanitarian) (?:aid|appeal|relief)\b|\b(?:give|pay) (?:your )?(?:zakat|sadaqah)\b", re.I)   # v1.5.3 donasi en (Mohammed Hijab)
+DONASI_LINK = re.compile(r"/campaign/(?=[^?]*(?:donasi|bantu|peduli|sedekah|wakaf|zakat|yatim|dhuafa|sakit|operasi|korban|kucing|anabul))|kitabisa\.|bantuteman\.|kawanbantu|sharinghappiness|dompetdhuafa|rumahzakat|baznas|laznas|amalsholeh|wecare\.id", re.I)
+# v1.5.3 tautan aplikasi novel/drama (play.google … id=com.newleaf.app)
+NOVEL_APP = re.compile(r"newleaf|dramabox|reelshort|goodnovel|novelah|fizzo|stardust|shortmax|flextv|netshort|moboreels|joyread|hinovel|novelme|innovel|chereads|kiss ?novel|webfic|goodshort", re.I)
 POLITIK = re.compile(r"\b(bupati|gubernur|wali ?kota|partai|caleg|pemilu|pilkada|pileg|dprd?|kampanye|capres|cawapres|"
-                     r"relawan|psi|pdip|gerindra|golkar|nasdem|ganjar|prabowo|jokowi|anies)\b", re.I)
-NEGASI = re.compile(r"\b(bukan|tanpa|tidak pakai|gak pakai|ga pake|selain)\s+(\S+\s+)?$")   # v1.5.2: "anti" dibuang ("Anti Tas Berantakan" = tas organizer)
+                     r"relawan|psi|pdip|gerindra|golkar|nasdem|ganjar|prabowo|jokowi|anies|"
+                     r"coblos|nyoblos|nomor urut|pilih nomor (?:urut )?\d|"   # v1.5.3 "Coblos #JilbabIjo", "Pilih nomor 1, yang pakai kerudung"
+                     r"cabup|cawabup|cagub|cawagub|cawalkot|cawali|paslon|calon (?:bupati|gubernur|wali ?kota|legislatif|anggota dewan))\b", re.I)
+NEGASI = re.compile(r"\b(bukan|tanpa|tidak pakai|gak pakai|ga pake|selain|(?:gak|ga|nggak|ngga|enggak|tidak|tak|ndak) (?:perlu|usah|butuh)(?: lagi)?|gausah|"
+                    r"stop|berhenti(?: pakai| beli)?|lupakan|selamat tinggal|beralih dari|daripada|dibanding(?:kan)?|ketimbang|"
+                    r"(?:habiskan|buang|boros) (?:uang|duit) (?:untuk|buat|beli))\s+([^\s.!?,;:]+\s+)?$")   # v1.5.4 pembanding: "Nggak perlu obat nyamuk lagi" (iklan kelambu)   # v1.5.2: "anti" dibuang ("Anti Tas Berantakan" = tas organizer)
 # v1.5.2: kata kunci sebagai KETERANGAN produk lain — "Helm Hijab", "Mesin Kopi", "Bros Hijab", "Rak Sepatu" (utk niche sepatu)
+# v1.5.3: tagar yg kebetulan diawali/diakhiri kata niche (#portable→table, #teether→tee)
+TAGAR_PALSU = {"portable", "vegetable", "vegetables", "comfortable", "adjustable", "foldable", "washable", "notable", "stable", "suitable",
+               "teether", "teethers", "teen", "teens", "teenager", "teeth", "sofabed", "bagus", "bagusbanget", "baguss",
+               "hemat", "hematbanget", "hemmm", "capek", "tasty", "tasting", "mejikuhibiniu", "susunan", "tasik", "tasikmalaya"}
+KEPALA_DAFTAR = re.compile(r"\b(penyimpanan|organizer|rak|kotak|wadah|tempat|storage)\s+(?:[a-z]+\s*(?:,|&|dan|\+)\s*){1,3}$")
 KEPALA_LAIN = re.compile(
-    r"\b(helm|bros|jarum|peniti|gantungan|ganci|charm|organizer|rak|lemari|mesin|alat|gelas|cangkir|mug|tumbler|"
-    r"lem|semir|sikat|pembersih|parfum|pewangi|stiker|sticker|cover|case|casing|strap|cetakan|kursus|kelas|pelatihan|"
-    r"jasa|sablon|kemasan|plastik|toples|lampu|kipas|hanger|tempat|dispenser|grinder|filter|teko|kaca|visor|meja)\s+$")
+    r"\b(popok|diaper|diapers|kerak|noda|ayam|udang|cumi|bebek|ikan|nasi|tahu|tempe|telur|geprek|penyet|helm|bros|jarum|sarung|taplak|hias|hiasan|tanaman|alas|tas|ransel|backpack|softcase|hardcase|peniti|gantungan|ganci|charm|organizer|rak|lemari|mesin|alat|gelas|cangkir|mug|tumbler|"
+    r"lem|semir|sikat|tali|pasak|pembersih|supplier bahan|supplier kain|bahan baku|parfum|pewangi|detergen|deterjen|sabun|softener|pelembut|pemutih|stiker|sticker|cover|case|casing|strap|cetakan|kursus|kelas|pelatihan|"
+    r"jasa|sablon|kemasan|packaging|box|dus|etalase|display|cuci|sewa|servis|service|pouch|plastik|toples|lampu|kipas|hanger|tempat|dispenser|grinder|filter|teko|kaca|visor|meja|penjepit|capitan|permen|softlens|sadel|pedal|rantai|aksesoris|aksesori|sparepart|pengering|sterilizer|penghangat|warmer)\s+$")
 # v1.5.2: iklan JASA/APLIKASI yg memakai niche sbg contoh ("Kopinya sama enak… Upload 1 foto produk ke Auto Feeds")
+JASA_KUAT = re.compile(r"\bcoaching (olahraga|fitness|gym|diet|1 ?on ?1|privat|pribadi)\b|\bpersonal trainer\b|\bprogram \d+ (hari|minggu|bulan) (diet|turun berat|fitness|olahraga)\b|"   # v1.5.3 Powerclub "Program 10 Hari Diet … Coaching Olahraga 1 On 1"
+                       r"\bmudah ditemukan di (google|maps|gmaps)\b|\bgoogle (bisnis|business|business profile|maps) (anda|kamu|toko)\b|\bjasa (seo|iklan|ads|digital marketing|kelola sosmed)\b|"   # v1.5.3 ToffeeDev/localboost "Buat pet shop Anda mudah ditemukan di Google"
+                       r"\bcorporate gifts?\b|\b(souvenir|merchandise|merch) custom\b|\bcustom (souvenir|merchandise|merch)\b|\b(hampers|giftset) corporate\b|\bcorporate (hampers|giftset)\b|"   # v1.5.3 Dapu Gift (giftset isi powerbank)
+                       r"\blowongan (kerja|pastry|chef|staff|karyawan|admin|barista|kasir|sales|di)\b|\bloker\b|\blamar (online|sekarang|di)\b|\bwe'?re hiring\b|\bdibutuhkan segera\b|"   # v1.5.3 lowongan kerja (Pitt Dates kurma)
+                       r"\b(layanan|jasa) (kurir|kirim|pengiriman|ekspedisi)\b|\b(paxel|lalamove|deliveree|anteraja|sicepat|ninja xpress|lion parcel|jne express|j&t express)\b|\bpinjam(an)? (hingga|sampai|dana|online|tunai)\b|\bdana cair\b|\b(?:dana|pinjaman|uang|limit|pengajuan|kredit)\s+(?:\w+\s+){0,2}cair cepat\b|\bcair cepat (?:tanpa|cuma|hanya|dalam|\d)|\bpinjol\b|\bdibeli (freezer|kulkas|ac|tv|barang|perabot|elektronik|mebel|furniture|hp|laptop|motor|mobil)\b|\bkami (beli|terima) barang bekas\b|\bmaklon|\bmakloon|\bpabrik ?maklon\b|\bjasa (rias|make ?up|mua|maklon)\b|\bmake ?up ?artist\b|\bmua ?(bandung|jakarta|surabaya|jogja|yogya|medan|bali|semarang|malang|bekasi|depok|bogor|tangerang|wisuda|wedding|murah|panggilan)\b|"
+                       r"\bmau jual (?:kamera|hp|laptop|iphone|motor|mobil|barang)\b[^.!?\n]{0,12}\?|\bterima (?:jual|beli|tukar tambah) (?:kamera|hp|laptop|iphone)\b|"   # v1.5.3 TogetherKamera "MAU JUAL KAMERA BISA ??"
+                       r"\bjasa cuci\b|\blaundry (?:alat )?(?:camping|outdoor|tenda)\b|\bcuci tenda\b|\bpusat penyewaan\b|\bpenyewaan (perlengkapan|alat)\b|\blaundry ?(stroller|carseat|car seat|sofa|kasur|boneka|bayi)|\b(sewa|rental) ?(stroller|carseat|car seat|perlengkapan bayi|baby ?gear)\b|\brent your (baby )?gear\b|"   # v1.5.3 Azkia Baby Rental, LaundryStrollerID, "JASA CUCI BED SOFA KARPET STROLLER"
+                       r"\bmake ?up ?(wisuda|wedding|pengantin|lamaran|panggilan)\b|\brias pengantin\b|\bterima (job|panggilan) (make ?up|rias)\b")
 JASA_APLIKASI = re.compile(r"\bfeed (ig|instagram)\b|\bdesain(nya)? (feed|konten|logo|kemasan)\b|\bjasa (desain|admin|iklan|ads|foto|video|konten|pembuatan)|"
                            r"\btemplate (feed|konten|canva)|\baplikasi kasir\b|\bsoftware\b|\bwebinar\b|\be-?book\b|\bkelas (online|bisnis|jualan)|"
-                           r"\bupload (1 )?foto produk|\bfoto produk (kamu|anda|lo)\b|\bomzet (kamu|anda) naik|\bbelajar (jualan|bisnis|ads|iklan)")
+                           r"\bjasa (cuci|laundry)\b|\bpanggil jasa\b|\bpendaftaran (?:untuk )?(?:haji|umroh|umrah)\b|\bhaji (?:plus|furoda|khusus)\b|\b(?:travel|biro) (?:haji|umroh|umrah)\b|\bkeberangkatan (?:haji|umroh|umrah)\b|#haji(?:plus|furoda|khusus)\b|\binfo (?:detail )?haji\b|\bpijatan (?:dalam|di)\b|reflexology|refleksologi|\bjasa (bersih|cleaning|vacuu?m|vacu?um|deep ?clean)|\bbersihin rumah\b|\bdeep ?clean(ing)? (kasur|sofa|gorden|rumah)\b|\bpijat panggilan\b|\bmassage panggilan\b|\bhome service (treatment|massage|spa|facial)\b|\b(kami )?menyewakan\b|\b(sewa|rental) (motor|mobil|mainan)\b|\blaundry (kiloan|sepatu|alat|helm|tas|boneka|karpet|express|camping)\b|\bcuci (sofa|kasur|springbed|karpet|sepatu|helm|tas|boneka|stroller)\b|\bsewa (alat|alkes|perlengkapan)\b|\b\d+ ?kt \d+ ?km\b|\bshm\b|\bkavling\b|\bperumahan\b|\bdijual rumah\b|\bkami (senang |siap )?membeli\b|\bjual (barang|emas|perhiasan)( bermerek| mewah| branded)?( &| dan)?( emas| barang)? (anda|kamu)\b|\bgadai\b|\bbuyback\b|\bterima jual\b|\bupload (1 )?foto produk|\bfoto produk (kamu|anda|lo)\b|\bomzet (kamu|anda) naik|\bbelajar (jualan|bisnis|ads|iklan)")
+KATA_KONTEKS = {
+    "teh": re.compile(r"\b(teh|tea) (hijau|celup|melati|tubruk|seduh|daun|manis|tarik|poci|susu|herbal|bunga|rempah|sereh|kelor|botol|kotak|kemasan|tawar|leci|lemon|thai|oolong|hitam|putih|pelangsing|diet|detoks?|jahe|rosella|chamomile|peppermint|bubuk|tubruk)\b|"
+                      r"\b(es|minum|seduh|secangkir|cangkir|segelas|daun|kebun|celup) teh\b|\btea\b|matcha|chai|\bteh[a-z]{0,3} (ini|nya)\b|\b\d+ ?(gr|gram|sachet|kantong|pcs)\b"),
+    "hp": re.compile(r"\b(samsung|iphone|xiaomi|redmi|oppo|vivo|infinix|realme|tecno|poco|itel|nokia|pixel|huawei|honor|motorola|nubia|galaxy|android|ios)\b|"
+                     r"\b\d+ ?(gb|tb)\b|\b\d+/\d+\b|\bram\b|\bmah\b|\b\d+ ?mp\b|snapdragon|helio|dimensity|unisoc|"
+                     r"\b(jual|beli|tukar tambah|second|seken|bekas|cicilan|kredit|garansi resmi|unit)\b.{0,15}\b(hp|handphone|smartphone)\b|"
+                     r"\b(hp|handphone|smartphone) (baru|bekas|second|seken|murah|gaming|android|5g|4g|terbaru|flagship|kentang|mid ?range|lipat)\b"),
+}
+SINONIM_AMBIGU = {
+    "foundation": re.compile(r"makeup|make up|bedak|cushion|lipstik|shade|coverage|wajah|kulit|matte|flawless|concealer"),
+    "android": re.compile(r"\bhp\b|handphone|smartphone|ponsel|\bram\b|\d ?gb\b|kamera|baterai|mah\b|snapdragon|helio"),
+    "bag": re.compile(r"\btas\b|ransel|selempang|sling|tote|backpack|dompet|handbag|pouch|\bbags?\b.{0,20}(kulit|leather|kanvas|canvas)"),
+    "hem": re.compile(r"kemeja|\bbaju\b|lengan|kerah|shirt|katun|flanel|batik|\bpria\b|kantor|slim ?fit"),
+    "pants": re.compile(r"\bcelana\b|jeans|chino|cargo|kulot|jogger|denim|pinggang|formal|trousers|legging|shorts|\b(running|track|hiking|yoga|cargo) pants\b|jogging|\bgym\b|olahraga|jahitan"),
+    "watch": re.compile(r"\bjam\b|strap|tali|dial|analog|digital|chronograph|smartwatch|arloji|quartz|automatic|wrist|\batm\b|water ?resist"),
+    "bags": re.compile(r"\btas\b|ransel|selempang|sling|tote|backpack|dompet|handbag"),
+}
+BONUS = re.compile(r"\b(gratis|free|bonus|fasilitas|include|includes|termasuk|hadiah|freebie|gift)\b(?:(?! - )[^.!?\n|]){0,14}$|\bfasilitas\s*:[^.!?]{0,20}$|\b(gratis|free|bonus|hadiah|fasilitas)\s*:\s*\n[^.!?|\n]{0,14}$")   # v1.5.4 "bonus:\n2 bantal"
+VARIETAS = re.compile(r"\b(pisang|mangga|jambu|melon|nanas|nangka|semangka|pepaya|ubi|tape|ayam|bebek|bolu|kue|roti|martabak|jeruk|klengkeng|lengkeng|apel|sirsak|salak|bakpia|dodol|lemon)\s+$")
+MASALAH = re.compile(r"\b(bau|apek|lembap|lembab|jamur|berjamur|kotor|kusam|rusak|berdebu|debu|bernoda|noda|kuning|menguning|lecet|licin|bocor|gatal|berantakan|numpuk|sempit|pengap)\b")
+# v1.5.3: penjual pasar MALAYSIA (iklan tetap tayang di ID) — "jom madu asli", "RM59", "pos laju", "Gombak"
+MALAYSIA = re.compile(r"\bberkualiti\b|\bberasaskan\b|\bpercuma\b|\bjom\b|\brm ?\d|\bringgit\b|\bpos ?laju\b|\bsemenanjung\b|\bpenghantaran\b|\bselangor\b|\bkuala lumpur\b|"
+                      r"\bnegeri sembilan\b|\bpahang\b|\bperlis\b|\bmelaka\b|\blangsir\b|\bpelbagai\b|\bberpatutan\b|"   # v1.5.3 MK Curtain Nilai 3
+                      r"\bkatil\b|\bkilang\b|\bjohor\b|\bsabah\b|\bsarawak\b|\bgombak\b|\bshah alam\b|\bpenang\b|\bkedah\b|\bkelantan\b|\bterengganu\b|\bputrajaya\b|\bwhatsapp kami sekarang\b")
+ID_KUAT = re.compile(r"\brp\.? ?\d|\d+ ?(rb|ribu|jt|juta)\b|\.co\.id|shopee\.co|tokopedia|\bcod\b|gratis ongkir|\bwib\b|jabodetabek|jakarta|bandung|surabaya|indonesia|"   # v1.5.3 provinsi/kota (lapstore "Sukarame Sabah Balau … Bandar Lampung" ≠ Sabah MY)
+                     r"\b(lampung|jawa (timur|tengah|barat)|jatim|jateng|jabar|yogyakarta|jogja|jogjakarta|semarang|makassar|palembang|denpasar|bekasi|tangerang|depok|bogor|sidoarjo|gresik|cirebon|tasikmalaya|kediri|pekanbaru|balikpapan|samarinda|pontianak|banjarmasin|manado|kalimantan|sulawesi|sumatera|sumatra|papua|lombok|riau)\b")
 # v1.5.2: urutan Inggris (keterangan di depan): "coffee table", "shoe rack", "bag charm", "hijab pin"
-EKOR_LAIN = re.compile(r"^\s+(table|tables|maker|machine|grinder|mug|cup|rack|cabinet|charm|pin|pins|organizer|cleaner|glue|holder|hanger|tray|scrub|soap)\b")
+EKOR_LAIN = re.compile(r"^\s+(application|applicator|spreader|sprayer|kaki|roda(?!\s*(?:dua|tiga|empat|2|3|4)\b)|mainan|mainannya|mobil|mobilmu|motor|motormu|otomotif|table|tables|maker|machine|grinder|mug|cup|rack|cabinet|charm|pin|pins|organizer|cleaner|glue|holder|hanger|tray|scrub|soap|cushion|cushions|pad|pads|liner|hook|hooks|fan|canopy|footmuff|cover|covers|bag|bags)\b")   # v1.5.3 "stroller cushion/pad/hook"
 # v1.5.2: kategori halaman Meta (snapshot.page_categories) yang jelas BUKAN penjual barang niche tsb
+RESTO_TEGAS = re.compile(r"burger|restaurant|restoran|fast food|pizza|\bcafe\b|coffee shop|diner|seafood|steakhouse|sushi|ramen|bistro|eatery|rumah makan|warung makan|food court|grill|\bbar\b")
 KATEGORI_LUAR = [
-    (re.compile(r"burger|restaurant|restoran|fast food|pizza|cafe|coffee shop|bakery|food (&|and) beverage|chicken|noodle|caterer|warung makan"), {"makanan"}),
-    (re.compile(r"\bauto|automotive|otomotif|motorcycle|sepeda motor|car dealership|vehicle|tire|gas station|bengkel"), {"otomotif"}),
-    (re.compile(r"\bbank|financ|keuangan|insurance|asuransi|loan|pinjaman|credit|investment|investasi|crypto|payment|e-wallet"), set()),
-    (re.compile(r"telecommunication|telekomunikasi|internet service|mobile network"), {"elektronik"}),
-    (re.compile(r"movie|film|\btv\b|television|televisi|streaming|media/news|news & media|entertainment|hiburan|video game"), set()),
-    (re.compile(r"airline|maskapai|travel|hotel|tourism|pariwisata"), set()),
+    ("nirlaba", re.compile(r"non ?profit|nonprofit|charity|charitable|nirlaba"), set()),   # v1.5.3 LAZNAS wakaf
+    ("resto", re.compile(r"burger|restaurant|restoran|diner|seafood|steakhouse|sushi|ramen|bistro|eatery|rumah makan|food court|grill|fast food|pizza|cafe|coffee shop|bakery|food (&|and) beverage|chicken|noodle|caterer|warung makan"), {"makanan"}),
+    ("otomotif", re.compile(r"\bauto|automotive|otomotif|motorcycle|sepeda motor|car dealership|vehicle|tire|gas station|bengkel|detailing|car wash|cuci mobil|salon mobil"), {"otomotif"}),
+    ("keuangan", re.compile(r"\bbank|financ|keuangan|insurance|asuransi|loan|pinjaman|credit|investment|investasi|crypto|payment|e-wallet"), set()),
+    ("telko", re.compile(r"telecommunication|telekomunikasi|internet service|mobile network"), {"elektronik"}),
+    ("hiburan", re.compile(r"movie|film|\btv\b|television|televisi|streaming|media/news|news & media|entertainment|hiburan|video game"), set()),
+    ("travel", re.compile(r"airline|maskapai|travel|hotel|lodging|tourism|\btour\b|pariwisata"), set()),
+    ("elektronik", re.compile(r"phone/tablet|mobile phone|electronics|elektronik|computer|komputer|gadget|telepon seluler"), {"elektronik", "alat"}),
+    ("publik", re.compile(r"public service|layanan publik|government organi[sz]ation|instansi pemerintah"), set()),   # v1.5.3 Gugus Tugas Covid-19
+    ("pijat", re.compile(r"\bmassage|\bpijat|reflexology|refleksi"), set()),   # v1.5.3 Halo Jasa "face mask, body mask" = paket pijat panggilan
+    ("cetak", re.compile(r"^printing|printing service|percetakan|digital printing"), {"cetak"}),   # v1.5.3 Sublimindo makloon printing kerudung
+    ("tekstil", re.compile(r"fabric|textile|tekstil"), {"tekstil"}),   # v1.5.3 Putra Aneka Sandang (Fabrics) #hijab
+    ("rumah tangga", re.compile(r"household supplies|cleaning products?|produk kebersihan|perlengkapan rumah tangga"), {"rumah", "alat"}),   # v1.5.3 Klinbos penghilang noda "Mukenah berjamur"
+    ("jasa rumah", re.compile(r"perawatan di rumah|cleaning|kebersihan|laundry|dry clean|pest control|pembasmi hama|in-home service|layanan rumah"), set()),
+    ("aksesori", re.compile(r"^\s*(accessories|accessory|aksesoris|aksesori)\s*$"), {"fashion", "kecantikan", "anak", "elektronik", "otomotif"}),   # v1.5.3 Jete (aksesori HP) jual speaker
+    ("fashion", re.compile(r"clothing|apparel|pakaian|fashion|bags|luggage|\bshoe|sepatu|jewelry|perhiasan|boutique|butik|accessor|aksesori"), {"fashion", "kecantikan", "anak"}),
 ]
 NICHE_KELUARGA = [
-    ("fashion", re.compile(r"\b(tas|totebag|ransel|hijab|jilbab|kerudung|pashmina|bergo|khimar|gamis|sepatu|sneakers?|sandal|jaket|hoodie|kaos|baju|kemeja|celana|dress|rok|mukena|sarung|dompet|topi|kacamata|jam tangan|perhiasan|cincin|kalung)\b")),
-    ("makanan", re.compile(r"\b(kopi|madu|teh|snack|camilan|keripik|kue|cokelat|coklat|sambal|frozen|susu|minuman|makanan|roti|kurma|abon|rendang|mie)\b")),
-    ("kecantikan", re.compile(r"\b(skincare|serum|sabun|sampo|shampoo|lotion|parfum|masker|lipstik|bedak|toner|sunscreen|kosmetik|makeup)\b")),
+    ("fashion", re.compile(r"\b(fashion|busana|pakaian|outfit|ootd|tas|totebag|ransel|hijab|jilbab|kerudung|pashmina|bergo|khimar|gamis|sepatu|sneakers?|sandal|jaket|hoodie|kaos|baju|kemeja|celana|dress|rok|mukena|sarung|dompet|topi|kacamata|jam tangan|casing|softcase|hardcase|perhiasan|cincin|kalung)\b")),
+    ("makanan", re.compile(r"\b(kuliner|oleh oleh|oleh-oleh|frozen food|catering|kopi|madu|teh|snack|camilan|keripik|kue|cokelat|coklat|sambal|frozen|susu|minuman|makanan|roti|kurma|abon|rendang|mie|beras|porang|gula|tepung)\b")),
+    ("kecantikan", re.compile(r"\b(kecantikan|cantik|beauty|kosmetik|kosmetika|facial|salon|klinik kecantikan|perawatan wajah|perawatan kulit|jerawat|glowing|nail art|bulu mata|eyelash|sulam alis|skincare|bodycare|serum|sabun|sampo|shampoo|lotion|parfum|masker|lipstik|bedak|toner|sunscreen|kosmetik|makeup)\b")),
     ("anak", re.compile(r"\b(mainan|bayi|anak|stroller|popok|diaper)\b")),
+    ("cetak", re.compile(r"\b(printer|sablon|cetak|percetakan|printing|stiker|sticker|banner|spanduk|tinta)\b")),
+    ("tekstil", re.compile(r"\b(kain|bahan|tekstil|batik|katun|linen|rayon|wol|benang)\b")),
     ("rumah", re.compile(r"\b(rak|lemari|kasur|bantal|sprei|gorden|meja|kursi|sofa|dapur|panci|wajan)\b")),
     ("otomotif", re.compile(r"\b(helm|oli|ban|motor|mobil|sparepart|aki|knalpot|velg|spion)\b")),
-    ("elektronik", re.compile(r"\b(hp|handphone|smartphone|laptop|charger|powerbank|earphone|headset|speaker|kamera|tv)\b")),
+    ("alat", re.compile(r"\b(blender|rice cooker|magic ?com|mixer|juicer|chopper|air fryer|oven|microwave|kompor|kipas angin|setrika|dispenser|kulkas|mesin cuci|vacuum|humidifier|purifier|teko listrik|water heater|lampu)\b")),   # v1.5.3 alat rumah tangga elektrik (izin: Electronics & Household, bukan telko)
+    ("elektronik", re.compile(r"\b(hp|handphone|smartphone|laptop|charger|powerbank|earphone|headset|speaker|kamera|tv|printer|proyektor|projector|monitor|scanner)\b")),
 ]
 
 
 def keluarga_niche(kata):
-    for nama, rx in NICHE_KELUARGA:
-        if rx.search(kata):
-            return nama
-    return None
-LOKAL = re.compile(r"\brp\.? ?\d|\d+ ?(rb|ribu|jt|juta|k)\b|\.co\.id|\.id\b|shopee|tokopedia|lazada|tiktok ?shop|blibli|"
-                   r"wa\.me/62|whatsapp|\bcod\b|ongkir|gratis ongkir|indonesia|jakarta|bandung|surabaya|bali|"
-                   r"jogja|yogyakarta|medan|semarang|makassar|malang|bekasi|tangerang|depok|bogor|official store|checkout", re.I)
+    """Himpunan keluarga niche (bisa >1: "salon mobil" = kecantikan + otomotif); kosong = tak dikenal."""
+    return {nama for nama, rx in NICHE_KELUARGA if rx.search(kata)}
+LOKAL = re.compile(r"\brp\.? ?\d|\d+ ?(rb|ribu|jt|juta)\b|\b(?:harga|cuma|hanya|mulai|diskon|potongan|cashback|voucher|ongkir)\s+\d+ ?k\b|\.co\.id|\.id\b|shopee|tokopedia|lazada|tiktok ?shop|blibli|"
+                   r"wa\.me/62|phone=62|\+62 ?8|\b08\d{2}[ -]?\d{3,4}|\bcod\b|ongkir|gratis ongkir|indonesia|jakarta|bandung|surabaya|bali|"
+                   r"jogja|yogyakarta|medan|semarang|makassar|malang|bekasi|tangerang|depok|bogor|official store|checkout|"
+                   # v1.5.3 kosakata Indonesia sehari-hari (teks tanpa kata fungsi baku: "Bahannya bener nyaman, detail cantik")
+                   r"\b(?:banget|bgt|bener|nyaman|cantik|bahan(?:nya|nnya)?|warna(?:nya)?|harga(?:nya)?|murah|kakak|bunda|yuk|gratis|diskon|terlaris|langsung|sekarang|juga|aja|udah|sudah|bisa|untuk|dengan|dan|yang)\b", re.I)
 AFILIASI = re.compile(r"beli(nya)? ?di ?sini|cek harga|spill|link (produk|shopee|beli)|keranjang kuning|s\.shopee\.co\.id/", re.I)
 ARTIKEL = re.compile(r"\b(read more about|read tips|explore (helpful )?tips|learn (more )?about|"
                      r"discover (helpful )?tips|explore how|tips for|curious about ways)\b", re.I)
@@ -1764,7 +1835,8 @@ STOP_EN = set("the and for with you your our this that are is to of in on it get
               "free all from more off sale today".split())
 STOP_ASING = set("le la les des et pour vous est une que du pas qui sur avec ir un kas ar par "
                  "ang ng mga siya ko sa niya hindi el los las por para con una del que es o não com "
-                 "và của là có không được cho người der die das und nicht mit sie ist".split())
+                 "và của là có không được cho người der die das und nicht mit sie ist "
+                 "että myös mutta joka ovat sekä tämä kuin ole oli ei vuoden aikaa kui see mis ka".split())   # v1.5.3 Finlandia/Estonia (China Meets Finland)
 
 
 def _norm(s):
@@ -1777,17 +1849,149 @@ def pola_kata(w):
     bag = [re.escape(x) for x in re.split(r"[\s\-]+", w.strip()) if x]
     if not bag:
         return None
-    inti = r"(?:[\s\-]+\S+){0,2}?[\s\-]+".join(bag) if len(bag) > 1 else bag[0]
+    # v1.5.3 uji emas: sisipan bukan kata sambung/tanda baca ("sepatu lari dan bola padel", "serum ingredients, rambut" ≠ frasa)
+    inti = r"(?:[\s\-]+(?!(?:dan|atau|serta|hingga|sampai|plus|and|or|with|ke|di)(?![^\W_]))[^\s\-,.;:/&|!?()+]+){0,2}?[\s\-]+".join(bag) if len(bag) > 1 else bag[0]
     return re.compile(r"(?<![^\W_])" + inti + r"(?:nya|ku|mu|lah|kah|-" + bag[-1] + r")?(?![^\W_])")
+
+
+# v1.5.3: padanan SEMPIT — didahulukan dari SINONIM (anak grup tidak mewarisi saudaranya:
+# "sunscreen" ≠ serum/toner, "lipstik" ≠ bedak, "sneakers" ≠ pantofel; "kaos kaki" ≠ "t-shirt kaki")
+SINONIM_KHUSUS = {
+    "sunscreen": ["sun screen", "tabir surya", "sunblock", "sun block", "sunscreen gel", "sun cream"],
+    "lipstik": ["lipstick", "lip cream", "lip matte", "lip tint", "lip stick", "lipcream", "liptint", "lipmatte", "lipgloss", "lip gloss", "lip glaze", "lip glasir", "lip vinyl", "lip velvet", "lip stain", "lipstain", "lipen"],   # v1.5.3 Cléviant "liptint/lipmatte/lipgloss"
+    "sneakers": ["sneaker", "sepatu sneakers", "sepatu sneaker"],
+    "serum wajah": ["serum", "face serum", "serum muka", "facial serum"],
+    "kaos kaki": ["kaus kaki", "socks", "sock"],
+    "sepatu bola": ["sepatu sepak bola", "sepatu futsal", "football boots", "soccer shoes", "sepatu soccer", "sepatu bola anak"],   # v1.5.3 uji emas: Specs (katalog futsal)
+    # v1.5.3 uji emas: varian kipas = kipas angin ("Kipas Mini Turbo", "KIPAS GANTUNG", "Kipas Portable")
+    "kipas angin": ["kipas mini", "kipas portable", "kipas portabel", "kipas dinding", "kipas berdiri", "kipas meja", "kipas gantung",
+                    "kipas tornado", "kipas turbo", "kipas tangan elektrik", "kipas charger", "kipas usb", "stand fan", "wall fan", "desk fan", "ceiling fan", "box fan"],
+    "obat herbal": ["jamu", "kapsul herbal", "herbal alami", "100% herbal", "ramuan herbal", "pengobatan herbal", "herbal cina", "herbal china",
+                    "obat tradisional", "suplemen herbal", "minuman herbal", "obat alami", "herbal original", "produk herbal"],   # v1.5.3
+    # v1.5.4 set ke-3: istilah Inggris & sebutan lazim penjual
+    "botol susu bayi": ["botol susu", "botol bayi", "baby bottle", "feeding bottle", "botol dot", "botol asi", "botol ppsu", "botol anti kolik"],
+    "kaos polo": ["polo shirt", "poloshirt", "kaos kerah", "kaus kerah", "kaus polo", "baju polo", "polo tee", "kaos berkerah", "kemeja polo", "t-shirt polo", "tshirt polo"],
+    "obat nyamuk": ["lotion anti nyamuk", "lotion nyamuk", "losion nyamuk", "losion anti nyamuk", "obat anti nyamuk", "semprotan nyamuk", "semprot nyamuk",
+                    "anti nyamuk bakar", "obat nyamuk bakar", "obat nyamuk elektrik", "pengusir nyamuk", "dupa nyamuk", "bakar nyamuk", "mosquito repellent", "insect repellent", "soffell", "autan", "baygon"],
+    "minyak goreng": ["minyak sayur", "cooking oil", "minyak kelapa sawit", "minyak sawit", "minyakita", "minyak kita", "bimoli", "sunco", "filma", "sania", "sovia", "fortune minyak"],
+    "dashcam": ["dash cam", "dash camera", "dvr mobil", "car dvr", "kamera dashboard", "kamera dashcam", "kamera perekam mobil"],
+    "tas laptop": ["laptop bag", "laptop backpack", "backpack laptop", "ransel laptop", "laptop sleeve", "sleeve laptop", "tas notebook", "tas macbook", "tas kerja laptop"],
+    "kopi diet": ["kopi pelangsing", "kopi slimming", "slimming coffee", "diet coffee", "kopi langsing"],
+    "susu kambing": ["susu etawa", "goat milk", "etawa", "susu kambing etawa"],
+    "vitamin anak": ["multivitamin anak", "suplemen anak", "vitamin si kecil", "kids vitamin"],
+    "mukena": ["telekung", "mukenah", "mukena travel"],
+    "sprei": ["seprai", "seprei", "sprai", "bed cover", "bedcover", "sprei set"],
+    "jaket": ["jacket", "hoodie", "windbreaker", "parka", "bomber", "jaket pria", "jaket wanita"],
+    "kacamata": ["eyewear", "sunglasses", "kacamata hitam", "frame kacamata", "kacamata minus", "kacamata anti radiasi"],
+    "dompet": ["wallet", "card holder", "dompet wanita", "dompet pria"],
+    "tumbler": ["termos", "thermos", "tumbler stainless", "vacuum flask", "botol minum"],
+    "botol minum": ["botol air", "water bottle", "drinking bottle", "botol minum anak", "tumbler"],
+    "rice cooker": ["magic com", "magicom", "magic jar", "penanak nasi", "ricecooker", "mesin penanak nasi", "multicooker"],
+    "blender": ["blender portable", "juicer blender", "mini blender"],
+    "panci": ["cookware", "panci set", "panci presto", "presto"],
+    "kurma": ["kurma ajwa", "kurma sukari", "kurma medjool", "kurma tunisia"],
+    "cokelat": ["coklat", "chocolate", "choco", "dark chocolate"],
+    "power bank": ["powerbank", "power-bank"],
+    "casing hp": ["case hp", "softcase", "soft case", "hardcase", "hard case", "phone case", "case iphone", "custom case", "casing", "case"],   # casing/case polos: wajib konteks HP (KONTEKS_SINONIM)
+    "lampu": ["lampu led", "bohlam", "lampu tidur", "lampu hias", "lamp"],
+    "sepeda": ["bicycle", "sepeda listrik", "sepeda lipat", "seli", "sepeda anak"],
+    "oli": ["pelumas", "oli mesin", "engine oil", "motor oil", "oli motor"],   # v1.5.3 "lubricant" dibuang (Durex Lubricant)
+    "pupuk": ["fertilizer", "pupuk organik", "pupuk cair", "npk"],
+    "makanan kucing": ["cat food", "pakan kucing", "makanan kitten", "dry food kucing", "wet food kucing", "whiskas", "snack kucing", "camilan kucing", "cat treat", "cat treats", "cat strip", "creamy cat", "kitten food", "makanan anabul", "pakan anabul"],   # v1.5.3 Chiyo Creamy Cat Strip
+    "pomade": ["hair wax", "clay wax", "hair clay", "minyak rambut"],
+    "minyak kayu putih": ["kayu putih", "eucalyptus oil", "cajuput"],
+    "jam dinding": ["wall clock"],
+    "baju anak": ["pakaian anak", "setelan anak", "kids wear", "baju anak laki", "baju anak perempuan"],
+    "peninggi badan": ["peninggi", "tinggi badan", "penambah tinggi", "suplemen tinggi badan"],
+    "masker wajah": ["face mask", "sheet mask", "masker muka", "clay mask", "masker organik"],
+    "gorden": ["gordyn", "hordeng", "gorden jendela", "curtain", "tirai", "vitrase"],
+    "stroller": ["kereta dorong", "kereta bayi", "baby stroller"],
+    "bantal": ["pillow", "bantal tidur", "bantal leher"],
+    "tenda": ["tent", "tenda camping", "tenda dome"],
+    "alat pancing": ["joran", "reel pancing", "umpan pancing", "pancing", "fishing rod"],
+    "kamera": ["camera", "action cam", "mirrorless", "dslr"],
+    "speaker": ["speaker bluetooth", "soundbar", "sound system"],
+    "printer": ["printer thermal", "printer inkjet"],
+}
+
+
+# v1.5.4 niche "wadah isi" (tas laptop, tas kamera, rak sepatu, kotak perhiasan): sebutan wadah tambahan di luar SINONIM
+WADAH_NICHE = {"tas": ["slingbag", "sling", "tote", "sienna bag", "messenger bag", "carry bag", "daypack", "briefcase", "bag"],
+               "ransel": ["backpack", "daypack"], "rak": ["shelf", "rack"], "kotak": ["box", "organizer"], "sarung": ["sleeve", "case", "pouch"],
+               "pouch": ["case"], "case": ["casing", "pouch"], "dompet": ["wallet", "pouch"], "tempat": ["wadah", "organizer", "holder"]}
+PENGUBAH_NICHE = {
+    "diet": ["pelangsing", "langsing", "slim", "slimming", "kurus", "berat badan", "turun bb", "fat burner", "rendah kalori"],
+    "anak": ["si kecil", "kids", "balita", "anak-anak"],
+    "wajah": ["muka", "face", "facial"],
+    "bayi": ["baby", "newborn"],
+    "hamil": ["bumil", "ibu hamil", "maternity"],
+    "pria": ["cowok", "laki-laki", "men"],
+    "wanita": ["cewek", "perempuan", "women"],
+}
+
+
+# v1.5.3: pola sinonim per-niche dgn pengecualian ("serum" utk serum wajah ≠ body/hair serum)
+_SERUM_BUKAN = r"(?<!body )(?<!hair )(?<!lip )(?<!eye )(?<!nail )(?<!tubuh )serum(?:nya)?(?!\s+(?:rambut|tubuh|badan|ketiak|bulu|kuku|bibir|body|hair|lip|lash|brow))(?![^\W_])"
+POLA_KHUSUS = {
+    ("serum wajah", "serum"): re.compile(r"(?<![^\W_])" + _SERUM_BUKAN),
+    # v1.5.3 "case" polos: bukan "worst case / in case / use case / case study"
+    ("casing hp", "case"): re.compile(r"(?<!worst )(?<!best )(?<!\bin )(?<!\buse )(?<!\btest )\bcases?(?:nya|-nya)?\b(?! stud)"),
+    # v1.5.3 "150K Optik Pancing" / "Jl. Pancing" = nama tempat (Medan)
+    ("alat pancing", "pancing"): re.compile(r"(?<!optik )(?<!jl )(?<!jl\. )(?<!jalan )(?<!simpang )\bpancing(?:nya)?\b(?! (?:medan|raya|ujung|indah)\b)"),
+    ("casing hp", "casing"): re.compile(r"\bcasing(?:nya|-nya)?\b(?! (?:pc|komputer|cpu|motor|mobil|lampu|pompa|kabel|power|psu)\b)"),
+}
+# v1.5.3 sinonim yg hanya sah bila iklan juga menyebut konteksnya ("case ungu glitter … HP kamu"; bukan "Worst case? … snore")
+KONTEKS_SINONIM = {
+    # v1.5.3 Dove "hairfall control / Bi-Phase Serum + Oil / Rambut 10x lebih kuat" = serum rambut
+    "serum wajah": (re.compile(r"(?s)^(?!.*(rambut|\bhair|ketiak|bulu mata|\blash|kuku|\bnail)).|wajah|muka|kulit|\bface\b|facial|\bskin|glow|cerah|jerawat|\bacne|flek|kusam|pori|aging|kerut|brighten|whiten|niacinamide|retinol|hyaluron|vitamin c|pdrn|centella|dark spot|noda|barrier|kenyal|bekas|serum (emas|wajah|muka)|beauty|kecantikan|cosmetic|kosmetik|makeup"),
+                    {"serum"}),
+    "casing hp": (re.compile(r"\b(hp|handphone|iphone|smartphone|phone|ponsel|samsung|galaxy|oppo|vivo|xiaomi|redmi|realme|infinix|poco|tecno|itel|huawei|magsafe)\b"),
+                  {"casing", "case", "hardcase", "hard case", "soft case"}),   # hardcase = juga koper (Swiss Military suitcase)
+}
+
+
+IDIOM_NICHE = {
+    "dompet": re.compile(r"(?:bikin|buat|membuat|bakal|biar|tanpa|nggak|gak|ga|tidak|ngga|anti)?\s*(?:bikin\s+)?dompet(?:mu|ku|nya)?\s+"
+                         r"(?:tipis|jebol|kebakaran|panas|terkuras|menipis|bolong|kering|aman|tenang|tetap tenang|tetap aman|tebal|tetap tebal|bahagia|senyum|menjerit|nangis|meringis|sehat)\b"
+                         r"|(?:lindungi|selamatkan|penyelamat|isi|menguras|kuras|ramah|bersahabat dengan|hemat|jaga)\s+(?:di\s+)?dompet(?:mu|ku|nya)?\b"
+                         r"|dompet\s+(?:digital|elektronik|serba bisa)\b|#?dompetserbabisa|e-?wallet"),
+    # v1.5.3 blender kecantikan (spons/beauty blender) & software 3D Blender ≠ blender dapur
+    "blender": re.compile(r"(?:one\s+)?take\s+blender|beauty\s*blender|make\s*up\s+blender|blender\s+(?:sponge|spons|puff|brush|makeup|make up)\b"
+                          r"|blender\s+3d|3d\s+blender|(?:belajar|kursus|kelas|tutorial|software|aplikasi)\s+blender\b|blender\s+(?:course|tutorial|animation|animasi|modeling|modelling)\b"
+                          r"|blender\.(?=[a-z]+\.(?:school|academy|courses?|edu)\b)"),
+}
+# v1.5.3 cokelat = WARNA ("Softlens Cokelat Terang", "warna coklat", "cokelat tua") ≠ produk cokelat
+_COKELAT_WARNA = re.compile(r"(?:ber)?warna\s+(?:cokelat|coklat)\b|\b(?:cokelat|coklat)\s+(?:terang|tua|muda|gelap|kemerahan|keemasan|kehitaman|keabuan|natural|almond|hazel|mocca|mocha|kopi|bata|susu muda)\b")
+IDIOM_NICHE["cokelat"] = IDIOM_NICHE["coklat"] = _COKELAT_WARNA
+# v1.5.3 lampu lalu lintas / "lampu hijau" (izin) / CCTV berbentuk bohlam ≠ lampu; sepeda motor / bicycle kick ≠ sepeda
+IDIOM_NICHE["lampu"] = re.compile(r"lampu lalu ?lintas|\bdi lampu merah|lampu merah (?:perempatan|jalan)|(?:dapat|kasih|beri|memberi|mendapat) lampu hijau|lampu hijau dari"
+                                  r"|cctv(?:\s+[a-z]+){0,2}?\s+(?:bohlam\s+)?lampu(?:\s+bohlam)?|lampu\s+(?:sekaligus\s+|plus\s+|\+\s*)?cctv|bohlam\s+lampu\s+cctv")
+IDIOM_NICHE["oli"] = re.compile(r"oli giroud|olivier giroud")
+# v1.5.3 uji emas: "Matras Yoga Foot Massager" (karpet pijat) ≠ kasur; "Gemini Notebook" (fitur HP Samsung) ≠ laptop
+IDIOM_NICHE["kasur"] = IDIOM_NICHE["matras"] = re.compile(r"matras (?:yoga|olahraga|senam|gym|pilates|pijat|refleksi|camping|kemah|tummy time)|yoga ?mat|(?:alas|tikar) yoga")
+IDIOM_NICHE["kipas angin"] = re.compile(r"kipas tangan(?! (?:elektrik|listrik|usb|charger|portable|portabel|mini|cas))|kipas (?:batik|souvenir|suvenir|kertas|bambu|kayu|kain|hias|tradisional|pernikahan)\b")   # kipas suvenir ≠ elektronik
+IDIOM_NICHE["laptop"] = IDIOM_NICHE["notebook"] = re.compile(r"gemini (?:in )?notebook|notebook ?lm|notebook (?:a4|a5|a6|b5|kertas|catatan|spiral)|buku (?:catatan|tulis) notebook")
+IDIOM_NICHE["pupuk"] = re.compile(r"\bdi ?pupuk sejak|pupuk sejak dini|harus di ?pupuk\b|\bdipupuk\b")   # "cinta tanah air harus di pupuk sejak dini"
+# v1.5.3 "tabir surya" kaca mobil (Fawaz "Mobil Sering Kepanasan Saat Parkir? Pakai Tabir Surya Ini!")
+IDIOM_NICHE["sunscreen"] = IDIOM_NICHE["tabir surya"] = re.compile(r"pelindung panas kaca|(?:mobil|kendaraan|kaca)[^\n]{0,60}?tabir surya|tabir surya (?:mobil|kaca|kendaraan)")
+IDIOM_NICHE["kamera"] = IDIOM_NICHE["camera"] = re.compile(r"(?:terekam|tertangkap|terciduk|direkam) (?:kamera|camera|cctv)|(?:di )?depan kamera|kamera tersembunyi|\bon camera\b")   # v1.5.3 clickbait "Terekam Kamera"
+IDIOM_NICHE["tenda"] = re.compile(r"tenda (?:arafah|mina|jamaah|haji)")   # v1.5.3 jejak imani "Live Tur di Tenda Arafah"
+IDIOM_NICHE["sepeda"] = re.compile(r"sepeda motor|bicycle kick|tendangan (?:sepeda|salto)|sepeda gantung")
 
 
 def keluarga_sinonim(kata):
     """Kumpulan sinonim ketat untuk kata kunci (kata itu sendiri selalu di depan)."""
     kata = _norm(kata).strip()
+    if kata in SINONIM_KHUSUS:
+        return [kata] + [w for w in SINONIM_KHUSUS[kata] if w != kata]
     out = [kata]
     for g in SINONIM:
         if kata in g or any(kata == w for w in g):
             out += [w for w in g if w != kata]
+    # v1.5.3: "obat X" → X sendiri juga bukti (pengiklan menulis "batuk", bukan "obat batuk")
+    m_ = re.match(r"(obat|salep|jamu|herbal|ramuan)\s+(.{4,})$", kata)
+    if len(out) == 1 and m_ and m_.group(2) not in ("nyamuk", "kecoa", "tikus", "semut", "lalat", "rayap", "kutu", "serangga", "hama", "jamur", "herbal", "alami", "tradisional", "generik", "kuat", "murah", "asli"):
+        out.append(m_.group(2))
     # kata kunci multi-kata yg mengandung anggota grup (mis. "tas wanita" → bag)
     if len(out) == 1:
         for g in SINONIM:
@@ -1818,7 +2022,7 @@ def _bahasa(teks):
         return "asing"
     if i + e == 0 and a >= 1 and len(kata) >= 15:
         return "asing"
-    if len(re.findall(r"[āēīūčšžļņķģőűñçãõøåæßğışřůěď]", teks)) > 3 and i < 3:
+    if len(re.findall(r"[āēīūčšžļņķģőűñçãõøåæßğışřůěďäöü]", teks)) > 3 and i < 3:
         return "asing"
     return "id" if i >= e else "en"
 
@@ -1839,16 +2043,24 @@ def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
     body = _norm(bersih(_t(snap, "body")))
     ldesc = _norm(bersih(_t(snap, "link_description"))) + " " + _norm(_t(snap, "caption"))
     nama_hal = _norm(o.get("page_name") or snap.get("page_name") or "")
-    link = _norm(unquote(str(snap.get("link_url") or ""))).replace("-", " ").replace("_", " ").replace("/", " ")
+    link = re.sub(r"\{\{[^}]*\}\}", " ", _norm(unquote(str(snap.get("link_url") or "")))).replace("-", " ").replace("_", " ").replace("/", " ")   # v1.5.3 {{ad.id}} ≠ ".id"
     kartu = [_norm(str(c.get("title") or "") + " " + str(c.get("body") or "") + " " + str(c.get("link_description") or ""))
              for c in (snap.get("cards") or []) if isinstance(c, dict)]
     kategori = _norm(" ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or [])))
+    if kata in IDIOM_NICHE:   # v1.5.3 idiom ("bikin dompet jebol") bukan sebutan produk → dihapus sebelum dinilai
+        _id = IDIOM_NICHE[kata]
+        judul, body, ldesc = _id.sub(" ~ ", judul), _id.sub(" ~ ", body), _id.sub(" ~ ", ldesc)
+        kartu = [_id.sub(" ~ ", k) for k in kartu]
+        link = _id.sub(" ~ ", link)
     awal_body = body[:170]
     kuat = " | ".join([judul, ldesc, " ".join(k[:120] for k in kartu), awal_body])
+    _bk = [0, len(judul) + 3]; _bk.append(_bk[1] + len(ldesc) + 3); _bk.append(_bk[2] + len(" ".join(k[:120] for k in kartu)) + 3)   # awal tiap bagian zona kuat (judul Shopee bisa memuat " | ")
     semua = " | ".join([judul, body, ldesc, " ".join(kartu)])
 
     fam = keluarga_sinonim(kata)
-    pol = [(w, pola_kata(w)) for w in fam if pola_kata(w)]
+    pol = [(w, POLA_KHUSUS.get((kata, w)) or pola_kata(w)) for w in fam if pola_kata(w)]
+    if kata in KONTEKS_SINONIM and not KONTEKS_SINONIM[kata][0].search(" | ".join([semua, nama_hal, link])):
+        pol = [p for p in pol if p[0] == kata or p[0] not in KONTEKS_SINONIM[kata][1]]
     pk = pol[0][1]
     skor, cocok = 0, []
 
@@ -1868,7 +2080,9 @@ def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
             skor += 18
             cocok.append(kata + " (sambil lalu)")
     rapat = kata.replace(" ", "")
-    if ada(pk, nama_hal) or (len(rapat) >= 4 and rapat in nama_hal.replace(" ", "")):
+    # v1.5.3 halaman khusus produk lain: "Permen Nafas Segar Teh Hijau" (teh = rasa permen)
+    hal_lain = bool(re.search(r"\b(permen|sabun|lilin)\b", nama_hal) and not re.search(r"permen|sabun|lilin", kata))
+    if (ada(pk, nama_hal) or (len(rapat) >= 4 and rapat in nama_hal.replace(" ", ""))) and not hal_lain:
         skor += 25
         cocok.append(kata + " (nama halaman)")
     if ada(pk, link) or (len(rapat) >= 4 and rapat in link.replace(" ", "")):
@@ -1877,23 +2091,26 @@ def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
     # tagar: #tasbahu #slingbag #rakSepatu → kuat
     tagar = re.findall(r"#([a-z0-9_]{3,40})", semua)
     if tagar and skor < 60:
-        for w in fam:
+        for w in [w_ for w_, _ in pol]:   # v1.5.3 pol (sudah disaring KONTEKS_SINONIM), bukan fam
             r_ = w.replace(" ", "")
-            if any(h == r_ or (len(r_) >= 3 and h.startswith(r_)) or (len(r_) >= 4 and h.endswith(r_)) for h in tagar):
+            if any(h == r_ or (h not in TAGAR_PALSU and ((len(r_) >= 3 and h.startswith(r_)) or
+                                                       (len(r_) >= 4 and h.endswith(r_) and not KEPALA_LAIN.search(h[:-len(r_)] + " ")))) for h in tagar):
                 skor += 45 if w == kata else 40
                 cocok.append("#" + r_ + " (tagar)")
                 break
     # 2) sinonim ketat (hanya bila kata persis lemah)
     if skor < 60:
-        for w, rx in pol[1:]:
-            if ada(rx, kuat) or ada(rx, nama_hal):
-                skor += 45
-                cocok.append(w + " (sinonim)")
-                break
-            if len(rx.findall(semua)) >= 2:
-                skor += 30
-                cocok.append(w + " (sinonim ×2)")
-                break
+        # v1.5.3: zona kuat diperiksa utk SEMUA sinonim dulu (dulu "asam lambung ×2" menghentikan loop sebelum judul "Lambung …")
+        hit_ = next((w for w, rx in pol[1:] if ada(rx, kuat) or ada(rx, nama_hal)), None)
+        if hit_:
+            skor += 45
+            cocok.append(hit_ + " (sinonim)")
+        else:
+            for w, rx in pol[1:]:
+                if len(rx.findall(semua)) >= 2:
+                    skor += 30
+                    cocok.append(w + " (sinonim ×2)")
+                    break
     # 2b) senada (kategori tetangga) — hanya mengangkat sampai Longgar, tidak pernah Relevan
     if skor < 15:
         for f in keluarga:
@@ -1904,38 +2121,121 @@ def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
                     skor = 20
                     cocok.append(hit + " (senada)")
                     break
+    # 2c) v1.5.3 niche "inti + pengubah" (kopi diet, vitamin anak, serum wajah): komponen boleh terpisah
+    #     ("Curvie Coffee" + "minuman diet…"); frasa baku (jam tangan, rice cooker, rak sepatu) tidak ikut.
+    tok_ = kata.split()
+    if len(tok_) == 2 and skor < 40 and tok_[1] in PENGUBAH_NICHE:
+        # inti mewarisi grup hanya bila ia KEPALA grup (kopi → coffee); "serum" ∉ kepala → tidak mewarisi skincare/krim
+        h_fam = keluarga_sinonim(tok_[0]) if any(g[0] == tok_[0] for g in SINONIM) else [tok_[0]]
+        h_rx = [pola_kata(w) for w in h_fam if " " not in w]
+        m_rx = [pola_kata(w) for w in [tok_[1]] + PENGUBAH_NICHE[tok_[1]]]
+        h_k = any(ada(r, kuat) or ada(r, nama_hal) for r in h_rx)
+        m_k = any(ada(r, kuat) or ada(r, nama_hal) for r in m_rx)
+        m_n = sum(len(r.findall(semua)) for r in m_rx)
+        h_n = sum(len(r.findall(semua)) for r in h_rx)
+        dekat_ = False
+        if h_n and m_n and (h_k or m_k):
+            ph_ = [m.start() for r in h_rx for m in r.finditer(semua)]
+            pm_ = [m.start() for r in m_rx for m in r.finditer(semua)]
+            dekat_ = any(abs(p - q) <= 50 and not re.search(r"[.!?\n]", semua[min(p, q):max(p, q)]) for p in ph_ for q in pm_)
+        if dekat_:
+            skor = max(skor, 40)
+            cocok.append(f"komponen: {tok_[0]} + {tok_[1]}")
+        elif h_k and m_k and skor < 20:
+            skor = 20
+            cocok.append(f"komponen lepas: {tok_[0]} + {tok_[1]}")
+    # 2d) v1.5.4 niche WADAH + ISI ("tas laptop"): wadah disebut + isi dgn penanda muat ("Slingbag … muat laptop 14 inch",
+    #     "Laptop & Tumbler Fit", "kompartemen laptop") = produk niche walau frasanya tidak menempel
+    muat_ok = False
+    if len(tok_) == 2 and skor < 60 and tok_[0] in WADAH_NICHE:
+        w_rx = [pola_kata(w) for w in keluarga_sinonim(tok_[0]) + WADAH_NICHE[tok_[0]] if pola_kata(w)]
+        isi_ = re.escape(tok_[1])
+        muat_rx = re.compile(r"\b(muat|memuat|cukup|masuk|fit|kompartemen|slot|sekat|ruang|kantong|saku|sleeve)\b[^.!?\n|,/]{0,12}\b" + isi_ + r"\b|"
+                             r"\b" + isi_ + r"\b(?:\s*(?:&|dan|/|\+)\s*\w+)?\s+(fit|muat|masuk|aman)\b|\b" + isi_ + r"\s+(sampai|hingga|up to)?\s*\d{2}(?:[.,]\d)?\s*(inch|inci|\"|”|in\b)")
+        wadah_ada = any(ada(r, kuat) or ada(r, nama_hal) for r in w_rx) or re.search(r"\bbags?\b|luggage|tas\b", kategori)
+        if wadah_ada and muat_rx.search(semua):
+            skor = max(skor, 40)
+            muat_ok = True
+            cocok.append(f"wadah + isi: {tok_[0]} muat {tok_[1]}")
+    # 2e) v1.5.4 judul DAFTAR HARGA niche ("DAFTAR HARGA MINYAK GORENG Ukuran 2L…") = penjual niche (grosir/sembako)
+    _dh = re.compile(r"\b(daftar|list|price ?list|info) harga(?:\s+(?:promo|grosir|terbaru|spesial|murah|hari ini))?[^a-z0-9]{0,8}$")
+    if skor < 40 and any(_dh.search(semua[max(0, m.start() - 40):m.start()]) for m in pk.finditer(semua)):
+        skor = max(skor, 45)
+        cocok.append(kata + " (judul daftar harga)")
     # 3) multi-kata: kata-katanya ada tapi tidak berdekatan → sebutan lepas
     token = [t for t in re.split(r"\s+", kata) if len(t) > 1]
     if len(token) >= 2 and skor < 40:
         if all(ada(pola_kata(t), semua) for t in token):
             cocok.append("kata terpisah (bukan frasa)")
     # 4) katalog campuran (DPA): mayoritas kartu bukan niche
-    if len(kartu) >= 3:
-        nyambung = sum(1 for k in kartu if any(ada(rx, k) for _, rx in pol))
-        if nyambung / len(kartu) < 0.3:
-            skor = min(skor, 12)
-            cocok.append("katalog campuran: %d/%d kartu nyambung" % (nyambung, len(kartu)))
+    # v1.5.3: kartu tanpa teks (carousel gambar saja) tidak dihitung
+    #          — hanya bila niche sudah terbukti di nama halaman/tautan/judul (kartu kosong ikut menyaring derau)
+    _bukti_u = ada(pk, nama_hal) or ada(pk, link) or ada(pk, judul) or ada(pk, ldesc) or ada(pk, awal_body)   # v1.5.3 uji emas: Sporti.ID "…pengen sepatu bola original" + 3 kartu kosong
+    _bukti_k = _bukti_u or any(ada(rx_, nama_hal) or ada(rx_, judul) for _, rx_ in pol[1:])   # v1.5.3 uji emas: sinonim di judul/nama halaman juga bukti ("Catto Cat Food")
+    kartu_t = [k for k in kartu if len(re.sub(r"[\W_]", "", k)) >= 4] if _bukti_k else kartu   # v1.5.3 + pembuka body ("Susu Peninggi Badan Anak" + 3 kartu kosong)
+    # v1.5.3: kartu kembar / kartu = nama halaman bukan "katalog" ("Etafit.id" ×5, "Herbal Solusi Gula Darah" ×4)
+    #          — sama seperti kartu kosong: HANYA bila niche sudah terbukti di nama halaman/tautan/judul/pembuka body
+    if kartu_t is not kartu:
+        _nh = re.sub(r"\W+", " ", nama_hal).strip()
+        kartu_t = list(dict.fromkeys(k.strip() for k in kartu_t if re.sub(r"\W+", " ", k).strip() != _nh))
+        # v1.5.3 uji emas: carousel SLOGAN ("Muat Dalam Box", "50.000+ Ulasan", "FREE Bantal") bukan daftar produk
+        if _bukti_u:
+            kartu_t = [k for k in kartu_t if not (len(re.findall(r"[a-z]{2,}", k)) <= 3 and len(k) <= 25)]
+    if len(kartu_t) >= 3:
+        nyambung = sum(1 for k in kartu_t if any(ada(rx, k) for _, rx in pol))
+        if 0.3 <= nyambung / len(kartu_t) < 0.5 and skor >= 40 and not any(ada(rx, nama_hal) for _, rx in pol):   # "Elzatta Hijab" utk kerudung
+            # v1.5.3 uji emas: katalog campur dgn niche MINORITAS (Fantech 2/5 mouse, Bullion 2/5 rak piring, Jiniso 2/5 hijab) → kerabat
+            skor = 30
+            cocok.append("katalog campur: niche minoritas %d/%d kartu" % (nyambung, len(kartu_t)))
+        if nyambung / len(kartu_t) < 0.3:
+            # v1.5.3: kartu senada (toko "sepatu" utk niche "sneakers") = katalog tetangga, bukan campuran → maks Longgar
+            _snd = [pola_kata(w) for f in keluarga if any(w in kata for w in f if len(w) > 2) for w in f if len(w) > 3 and w not in kata]
+            n_snd = sum(1 for k in kartu_t if any(ada(rx, k) for _, rx in pol) or any(ada(rx, k) for rx in _snd))
+            if n_snd / len(kartu_t) >= 0.5 and skor >= 15:
+                skor = min(skor, 30)
+                cocok.append("katalog senada: %d/%d kartu" % (n_snd, len(kartu_t)))
+            else:
+                skor = min(skor, 12)
+                cocok.append("katalog campuran: %d/%d kartu nyambung" % (nyambung, len(kartu_t)))
     # 5) derau keras
     hib_query = re.search(r"novel|buku|drama|film|komik|game", kata)
-    if not hib_query and (NOVEL_TEKS.search(semua) or (NOVEL_HAL.search(nama_hal) and not ada(pk, kuat))):
+    narasi = bool(EKSPLISIT.search(semua)) or (len(DIALOG.findall(_t(snap, "body"))) >= 2 and re.search(r"\b(aku|gua|gue|ku|dia|ia|nona|tuan)\b", body) and not LOKAL.search(semua))
+    if not hib_query and (NOVEL_TEKS.search(semua) or narasi or NOVEL_APP.search(str(snap.get("link_url") or "")) or (NOVEL_HAL.search(nama_hal) and not ada(pk, kuat))):
         skor = min(skor, 5)
         cocok.append("derau: novel/drama")
-    elif ARTIKEL.search(judul + " " + body[:200]) and not ada(pk, nama_hal):
+    elif (ARTIKEL.search(judul + " " + body[:200]) or re.search(r"/(?:opini|berita|artikel)/", str(snap.get("link_url") or ""))) and not ada(pk, nama_hal):   # v1.5.3 giring.id/opini/
         skor = min(skor, 10)
         cocok.append("derau: iklan artikel")
     bhs = _bahasa(semua + " " + nama_hal)
+    if bhs != "asing" and _bahasa(body) == "asing" and not ID_KUAT.search(semua + " " + link + " " + nama_hal):
+        bhs = "asing"   # v1.5.3 badan Turki (idefix) diencerkan judul kartu Inggris/merek ("Vitamin B12 Tablet")
     if bhs == "asing":
         skor = min(skor, 8)
         cocok.append("derau: bahasa asing")
-    elif bhs in ("en", "pendek") and skor >= 40 and not LOKAL.search(semua + " " + link + " " + nama_hal):
+    elif bhs in ("en", "pendek") and skor >= 40 and not (ID_KUAT.search(semua + " " + link + " " + nama_hal) or
+                                                       (len(body) <= 3000 and LOKAL.search(re.sub(r"\bcheckout\w*", " ", semua + " " + link + " " + nama_hal)))):
         skor = 38
         cocok.append("pasar luar? (tanpa tanda Indonesia)")
+    # v1.5.3: teks Inggris tanpa tanda Indonesia & bukti HANYA sinonim/senada (jacket/hoodie FARFETCH, KUIU, cerita panjang) → lepas
+    bukti_s = [c for c in cocok if not any(s_ in c for s_ in ("derau", "katalog", "sambil lalu", "kata terpisah", "pasar luar"))]
+    if bhs == "en" and skor >= 15 and bukti_s and all("(sinonim" in c or "(senada)" in c for c in bukti_s) \
+            and not (ID_KUAT.search(semua + " " + link + " " + nama_hal) or
+                     (len(body) <= 3000 and LOKAL.search(re.sub(r"\bcheckout\w*", " ", semua + " " + link + " " + nama_hal)))):
+        skor = min(skor, 12)
+        cocok.append("luar: hanya sinonim Inggris")
+    if skor >= 15 and MALAYSIA.search(semua + " " + nama_hal) and not ID_KUAT.search(semua + " " + link + " " + nama_hal):
+        skor = min(skor, 30)
+        cocok.append("pasar luar (Malaysia)")
+    if skor >= 15 and re.search(r"[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af\u0e00-\u0e7f\u0400-\u04ff]", o.get("page_name") or snap.get("page_name") or "") \
+            and not ID_KUAT.search(semua + " " + link):
+        skor = min(skor, 30)
+        cocok.append("pasar luar (nama halaman asing)")
     if nama_hal.strip() in PLATFORM:
         afiliasi = nama_hal.strip() == "shopee" and AFILIASI.search(semua) and skor >= 40 and not PLATFORM_GENERIK.search(semua)
         if not afiliasi:
             skor = min(skor, 10)
             cocok.append("derau: iklan platform")
-    if POLITIK.search(nama_hal + " " + semua) and not re.search(r"partai|politik|caleg", kata):
+    if (POLITIK.search(nama_hal + " " + semua) or re.search(r"politician|politikus|political (?:party|candidate)|partai politik|government official|government organi[sz]ation|pejabat pemerintah", kategori)) and not re.search(r"partai|politik|caleg", kata):
         skor = min(skor, 10)
         cocok.append("derau: politik")
     # penyangkal: semua sebutan kuat didahului "bukan/tanpa/anti" → bukan subjek iklan
@@ -1944,78 +2244,389 @@ def _relevansi_v3(kata, snap, o, b=None, bersih=lambda s: s, keluarga=()):
         skor = min(skor, 18)
         cocok.append("disangkal (bukan/tanpa)")
     # 6) "produk, bukan bahan" (warisan v2.3)
+    _AWALAN_BUKAN = r"(?<!mandi )(?<!air )(?<!tepung )(?<!bedak )(?<!sereal )(?<!cuka )(?<!scrub )"
     if len(token) == 1 and skor >= 15 and not any("(sinonim)" in c or "(nama halaman)" in c for c in cocok):
         k = re.escape(kata)
-        bahan = (re.search(r"\b(dengan|plus|mengandung|berbahan|ekstrak|extract|diperkaya|topping|varian|rasa)\b[^.?!]{0,45}\b" + k + r"\b", semua)
+        pemicu_ = r"dengan|plus|mengandung|berbahan|ekstrak|extract|diperkaya|topping|varian|rasa"
+        bahan = (re.search(r"\b(" + pemicu_ + r")\b[^.?!\n|\u2600-\u27bf\U0001f300-\U0001faff]{0,45}\b" + k + r"\b", semua)   # v1.5.4 emoji/baris baru = batas klausa
+
                  or re.search(r"\b(ubi|singkong|kentang|roti|kue|donat|bakar|goreng|ayam|ikan|es|jus|teh|susu|yoghurt|granola|cokelat|coklat|permen|keripik|snack|biskuit|mie|sambal|saus|sabun|shampoo|lotion|serum|masker|lulur)\s+" + k + r"\b", semua))
         produk = (ada(pk, nama_hal) or ada(pk, link) or ada(pk, judul)
+                  or any(re.match(r"^\W*(?:[^\W_]+\W+){0,2}" + _AWALAN_BUKAN + k + r"\b", t_) for t_ in (body, judul))   # v1.5.3 uji emas "Kasur INTHEBOX favorit…"
                   or re.search(r"\b(minum|konsumsi|diminum|pakai|beli|order|pesan|checkout|ready|restock|manfaat|khasiat|ampuh)\b[^.?!]{0,40}\b" + k + r"\b", semua)
-                  or re.search(r"\b" + k + r"\s+(asli|murni|hutan|super|premium|botol|gram|kg|ml|herbal|original|ori|termurah|terlaris)\b", semua))
+                  or re.search(r"\b" + k + r"\s+(asli|murni|hutan|super|premium|botol|gram|kg|ml|herbal|original|ori|termurah|terlaris|pintar|canggih|terbaru|andalan|favorit)\b", semua)
+                  or re.search(r"(?:^|\n)[^\w\n]{0,6}" + k + r"\b(?!\s+(rasa|aroma|varian)\b)", semua)   # v1.5.4 "…70mai A410 🚗📹\nDashcam pintar…" = baris diawali niche
+                  # v1.5.3: "dengan mukena yang nyaman dari …" / "dengan Mukena cantik dari Alluna" → X = barang yg dijual
+                  or re.search(r"\b(dengan|pakai)\s+" + k + r"\s+(yang\s+(nyaman|cantik|adem|lembut|elegan|berkualitas|terbaik|premium)|(cantik|nyaman|adem|elegan|premium|terbaik)\s+dari)\b", semua))
+        # v1.5.3 uji emas (beras): SEMUA sebutan = bahan dlm DAFTAR ("Perpaduan oat, jahe, … dan beras ketan", "kandungan … seperti beras merah",
+        #          "MANDI BERAS") → bukan produk niche walau di zona kuat. Tanpa penanda daftar = kepemilikan ("komposisi lengkap suplemen",
+        #          "kandungannya hanya susu", "Perpaduan Helm dengan desain retro") → tetap produk
+        _ms6 = list(re.finditer(r"\b" + k + r"\b", semua))
+        if not bahan and _ms6 and all(re.search(r"\b(perpaduan|kandungan\w*|komposisi|terbuat dari|berbahan dasar|campuran|formula|diformulasikan|bahan alami|bahan utama)\b(?=[^.?!|]{0,80}$)[^.?!|]*?(?:\b(?:seperti|yaitu|yakni|antara lain|berupa|meliputi|dan|serta|dari)\b|[:,&+])[^.?!|]*$", semua[max(0, m.start() - 90):m.start()])
+                                      or re.search(r"\b(mandi|air|tepung|bedak|sereal|cuka|scrub)\s+$", semua[max(0, m.start() - 12):m.start()]) for m in _ms6):
+            bahan = True
         if bahan and not produk:
             skor = min(skor, 12)
             cocok.append(kata + " sekadar bahan/varian")
+    # 6b) v1.5.3 VARIETAS/olahan: semua sebutan (termasuk nama halaman) = "pisang madu", "mangga madu", "ayam madu" → bukan niche
+    if len(token) == 1 and skor >= 15:
+        zona = kuat + " | " + nama_hal + " | " + judul
+        ms_v = list(pk.finditer(zona))
+        _kiri = lambda m: zona[max(0, m.start() - 14):m.start()]
+        if ms_v and any(VARIETAS.search(_kiri(m)) for m in ms_v) and \
+                all(VARIETAS.search(_kiri(m)) or re.search(r"\b(seperti|bagai|bagaikan|kayak|semanis|selembut|ala)\s+$", _kiri(m)) for m in ms_v):
+            v = next(VARIETAS.search(_kiri(m)).group(1) for m in ms_v if VARIETAS.search(_kiri(m)))
+            skor = min(skor, 12)
+            cocok.append(f"varietas/olahan lain ({v} {kata})")
+    # 6c) v1.5.3 bukti hanya dari SINONIM AMBIGU tanpa kata konteks niche ("Orangutan Survival Foundation", "diaper bag", smartwatch "android")
+    kuat_bukti = [c for c in cocok if not any(s_ in c for s_ in ("sambil lalu", "kata terpisah", "derau", "katalog", "disangkal", "sekadar"))]
+    if skor >= 15 and kuat_bukti:
+        amb = [c for c in kuat_bukti if any(re.match(r"#?" + w + r"\b", c) for w in SINONIM_AMBIGU)]
+        if len(amb) == len(kuat_bukti):
+            w0 = next(w for w in SINONIM_AMBIGU if re.match(r"#?" + w + r"\b", amb[0]))
+            if not SINONIM_AMBIGU[w0].search(semua + " " + nama_hal):
+                skor = min(skor, 12)
+                cocok.append(f"sinonim ambigu tanpa konteks ({w0})")
+    # 6d) v1.5.3 kata niche yg sering disebut sambil lalu ("tanpa pegang HP", "HP lega") wajib konteks produk
+    if skor >= 40 and kata in KATA_KONTEKS and not KATA_KONTEKS[kata].search(semua + " " + nama_hal):
+        skor = 30
+        cocok.append("kata umum tanpa konteks produk")
+    # 6e) v1.5.3 "HP" = merek laptop/printer (HP OmniBook, LaserJet), bukan handphone
+    if skor >= 15 and kata == "hp" and re.search(r"\b(omnibook|pavilion|victus|envy|elitebook|probook|zbook|spectre|deskjet|laserjet|officejet|smart tank|printer|omen|chromebook|laptop|notebook)\b", semua) \
+            and not re.search(r"\b(handphone|smartphone|ponsel|android|iphone|samsung|xiaomi|oppo|vivo|infinix|realme)\b", semua):
+        skor = min(skor, 12)
+        cocok.append("merek HP (laptop/printer)")
     # 7) v1.5.2 kata kunci hanya KETERANGAN produk lain ("Helm Hijab") di zona kuat & bukan nama halaman → maks Longgar
     if skor >= 40 and not ada(pk, nama_hal):
         for w, rx in pol:   # kata utama + sinonim (coffee/shoe/bag ikut dicek)
             hit_ket = None
             for m in rx.finditer(kuat):
+                # v1.5.3 sudah ada sebutan POLOS lebih awal di segmen yg sama ("Tas Wanita … Rantai Tas Bahu") → yg ini cuma kata kunci tambahan
+                _seg0 = max(b_ for b_ in _bk if b_ <= m.start())
+                _polos_awal = any(not re.search(r"\b(di|ke|dalam|pada|untuk|utk)\s+$", kuat[max(0, m0.start() - 8):m0.start()])
+                                  and not KEPALA_LAIN.search(kuat[max(0, m0.start() - 20):m0.start()])
+                                  for _w0, rx0 in pol for m0 in rx0.finditer(kuat[:max(0, m.start() - 1)]) if m0.start() >= _seg0)
                 mk = KEPALA_LAIN.search(kuat[max(0, m.start() - 20):m.start()])
-                if mk and not re.search(r"\b" + re.escape(mk.group(1)) + r"\b", kata):
+                if mk and _polos_awal:
+                    mk = None
+                if mk and mk.group(1) in ("pemutih", "whitening") and "kecantikan" in keluarga_niche(kata):
+                    mk = None   # v1.5.3 "Set Pemutih Tabir Surya" = sunscreen pencerah (produk niche itu sendiri)
+                if not mk:   # v1.5.3 "Kotak Penyimpanan Pakaian, Kosmetik & Aksesoris" → wadah utk daftar barang
+                    mk = KEPALA_DAFTAR.search(kuat[max(0, m.start() - 45):m.start()])
+                if mk and re.search(r"\b(free|gratis|bonus|freebie)\b[^.!?\n]{0,20}$", kuat[max(0, m.start() - 45):m.start()]):
+                    mk = None   # v1.5.3 "Free: Box kacamata" = bonus pelengkap, bukan produk lain
+                if mk and not any(re.search(r"\b" + re.escape(mk.group(1)) + r"\b", w2) for w2 in [kata] + [p_[0] for p_ in pol]):
                     hit_ket = f"{mk.group(1)} {w}"
                     break
                 me = EKOR_LAIN.search(kuat[m.end():m.end() + 16])
-                if me and not re.search(r"\b" + re.escape(me.group(1)) + r"\b", kata):
+                if me and me.group(1) == "kaki" and w not in ("kaos", "kaus"):
+                    me = None   # "kaos kaki" ≠ kaos, tapi "selop kaki" tetap sandal
+                if me and me.group(1) in ("mobil", "mobilmu", "motor", "motormu", "otomotif") and "otomotif" in keluarga_niche(kata):
+                    me = None   # v1.5.3 "Oli Mobil™ jaga mesin" / "helm motor" = produk otomotif itu sendiri
+                if me and not any(re.search(r"\b" + re.escape(me.group(1)) + r"\b", w2) for w2 in [kata] + [p_[0] for p_ in pol]):
                     hit_ket = f"{w} {me.group(1)}"
                     break
             if hit_ket:
                 skor = 30
                 cocok.append(f"keterangan produk lain ({hit_ket})")
                 break
+    # 7f) v1.5.3 niche cuma muncul sbg "ruam popok"/"diaper rash" → krim perawatan, bukan popoknya (Kinderen, Expert Care)
+    if skor >= 40 and not any(ada(rx, nama_hal) for _, rx in pol):
+        sisa_ = 0; ruam_ = 0
+        for w, rx in pol:
+            for m in rx.finditer(semua):
+                if re.search(r"\b(ruam|lecet|iritasi)\s+$", semua[max(0, m.start() - 10):m.start()]) or re.match(r"^\s*rash", semua[m.end():m.end() + 8]):
+                    ruam_ += 1
+                else:
+                    sisa_ += 1
+        if ruam_ and not sisa_:
+            skor = 30
+            cocok.append("keterangan produk lain (perawatan ruam)")
+    # 7g) v1.5.3 niche cuma disebut sbg TEMPAT PEMAKAIAN ("Cocok buat: meja kerja", "taruh di kamar & meja") → produk lain
+    if skor >= 40 and not any(ada(rx, nama_hal) or ada(rx, link) or ada(rx, judul) for _, rx in pol):
+        n_lok = n_lain = 0
+        for w, rx in pol:
+            for m in rx.finditer(semua):
+                kiri = semua[max(0, m.start() - 70):m.start()]
+                if kiri.endswith("#"):
+                    n_lain += 1; continue
+                if re.search(r"\b(rahasia|kunci|solusi|jawaban|caranya|resep)\w*\s+(?:ada\s+|terletak\s+)?di\s+$", kiri):
+                    n_lain += 1; continue   # v1.5.3 "Rahasianya ada di Pupuk Pembungaan" = produk itu sendiri
+                if re.match(r"^[^.!?\n#]{0,30}\bini\b", semua[m.end():m.end() + 36]):
+                    n_lain += 1; continue   # v1.5.3 "sandaran … di casing pink polkadot ini" = produk itu sendiri
+                if re.search(r"\b(di|di atas|dari atas|taruh di|simpan di|letakkan di|pasang di|pajang di)\s+(?:[a-z]+\s*(?:&|dan|/)\s*)?$", kiri) or \
+                   (re.search(r"\b(cocok|pas|ideal|sempurna) (buat|untuk|di|dipakai di|digunakan di)\s*:[^.!?#]{0,45}$", kiri.replace("\n", " ")) or
+                    re.search(r"\b(cocok|pas|ideal|sempurna) (buat|untuk|di|dipakai di|digunakan di)\b[^.!?#:|\n\u2600-\u27bf\U0001f300-\U0001faff]{0,45}$", kiri)) and not re.search(r"\brp\.? ?\d", kiri[-45:]):
+                    n_lok += 1
+                else:
+                    n_lain += 1
+        if n_lok and not n_lain:
+            skor = 30
+            cocok.append("keterangan produk lain (tempat pemakaian)")
+    # 7h) v1.5.3 keterangan di SELURUH teks: ≥ separuh sebutan didahului produk lain ("Popok Bayi Celana", "popok celana bayi")
+    if skor >= 40 and not any((ada(rx, nama_hal) and not hal_lain) or ada(rx, judul) for _, rx in pol):
+        n_k = n_s = 0
+        for m in pk.finditer(semua):
+            kiri = semua[max(0, m.start() - 30):m.start()]
+            mk = KEPALA_LAIN.search(kiri) or re.search(KEPALA_LAIN.pattern[:-4] + r"\s+(bayi|anak|dewasa|wanita|pria|cowok|cewek|mini|kecil|besar|lipat)\s+$", kiri)
+            if mk and re.search(r"(/|\bper|\bisi \d+ ?\w*)\s*$", kiri[:mk.start()]):
+                mk = None   # v1.5.4 daftar grosir "Rp50.000/dus\n\nMinyak Goreng" = satuan harga, bukan "dus minyak goreng"
+            if mk and not re.search(r"\b" + re.escape(mk.group(1)) + r"\b", kata):
+                # "Free: Box kacamata", "gratis box + lap" = bonus, bukan produk lain yg dijual
+                if not re.search(r"\b(free|gratis|bonus|freebie)\b[^.!?\n]{0,20}$", kiri):
+                    n_k += 1
+            else:
+                n_s += 1
+        if n_k and n_k >= n_s and (n_k >= 2 or n_s == 0):
+            skor = 30
+            cocok.append("keterangan produk lain (seluruh teks)")
+    # 7k) v1.5.3 judul produk diawali KEPALA lain & niche cuma kegunaan ("Bros Korea Premium … Kebaya Hijab Jilbab Jas")
+    _jdl = judul or (re.split(r"\n", _t(snap, "body").strip(), 1)[0][:120].lower() if _t(snap, "body") else "")   # judul kosong → baris pertama body
+    if skor >= 40 and _jdl:
+        _kj = KEPALA_LAIN.search(re.sub(r"^(jual|promo|new|ready|\W)+\s*", "", _jdl).split(" ")[0] + " ")
+        _sisa = body.replace(_norm(bersih(_jdl)), " ") if not judul else body.replace(judul, " ")
+        _jk = [_norm(str(c.get("title") or "")) for c in (snap.get("cards") or []) if isinstance(c, dict) and str(c.get("title") or "").strip()]
+        _kartu_niche = (len(_jk) >= 2 and 2 * sum(1 for k in _jk if any(ada(rx, k) for _, rx in pol)) >= len(_jk)) \
+            or any(rx.match(k.lstrip()) for k in _jk for _, rx in pol)   # kartu "Earphone | Handsfree … IDR17,000" = produk niche   # v1.5.3 Kucadi "Meja … dan Kursi …" + 3 kartu "Kursi Gaming"
+        _kj_milik = _kj and any(re.match(r"\s*" + re.escape(_kj.group(1)) + r"\b", _jdl[m.end():]) for _, rx in pol for m in rx.finditer(_jdl))   # v1.5.3 "Cuci muka … sabun cuci muka" → "cuci" deskriptor niche
+        if _kj and _kj.start() == 0 and not re.search(r"\b" + re.escape(_kj.group(1)) + r"\b", kata) and not _kartu_niche and not _kj_milik \
+                and not any(ada(rx, nama_hal) or ada(rx, _sisa) for _, rx in pol) \
+                and not any(rx.match(_jdl.lstrip()) for _, rx in pol):
+            skor = 30
+            cocok.append("keterangan produk lain (%s …)" % _kj.group(1))
+    # 7m) v1.5.3 niche HANYA di deskripsi tautan, body bicara lain & slug tautan = produk lain (Artra "Mukenah Lipat Viral" → /page/buku-parenting)
+    if skor >= 40 and len(body.strip()) >= 20 and any(ada(rx, ldesc) for _, rx in pol) \
+            and not any(ada(rx, x_) for _, rx in pol for x_ in (judul, body, " ".join(kartu), nama_hal)):
+        _path = re.sub(r"^\w+://[^/]+", "", str(snap.get("link_url") or "").lower().split("?")[0])
+        _slug = [w_ for w_ in re.findall(r"[a-z]{4,}", " ".join(sg for sg in _path.split("/") if re.search(r"[a-z]{3,}[-_][a-z]{3,}", sg))) if w_ not in ("page", "product", "products", "shop", "item", "index", "html", "home", "promo", "order", "checkout", "landing", "universal", "link", "indonesia", "official", "store", "pages", "channel", "collections") and w_ not in nama_hal]   # slug = nama toko (espoir_indonesia) ≠ produk lain
+        if len(_slug) >= 2 and not any(ada(rx, " ".join(_slug)) for _, rx in pol):
+            skor = 30
+            cocok.append("cuma di deskripsi tautan (tujuan: %s)" % "-".join(_slug[:3]))
+    # 7l) v1.5.3 niche cuma OBJEK PEMBERSIHAN alat/jasa ("Hydro Vacuum membersihkan … kasur, gorden, bantal")
+    if skor >= 40 and not re.search(r"bersih|vacu|vakum|cuci|sedot", kata):
+        _ms = list(pk.finditer(semua))
+        _cl = re.compile(r"\b(membersihkan|bersihkan|bersihin|dibersihkan|menyedot|sedot|vacuu?m(?!\s*(flask|insulated|bottle|tumbler|cup|mug|termos|thermos|seal|sealer|storage))|vakum(?!\s*(termos|botol))|mencuci|cuci|nyuci)\b[^.!?\n]{0,70}$")   # v1.5.3 "Vacuum Flask" = termos, bukan alat pembersih
+        if _ms and all(_cl.search(semua[max(0, m.start() - 90):m.start()]) and semua[max(0, m.start() - 1):m.start()] != "#" for m in _ms):   # tagar ≠ objek
+            skor = 30
+            cocok.append("keterangan produk lain (objek pembersihan)")
+    # 7j) v1.5.3 niche cuma BENTUK/TEMA aksesori: "Gantungan kunci freshcare fresh care kayu putih", "keychain botol kecap"
+    if skor >= 40 and not re.search(r"keychain|gantungan|ganci|charm|miniatur|replika|squishy", kata):
+        _mini = re.compile(r"\b(keychain|gantungan kunci|ganci|bag charm|miniatur|replika|squishy)\b[^.!?\n|]{0,70}$")
+        _ms = list(pk.finditer(kuat)) or [m for _, rx in pol[1:] for m in rx.finditer(kuat)]
+        if _ms and all(_mini.search(kuat[max(0, m.start() - 80):m.start()]) for m in _ms):
+            skor = 30
+            cocok.append("keterangan produk lain (aksesori/miniatur)")
+    # 7t) v1.5.3 TINDAKAN klinik (IPL/laser/peeling/booking treatment) di halaman klinik/estetika = jasa, bukan produk niche → maks Longgar
+    if skor >= 40 and not re.search(r"klinik|clinic|laser|facial|treatment|perawatan|estetik|spa\b|kecantikan|cantik|beauty", kata):
+        _tind = re.compile(r"\b(ipl|laser|peeling|chemical peel|microneedling|dermapen|hifu|botox|filler|injeksi|infus whitening|"
+                           r"booking treatment|booking perawatan|sesi tindakan|\d+ sesi|tindakan (dokter|medis)|treatment (di|ke) klinik|promo treatment|harga treatment)\b")
+        if _tind.search(semua) and (re.search(r"klinik|clinic|estetika|aesthetic|skin ?(center|care center)|dermatolog", nama_hal + " " + kategori)
+                                    or re.search(r"\b(klinik|clinic)\b", semua)):
+            skor = 30
+            cocok.append("jasa tindakan klinik")
+    # 7r) v1.5.3 niche HANYA sbg VARIAN RASA produk lain ("tablet kunyah … rasa coklat", "4 varian: Coklat, Cheese, Strawberry")
+    if skor >= 40 and not any(ada(rx, nama_hal) for _, rx in pol):
+        _rasa = re.compile(r"\b(rasa|varian|varians|aroma|flavou?rs?|isian|topping|pilihan rasa|varian rasa)\b[^.!?\n#]{0,30}$")
+        _mr = [m for _, rx in pol for m in rx.finditer(semua) if semua[max(0, m.start() - 1):m.start()] != "#"]
+        _sifat = re.compile(r"\b(gurih|manis|alami|asli|lembut|creamy|nikmat|enak|khas|segar|lezat|autentik|original|murni|pahit)\b")
+        def _var(m):
+            ks = _rasa.search(semua[max(0, m.start() - 40):m.start()])
+            return bool(ks) and not _sifat.search(ks.group(0))   # "rasa gurih alami susu etawa" = rasa produk niche itu sendiri
+        if _mr and all(_var(m) for m in _mr):
+            skor = 30
+            cocok.append("cuma varian rasa produk lain")
+    # 7i) v1.5.3 niche HANYA muncul sbg satu tagar di antara banyak tagar (#cycling #running #sepeda #lari … di iklan serum) → maks Longgar
+    if skor >= 40 and len(tagar) >= 6 and not ada(pk, nama_hal) and not ada(pk, link):
+        _tanpa_tag = re.sub(r"#[\w]+", " ", semua)
+        _rp = [w_.replace(" ", "") for w_, _ in pol]
+        _n_tag_niche = sum(1 for h in tagar if any(r_ in h for r_ in _rp if len(r_) >= 3))   # Siesta Bed: 4 dari 6 tagar = kasur → sah
+        _sisa_kata = re.findall(r"[a-z]{3,}", re.sub(r"https?://\S+|\S+\.(?:com|id|co)\S*", " ", _tanpa_tag))   # v1.5.3 "Belanja di sini: <link> #VitaminAnak #ProdukAnak…" = tagar satu²nya isi
+        _cuma_link = len(_sisa_kata) < 8 and (AFILIASI.search(semua) or any(m_ in str(snap.get("link_url") or "").lower() for m_ in MARKETPLACE))
+        if not _cuma_link and not muat_ok and (_n_tag_niche == 1 or (len(tagar) >= 15 and 1 <= _n_tag_niche <= len(tagar) // 5)) and not any(ada(rx, _tanpa_tag) for _, rx in pol):   # v1.5.3 Sop Subarashi: 3 dari 21 tagar penyakit
+            skor = 30
+            cocok.append("cuma tagar di antara banyak tagar")
     # 7b) v1.5.2 kata kunci cuma satu item dlm DAFTAR ("untuk teh, kopi, matcha, oatmeal") & tak ada di nama halaman → maks Longgar
     if skor >= 40 and not ada(pk, nama_hal):
-        ms = list(pk.finditer(kuat))
+        ms = list(pk.finditer(kuat)) or [m for _, rx in pol[1:] for m in rx.finditer(kuat)]   # v1.5.3 juga sinonim ("kunci mobil, earphone, card holder, jepitan")
         def _di_daftar(m):
             kiri, kanan = kuat[max(0, m.start() - 30):m.start()], kuat[m.end():m.end() + 30]
             # diapit pemisah di KIRI dan KANAN: "teh, kopi, matcha" / "teh/kopi/susu" (bukan "Dari tas, dompet…" / "HIJAB SERING GERAH, …")
-            return bool(re.search(r"(,|/|\bdan|\batau)\s*$", kiri) and re.match(r"^\s*(,|/|dan\b|atau\b|sampai\b)", kanan)) and \
+            kiri80 = kuat[max(0, m.start() - 80):m.start()].replace("\n", " ")
+            ekor_daftar = bool(re.search(r",[^,.!?]{2,30},[^,.!?]{2,30}\s(dan|serta|&)\s*$", kiri80) and re.match(r"^\s*($|[.!\n])", kanan))
+            # v1.5.4 item PERTAMA daftar di awal kalimat: "Botol susu, dot, breastpump, hingga perlengkapan MPASI …" (iklan sterilizer)
+            kepala_daftar = bool(re.search(r"(^|[|.!?\n]\W*)$", kiri) and re.match(r"^\s*,\s*[^,.!?|]{1,22},\s*[^,.!?|]{1,22}(,|\s(dan|hingga|sampai|serta|atau)\b)", kuat[m.end():m.end() + 60]))
+            return bool((re.search(r"(,|/|\bdan|\batau)\s*$", kiri) and re.match(r"^\s*(,|/|dan\b|atau\b|sampai\b)", kanan)) or ekor_daftar or kepala_daftar) and \
                    not re.search(r"\b" + re.escape(kata) + r"\b", judul[:len(kata) + 12])
         if ms and all(_di_daftar(m) for m in ms):
             skor = 30
             cocok.append("sebutan dalam daftar (produk lain)")
+    # 7d) v1.5.3 niche cuma disebut di KALIMAT TANYA (pembuka masalah) & judul produk tanpa niche → produk lain
+    #     "Lemari lembap? Rak sepatu mulai bau apek? Saatnya … Dehumidifier!" (judul: Portable Dehumidifier …)
+    if skor >= 40 and judul.strip() and judul.strip() != nama_hal.strip() and not any(ada(rx, judul) for _, rx in pol) \
+            and not ada(pk, nama_hal) and not ada(pk, link):
+        ms = list(pk.finditer(semua))
+        def _tanya(m):   # "Rak sepatu mulai bau apek?" = niche sbg TEMPAT MASALAH, bukan produk yg dijual
+            ujung = re.search(r"[.!?\n]", semua[m.end():m.end() + 80])
+            return bool(ujung and ujung.group(0) == "?" and MASALAH.search(semua[m.end():m.end() + ujung.start() + 1]))
+        def _daftar(m):  # "lemari pakaian, rak sepatu, kabinet"
+            return bool(re.search(r"(,|/)\s*$", semua[max(0, m.start() - 4):m.start()]) and re.match(r"^\s*(,|/|dan\b|hingga\b|sampai\b)", semua[m.end():m.end() + 10]))
+        if ms and len(ms) <= 3 and any(_tanya(m) for m in ms) and all(_tanya(m) or _daftar(m) for m in ms):
+            skor = 30
+            cocok.append("disebut sbg masalah (produk lain)")
+    # 7e) v1.5.3 niche cuma BONUS/FASILITAS ("FASILITAS: ✔️ 2 Helm", "BONUS hijab", "free tas") & tak di judul/nama halaman → maks Longgar
+    _jb = [m for m in pk.finditer(judul)]   # v1.5.3 judul "Beli ZALA Gummy, GRATIS Masker Wajah!" = niche cuma hadiah
+    _judul_bonus = bool(_jb) and all(re.search(r"\b(beli|order|pembelian|setiap)\b[^.!?\n]{2,60}\b(gratis|free|bonus)\W{0,3}$", judul[:m.start()]) for m in _jb)
+    if skor >= 40 and (not ada(pk, judul) or _judul_bonus) and not ada(pk, nama_hal):
+        ms_b = list(pk.finditer(semua)) or [m for _, rx in pol[1:] for m in rx.finditer(semua)]   # v1.5.3 + sinonim ("Free adaptor ugreen softcase")   # SELURUH teks: "Sering bingung cari parfum…" di bawah = produk utama
+        def _bonus(m):
+            kiri = semua[max(0, m.start() - 22):m.start()]
+            if not BONUS.search(kiri) and re.search(r"\b(gratis|free|bonus|fasilitas)\b(?:(?! - )[^.!?\n|,]){0,22}$", semua[max(0, m.start() - 30):m.start()]):
+                kiri = semua[max(0, m.start() - 30):m.start()]; return "ongkir" not in kiri   # "free adaptor ugreen softcase"
+            hadiah = re.search(r"\b((?:me|di)?menangkan|undian|doorprize|door prize|giveaway|berhadiah|hadiah utama)\b[^.!?\n]{0,70}$", semua[max(0, m.start() - 80):m.start()])   # v1.5.3 "Menangkan kulkas, kompor, sepeda listrik"
+            return (bool(BONUS.search(kiri)) and "ongkir" not in kiri and not re.search(r"\b(beli|buy)\s*\d+\s*(gratis|free|get|bonus)", kiri)) or bool(hadiah)
+        if ms_b and all(_bonus(m) for m in ms_b):
+            skor = 30
+            cocok.append("cuma bonus/fasilitas")
+    # 7c-1) v1.5.3 kampanye DONASI (bantuteman.org/campaign, "150+ Kucing Butuh Bantuan", wakaf) — niche cuma objek bantuan
+    if skor >= 15 and (DONASI.search(semua + " " + nama_hal) or DONASI_LINK.search(str(snap.get("link_url") or ""))) and not re.search(r"donasi|wakaf|zakat|sedekah|amal", kata):
+        skor = min(skor, 12)
+        cocok.append("derau: donasi/penggalangan dana")
+    # 7c0) v1.5.3 jasa DI DALAM niche (maklon, MUA, rias) — tetap jasa walau niche ada di judul/nama halaman
+    #      tautan ke halaman PRODUK marketplace → tagar (#muabandung #makeupartist) tidak dihitung: kreator jual produk
+    _sm_jasa = re.sub(r"#\w+", " ", semua) if re.search(r"shopee\.co\.id/(universal-link/)?product|tokopedia\.com/[^/\s]+/[^/\s?]+|lazada\.co\.id/products|shop\.tiktok", str(snap.get("link_url") or "")) else semua
+    _jm = [m.group(0) for m in JASA_KUAT.finditer(_sm_jasa + " " + nama_hal)]
+    if _jm and all(re.match(r"(mau jual|terima (jual|beli|tukar))", j) for j in _jm) \
+            and re.search(r"\bmau (cari|beli)\b|\b(tempatnya |tempat )?cari (laptop|hp|kamera|iphone|macbook)\b|\bready stock\b|\b(laptop|hp|kamera|iphone|macbook) (baru|second) (ready|bergaransi)\b", _sm_jasa):
+        _jm = []   # v1.5.3 Adrian Laptop "Mau cari laptop? Mau jual laptop?" = toko jual-beli, bukan cuma pembeli bekas
+    if skor >= 15 and _jm and not JASA_KUAT.search(kata):
+        skor = min(skor, 12)
+        cocok.append("derau: jasa (maklon/MUA/kurir/pinjaman/beli bekas)")
+    # 7c-app) v1.5.3 iklan APLIKASI (tautan Play Store/App Store, halaman "App page"/"Software") — bukan iklan produk niche
+    _lk = str(snap.get("link_url") or "")
+    if skor >= 15 and not re.search(r"aplikasi|app\b|apps|software|game", kata) and \
+            (re.search(r"play\.google\.com/store|apps\.apple\.com|itunes\.apple\.com|appgallery\.huawei", _lk)
+             or (any(re.fullmatch(r"\s*(app page|software|application|aplikasi|video game)\s*", str(c).lower()) for c in (snap.get("page_categories") or []))
+                 and not any(m_ in _lk.lower() for m_ in MARKETPLACE))):   # v1.5.3 afiliasi Shopee berkategori "Software" (Spill By Mowii) ≠ iklan aplikasi
+        if re.search(r"retail|shopping|clothing|grocery|supermarket|department store|toko|e-?commerce", kategori) and skor >= 40:
+            skor = 30   # v1.5.3 Uniqlo "temukan jaket … di aplikasi UNIQLO" = peritel jualan lewat aplikasi belanja → Longgar, bukan derau
+            cocok.append("lewat aplikasi belanja peritel")
+        else:
+            skor = min(skor, 12)
+            cocok.append("derau: iklan aplikasi")
     # 7c) v1.5.2 iklan jasa/aplikasi yg pakai niche sbg contoh — kecuali niche ada di judul/nama halaman
-    if skor >= 15 and JASA_APLIKASI.search(semua) and not ada(pk, judul) and not ada(pk, nama_hal) and not JASA_APLIKASI.search(kata):
+    if skor >= 15 and JASA_APLIKASI.search(semua) and not JASA_APLIKASI.search(kata) and not ada(pk, nama_hal) \
+            and (not ada(pk, judul) or re.search(r"\b(punya|bikin|buat|membuat|bangun|membangun|mulai|memulai|merintis) (brand|bisnis|usaha|merek)\b", judul)):   # v1.5.3 ebook "Punya Brand Baju Anak Tanpa Bisa Jahit"
         skor = min(skor, 12)
         cocok.append("derau: iklan jasa/aplikasi")
     # 8) v1.5.2 kategori halaman Meta jelas bukan penjual barang niche ini (McDonald's = Burgers, Cargloss = Auto Service)
-    if skor >= 15 and kategori.strip():
+    # v1.5.3 afiliasi marketplace (s.shopee…, "beli di sini") yg menjual niche di badan + tagar: kategori halaman afiliasi acak
+    #        ("Kuliner 1 Menit" = Tour Agency jualan Welhome Rice Cooker) → kategori tidak dipakai
+    _afl8 = _afiliasi_niche(snap, kata)
+    if skor >= 15 and kategori.strip() and not _afl8:
         fam_niche = keluarga_niche(kata)
         isi_kat = [_norm(str(c)) for c in (snap.get("page_categories") or o.get("categories") or []) if str(c).strip()]
         if isi_kat:
             luar = []
             for c in isi_kat:
-                hit = next((izin for rx, izin in KATEGORI_LUAR if rx.search(c)), None)
+                hit = next((izin for _nm, rx, izin in KATEGORI_LUAR if rx.search(c)), None)
                 luar.append(hit)
+            nama_luar = [next((nm for nm, rx, _iz in KATEGORI_LUAR if rx.search(c)), None) for c in isi_kat]
+            if all(n == "fashion" for n in nama_luar) and (ada(pk, judul) or ada(pk, body[:90])):
+                luar = [None]   # fashion = sinyal lunak: niche di judul/pembuka (mis. "Helm Retro" toko apparel motor) → tak dibatasi
             if all(h is not None for h in luar):
                 izin_semua = set().union(*luar)
                 tegas = all(len(h) == 0 for h in luar)   # bank/media/travel: berlaku walau niche tak dikenal
-                if (fam_niche and fam_niche not in izin_semua) or tegas:
+                if (fam_niche and not (fam_niche & izin_semua)) or tegas:
                     if skor > 30:
                         skor = 30
                     cocok.append("kategori halaman: " + ", ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or []))[:40])
+    # 8b) v1.5.3 halaman RESTO yg cuma menyebut niche SEKALI ("Crispy Duck, sambal kick", daftar menu) → bukan penjual produk niche
+    if skor >= 40 and kategori.strip() and RESTO_TEGAS.search(_norm(kategori)) and not any(ada(rx, nama_hal) or ada(rx, judul) for _, rx in pol):
+        _tg = len(re.findall(r"#" + re.escape(kata.replace(" ", "")) + r"\w*", semua))   # v1.5.3 Raja Roa "#sambalroa #sambalpedas #jualsambalroa"
+        if sum(len(rx.findall(semua)) for _, rx in pol) + _tg <= 1:
+            skor = 30
+            cocok.append("resto: niche cuma disebut sekali")
     skor = max(0, min(100, skor))
     label = "Relevan" if skor >= 40 else ("Longgar" if skor >= 15 else "Lepas")
     return {"nilai": skor, "label": label, "cocok": cocok}
 
 
-def konteks_halaman(hasil):
+def _keluarga_kategori(cats):
+    """Nama keluarga KATEGORI_LUAR bila SEMUA kategori halaman masuk keluarga luar yang sama-sama dikenali; selain itu None."""
+    isi = [_norm(str(c)) for c in (cats or []) if str(c).strip()]
+    if not isi:
+        return None
+    nama = []
+    for c in isi:
+        hit = next((nm for nm, rx, _iz in KATEGORI_LUAR if rx.search(c)), None)
+        if hit is None:
+            return None
+        nama.append(hit)
+    return nama[0]
+
+
+def _afiliasi_niche(snap, kata):
+    """v1.5.3: iklan afiliasi marketplace (s.shopee…/"beli di sini") yg menyebut niche di badan (di luar tagar) DAN di tagar.
+    Kategori halaman afiliasi acak ("Kuliner 1 Menit" = Tour Agency jualan rice cooker) → kategori tak dipakai."""
+    pk_ = pola_kata(_norm(kata or ""))
+    if not pk_:
+        return False
+    body_ = _norm(_t(snap, "body"))
+    if not (AFILIASI.search(body_) or any(m_ in str(snap.get("link_url") or "").lower() for m_ in MARKETPLACE)):
+        return False
+    if not pk_.search(re.sub(r"#[\w]+", " ", body_)):
+        return False
+    rp = _norm(kata).replace(" ", "")
+    return len(rp) >= 3 and any(rp in h for h in re.findall(r"#([a-z0-9_]{3,40})", body_))
+
+
+def kategori_minoritas(hasil, kata):
+    """v1.5.3: hasil = list (rel, objek). Iklan Relevan dari halaman berkategori 'luar' (otomotif/resto/bank/…) yang
+    MINORITAS (<20%) di antara iklan Relevan scan ini & tak diizinkan keluarga niche → maks Longgar.
+    Contoh: scan 'kecantikan' → mayoritas Health & Beauty; Scuto (Servis Otomotif) = 1 halaman nyasar."""
+    fam_niche = keluarga_niche(_norm(kata or ""))
+    izin = {nm: iz for nm, _rx, iz in KATEGORI_LUAR}
+    rel = [(r, o, _keluarga_kategori((o.get("snapshot") or {}).get("page_categories") or o.get("categories"))) for r, o in hasil if r.get("label") == "Relevan"]
+    if len(rel) < 5:
+        return hasil
+    hitung = {}
+    for _r, _o, f in rel:
+        if f:
+            hitung[f] = hitung.get(f, 0) + 1
+    pk_m = pola_kata(_norm(kata or ""))
+    for r, o, f in rel:
+        if not f or (fam_niche & izin.get(f, set())) or _afiliasi_niche(o.get("snapshot") or {}, kata):
+            continue
+        if f == "fashion" and pk_m:
+            sn = o.get("snapshot") or {}
+            if pk_m.search(_norm(_t(sn, "title"))) or pk_m.search(_norm(_t(sn, "body"))[:90]):
+                continue
+        if hitung[f] / len(rel) < 0.2:
+            r["nilai"] = min(r["nilai"], 30)
+            r["label"] = "Longgar"
+            r["cocok"].append("kategori halaman minoritas: " + ", ".join(str(x) for x in ((o.get("snapshot") or {}).get("page_categories") or o.get("categories") or []))[:40])
+    return hasil
+
+
+def konteks_halaman(hasil, kata=""):
     lokal = set()
     for r, o in hasil:
         sn = o.get("snapshot") or {}
-        t = _norm(_t(sn, "body") + " " + _t(sn, "title") + " " + str(sn.get("link_url") or ""))
-        if _bahasa(t) == "id" or LOKAL.search(t):
+        t = re.sub(r"\{\{[^}]*\}\}", " ", _norm(_t(sn, "body") + " " + _t(sn, "title") + " " + str(sn.get("link_url") or "")))
+        if _bahasa(t) == "id" or ID_KUAT.search(t):   # v1.5.3: tanda kuat saja (dulu LOKAL lemah + "{{ad.id}}" → ".id")
             lokal.add(str(o.get("page_id") or o.get("page_name")))
+    _batas = ("kategori halaman", "keterangan", "sebutan dalam daftar", "derau", "katalog", "cuma bonus", "sinonim ambigu",
+              "luar:", "pasar luar (", "disangkal", "sekadar", "varietas", "jasa", "disebut sbg masalah", "kata umum", "merek hp")
+    # v1.5.3 halaman yg salah satu iklannya terbukti Malaysia bukan "lokal"; iklan Relevan-nya maks Longgar (MK Curtain HQ)
+    asing = {str(o.get("page_id") or o.get("page_name")) for r, o in hasil if any(c.startswith("pasar luar (Malaysia") for c in r["cocok"])}
+    lokal -= asing
     for r, o in hasil:
-        if any(c.startswith("pasar luar?") for c in r["cocok"]) and str(o.get("page_id") or o.get("page_name")) in lokal:
+        if str(o.get("page_id") or o.get("page_name")) in asing and r.get("nilai", 0) >= 40 and r.get("label") == "Relevan":
+            r["nilai"], r["label"] = 30, "Longgar"
+            r["cocok"].append("pasar luar (halaman Malaysia)")
+    for r, o in hasil:
+        if any(c.startswith("pasar luar?") for c in r["cocok"]) and str(o.get("page_id") or o.get("page_name")) in lokal \
+                and r.get("nilai") == 38 and not any(any(c.startswith(b_) for b_ in _batas) for c in r["cocok"]):
             r["nilai"], r["label"] = 45, "Relevan"
             r["cocok"] = [c for c in r["cocok"] if not c.startswith("pasar luar?")] + ["halaman lokal"]
     """hasil: list of (rel_dict, objek). Halaman yang punya ≥1 iklan kuat (≥60, tanpa derau)
@@ -2027,11 +2638,18 @@ def konteks_halaman(hasil):
             kuat.add(str(o.get("page_id") or o.get("page_name")))
     for r, o in hasil:
         pid = str(o.get("page_id") or o.get("page_name"))
-        if pid not in kuat or r["nilai"] >= 40 or any(c.startswith("derau") or c.startswith("katalog") or c.startswith("disangkal") or "bahan" in c
-                                                       or c.startswith("keterangan produk lain") or c.startswith("kategori halaman") or c.startswith("sebutan dalam daftar") for c in r["cocok"]):
+        if pid not in kuat or r["nilai"] >= 40 or any(c.startswith("derau") or c.startswith("katalog") or c.startswith("pasar luar") or c.startswith("disangkal") or "bahan" in c
+                                                       or c.startswith("keterangan produk lain") or c.startswith("kategori halaman") or c.startswith("sebutan dalam daftar") or c.startswith("disebut sbg masalah") or c.startswith("varietas/olahan") or c.startswith("cuma bonus") or c.startswith("pasar luar (") for c in r["cocok"]):
             continue
-        if r["nilai"] >= 15:
+        _kata_hal = re.escape(_norm(kata or "").strip())
+        _nh_ = _norm(str((o.get("snapshot") or {}).get("page_name") or o.get("page_name") or ""))
+        if r["cocok"] and all(c.endswith("(nama halaman)") for c in r["cocok"]) and _kata_hal and \
+                re.search(r"\b(dekorasi|dekor|konveksi|sewa|rental|jasa|laundry|cuci|servis|service|bengkel|aksesoris|sparepart)\b[\w\s&]{0,15}" + _kata_hal, _nh_):
+            r["nilai"] = min(r["nilai"] + 25, 30)   # v1.5.3 niche cuma di NAMA halaman ("Sahrul konveksi dekorasi tenda": plafon/taplak) → maks Longgar
+        elif r["nilai"] >= 15:
             r["nilai"] = min(100, r["nilai"] + 25)
+            if r["cocok"] and all("(senada)" in c for c in r["cocok"]):
+                r["nilai"] = min(r["nilai"], 30)   # v1.5.3 uji emas: "cream (senada)" GMEELAN ≠ sunscreen — senada tetap maks Longgar
         else:
             r["nilai"] = max(r["nilai"], 20)
         r["cocok"].append("halaman niche (iklan lain halaman ini kuat)")
@@ -2369,24 +2987,404 @@ def skor_jual(x, ek):
     p = min((x.get("harga_max") or 0) / 2_000_000, 1) * 15
     rincian["nilai transaksi"] = round(p, 1)
     poin += p
+    hb = x.get("bertahan_hari") or 0   # v1.5.3: hari BERBEDA iklan terlihat aktif oleh scan INTAI (bukti langsung, bukan tebakan)
+    if hb >= 2:
+        p = min((hb - 1) / 4, 1) * 10
+        rincian["bertahan lintas scan"] = round(p, 1)
+        poin = min(poin + p, 100)
     label = "🏆 Pemenang" if poin >= 60 else ("Kuat" if poin >= 40 else "Biasa")
     return {"nilai": round(poin, 1), "label": label, "rincian": rincian}
 
 
-def bangun_top_produk(out):
-    """Agregasi per PRODUK (bukan per iklan) -> ranking 10 teratas
-    berdasarkan penjualan × omzet × lama aktif (Skor Jual)."""
-    grup = {}
-    for idx, x in enumerate(out):
-        if x.get("aktif") is False:  # pemenang harus hidup — iklan mati bukan acuan
+# ===== v1.5.3 KUMPULAN TOP 10 LINTAS SCAN (setelan "topkumpul:<niche>", tanpa SQL baru) =====
+# Meta hanya memberi ±30 iklan per pencarian → tiap scan melihat potongan berbeda. Iklan yang lolos syarat Top 10
+# disimpan maks TOPKUMPUL_HARI hari; scan berikutnya (manual / terjadwal, akun mana pun — data iklan publik) ikut
+# menimbangnya. Iklan yang di scan kini terlihat MATI / tak lagi Relevan langsung dibuang dari kumpulan.
+TOPKUMPUL_HARI = 7
+TOPKUMPUL_MAKS = 40   # ±3 KB/iklan setelah dirampingkan + dikompres → ±100–150 KB per niche
+TOPKUMPUL_JEJAK_HARI = 30   # v1.5.3 "bertahan lintas scan": tanggal-tanggal iklan terlihat aktif disimpan lebih lama dari iklannya
+TOPKUMPUL_JEJAK_MAKS = 400  # ±60 B/iklan → ±25 KB sebelum kompres
+_TK_CACHE = {}
+_tk_kunci = threading.Lock()
+
+
+def _tgl_wib(iso=None):
+    """'YYYY-MM-DD' zona WIB (hari kalender pengguna) dari ISO UTC; None = sekarang."""
+    t = _tk_epoch(iso) if iso else time.time()
+    return datetime.fromtimestamp(t + 7 * 3600, tz=timezone.utc).strftime("%Y-%m-%d") if t else ""
+
+
+def _tk_jejak(pool):
+    """Buku jejak {aid: {p: iso pertama, h: [tgl WIB…]}}. Kumpulan lama (tanpa jejak) diturunkan dari pertama/lihat."""
+    j = pool.get("jejak") if isinstance(pool.get("jejak"), dict) else {}
+    j = {k: v for k, v in j.items() if isinstance(v, dict) and isinstance(v.get("h"), list)}
+    for aid, e in ((pool.get("iklan") or {}) if isinstance(pool.get("iklan"), dict) else {}).items():
+        if aid not in j and isinstance(e, dict):
+            h = sorted({t for t in (_tgl_wib(e.get("pertama")), _tgl_wib(e.get("lihat"))) if t})
+            if h:
+                j[aid] = {"p": e.get("pertama") or e.get("lihat"), "h": h}
+    return j
+
+
+def tk_bertahan(pool, aid, kini=False):
+    """Bukti 'bertahan lintas scan': di berapa HARI BERBEDA iklan ini terlihat aktif + relevan oleh scan INTAI.
+    kini=True → scan sekarang (data segar Meta) ikut dihitung. None bila baru terlihat di < 2 hari."""
+    try:
+        e = _tk_jejak(pool or {}).get(str(aid))
+        h = set((e or {}).get("h") or [])
+        if kini:
+            h.add(_tgl_wib())
+        if len(h) < 2:
+            return None
+        a, b = min(h), max(h)
+        rentang = (datetime.strptime(b, "%Y-%m-%d") - datetime.strptime(a, "%Y-%m-%d")).days
+        return {"hari": len(h), "sejak": a, "terakhir": b, "rentang": rentang}
+    except Exception:
+        return None
+
+
+def _tk_kunci_niche(kata):
+    return "topkumpul:" + re.sub(r"\s+", " ", _norm(kata or "")).strip()[:80]
+
+
+def _tk_epoch(iso):
+    try:
+        return datetime.strptime(str(iso), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+    except Exception:
+        return 0.0
+
+
+# v1.5.4 CACHE HARIAN dari scan otomatis (cron): hasil mentah Meta per niche disimpan di intai_setelan
+# ("scanharian:<niche>", terkompres ±50–250 KB, tanpa SQL baru). User lain yang scan niche yang sama di HARI yang
+# sama (WIB) langsung dapat hasilnya: tanpa menunggu & tanpa menambah beban ke Meta. Tombol "Scan segar" = lewati.
+_CC_RAM = {}
+
+
+def _copy_dalam(x):
+    return json.loads(json.dumps(x))
+
+
+def _cc_kunci(kata):
+    return "scanharian:" + re.sub(r"\s+", " ", _norm(kata or "")).strip()[:80]
+
+
+def cc_simpan(kata, mentah, info):
+    try:
+        isi = {"v": 1, "t": _iso_kini(), "hari": _tgl_wib(), "q": kata, "ik": mentah,
+               "info": {k: v for k, v in (info or {}).items() if k not in ("log", "cache", "umur_cache")}}
+        if setelan_tulis(_cc_kunci(kata), _tk_bungkus(isi)):
+            _CC_RAM[_cc_kunci(kata)] = (time.time(), isi)
+            while len(_CC_RAM) > 4:   # RAM Render 512 MB
+                _CC_RAM.pop(min(_CC_RAM, key=lambda k: _CC_RAM[k][0]), None)
+    except Exception:
+        pass
+
+
+def cc_baca(kata):
+    """Return isi cache harian HARI INI (WIB) atau None. Gagal baca = None (scan biasa jalan)."""
+    k = _cc_kunci(kata)
+    c = _CC_RAM.get(k)
+    if c and time.time() - c[0] < 600:
+        isi = c[1]
+    else:
+        try:
+            ok, v = setelan_baca(k)
+        except Exception:
+            ok, v = False, None
+        if not ok:
+            return None
+        isi = _tk_buka(v)
+        if isi.get("ik"):
+            _CC_RAM[k] = (time.time(), isi)
+            while len(_CC_RAM) > 4:
+                _CC_RAM.pop(min(_CC_RAM, key=lambda k_: _CC_RAM[k_][0]), None)
+    if not isi or not isi.get("ik") or isi.get("hari") != _tgl_wib():
+        return None
+    return isi
+
+
+def tk_baca(kata):
+    """Return dict kumpulan (bisa kosong). Cache memori 10 mnt; gagal baca = kumpulan kosong (scan tetap jalan)."""
+    k = _tk_kunci_niche(kata)
+    c = _TK_CACHE.get(k)
+    if c and time.time() - c[0] < 600:
+        return c[1]
+    try:
+        ok, v = setelan_baca(k)
+    except Exception:
+        ok, v = False, None
+    v = _tk_buka(v) if ok else {}
+    if ok:
+        _TK_CACHE[k] = (time.time(), v)
+    return v
+
+
+def tk_gabung(kata, pool, out):
+    """Iklan kumpulan yang TIDAK ada di scan kini, masih segar, & lolos ulang saringan relevansi versi sekarang."""
+    ada = {str((x.get("detail") or {}).get("archive_id") or "") for x in out}
+    batas = time.time() - TOPKUMPUL_HARI * 86400
+    hasil = []
+    for aid, e in ((pool or {}).get("iklan") or {}).items():
+        try:
+            if aid in ada or _tk_epoch(e.get("lihat")) < batas or not isinstance(e.get("x"), dict):
+                continue
+            x = json.loads(json.dumps(e["x"]))
+            raw = (x.get("detail") or {}).get("raw") or {}
+            if raw.get("snapshot"):   # aturan relevansi terus diperbarui → nilai ulang dgn versi kini
+                rel = hitung_relevansi(kata, raw.get("snapshot") or {}, raw, {})
+                if rel.get("label") != "Relevan":
+                    continue
+                x["relevansi"], x["rel_nilai"] = rel, rel.get("nilai")
+            if not layak_top(x):
+                continue
+            x["kumpul"], x["kumpul_lihat"] = True, e.get("lihat")
+            x["foto"] = None
+            hasil.append(x)
+        except Exception:
             continue
+    return hasil
+
+
+_TK_RAW_KUNCI = ("ad_archive_id", "is_active", "page_id", "page_name", "snapshot", "start_date", "end_date",
+                 "publisher_platform", "categories", "collation_count", "collation_id")
+_TK_SNAP_BUANG = ("page_profile_picture_url", "images", "videos", "extra_images", "extra_videos", "page_profile_uri")
+
+
+def _tk_ringkas(x):
+    """Salinan baris iklan untuk disimpan: tanpa foto base64 (thumb URL tetap), tanpa field turunan kumpulan.
+    Data mentah Meta dirampingkan: URL gambar/video/foto profil dibuang (cukup teks utk menilai ulang relevansi)."""
+    y = json.loads(json.dumps({k: v for k, v in x.items() if k not in ("foto", "kumpul", "kumpul_lihat", "bertahan")}, default=str))
+    det = y.get("detail") or {}
+    raw = det.get("raw") or {}
+    if raw:
+        raw = {k: raw[k] for k in _TK_RAW_KUNCI if k in raw}
+        sn = {k: v for k, v in (raw.get("snapshot") or {}).items() if k not in _TK_SNAP_BUANG}
+        if isinstance(sn.get("cards"), list):
+            sn["cards"] = [{k: v for k, v in c.items() if not re.search(r"image|video|_url$|picture", k) or k == "link_url"}
+                           for c in sn["cards"] if isinstance(c, dict)]
+        raw["snapshot"] = sn
+        det["raw"] = raw
+    return y
+
+
+def _tk_bungkus(v):
+    """Kumpulan disimpan terkompres (±5× lebih kecil) → baca/tulis Supabase tetap ringan."""
+    return {"v": 2, "z": base64.b64encode(zlib.compress(json.dumps(v, separators=(",", ":")).encode(), 6)).decode()}
+
+
+def _tk_buka(v):
+    if isinstance(v, dict) and v.get("z"):
+        try:
+            return json.loads(zlib.decompress(base64.b64decode(v["z"])).decode())
+        except Exception:
+            return {}
+    return v if isinstance(v, dict) else {}
+
+
+# ===== v1.5.4 SENADA BELAJAR: kata senada diurutkan oleh hasil NYATA scan sebelumnya (disimpan di kumpulan niche) =====
+# Prior dari audit 92 niche (iklan Relevan baru per permintaan): senada memuat kata utama ±4,7, tanpa kata utama ±3,3.
+# Kata yg terbukti nol berkali-kali turun ke belakang; 1 slot terakhir = giliran harian utk kata yg paling jarang dicoba,
+# jadi variasi kata berganti antar hari & kumpulan Top 10 7 hari makin beragam (usulan 3: rotasi senada harian).
+SENADA_PRIOR_DGN, SENADA_PRIOR_TANPA, SENADA_MAKS_SIMPAN = 4.7, 3.3, 40
+
+
+def senada_urut(nilai, kandidat, stat=None, slot=8, hari=None):
+    q = _norm(nilai or "").strip()
+    stat = stat if isinstance(stat, dict) else {}
+    hari = hari or _tgl_wib()
+    lihat, kd = set(), []
+    for w in kandidat:
+        k = _norm(w or "").strip()
+        if k and k != q and k not in lihat:
+            lihat.add(k)
+            kd.append(w)
+    if len(kd) <= 1:
+        return kd
+
+    def rerata(w):
+        n, r = (stat.get(_norm(w).strip()) or [0, 0])[:2]
+        prior = SENADA_PRIOR_DGN if q and re.search(r"(?<![a-z0-9])" + re.escape(q) + r"(?![a-z0-9])", _norm(w)) else SENADA_PRIOR_TANPA
+        return (float(r) + prior) / (float(n) + 1.0)
+
+    acak = lambda w: zlib.crc32((hari + "|" + _norm(w)).encode()) / 2 ** 32   # urutan pengganti seri: berganti tiap hari
+    urut = sorted(kd, key=lambda w: (-round(rerata(w), 1), acak(w)))
+    if len(urut) > slot:
+        dipilih = urut[:slot - 1]
+        sisa = urut[slot - 1:]
+        coba = min(sisa, key=lambda w: ((stat.get(_norm(w).strip()) or [0])[0], acak(w)))   # giliran: paling jarang dicoba
+        urut = dipilih + [coba] + [w for w in sisa if w != coba]
+    return urut
+
+
+def senada_catat(pool_senada, perluasan, out):
+    """Statistik baru {kata: [kali_dicoba, total_iklan_relevan_aktif]} dari scan segar (bukan cache)."""
+    st = {k: list(v)[:2] for k, v in (pool_senada or {}).items() if isinstance(v, (list, tuple)) and len(v) >= 2}
+    p = perluasan or {}
+    if p.get("cache") or p.get("cadangan") or p.get("cadangan_berbayar"):
+        return None
+    dicoba = {_norm(l.get("q") or "").strip() for l in (p.get("log") or []) if l.get("status") == "ok"} & {_norm(w).strip() for w in (p.get("senada") or [])}
+    if not dicoba:
+        return None
+    hit = {}
+    for x in out:
+        r_ = x.get("relevansi") or {}
+        if x.get("aktif") is not False and r_.get("label") == "Relevan" and r_.get("sumber"):
+            k = _norm(r_["sumber"]).strip()
+            hit[k] = hit.get(k, 0) + 1
+    for k in dicoba:
+        n, r = st.get(k, [0, 0])
+        st[k] = [int(n) + 1, int(r) + hit.get(k, 0)]
+    if len(st) > SENADA_MAKS_SIMPAN:
+        st = dict(sorted(st.items(), key=lambda kv: -kv[1][0])[:SENADA_MAKS_SIMPAN])
+    return st
+
+
+HALAMAN_MAKS_SIMPAN = 30   # v1.5.4 halaman pengiklan khusus niche yang diingat per niche
+HALAMAN_MIN_R, HALAMAN_MIN_RASIO, HALAMAN_ISTIRAHAT_HARI = 3, 0.6, 7
+
+
+def halaman_catat(pool_hal, perluasan, out):
+    """Statistik halaman pengiklan {page_id: [nama, relevan_aktif, total_aktif, tgl]} dari scan segar.
+    Hanya halaman yg punya ≥1 iklan Relevan aktif yang diingat; angka = pengamatan TERAKHIR (bukan kumulatif),
+    jadi halaman yang berganti produk otomatis turun."""
+    p = perluasan or {}
+    if p.get("cache") or p.get("cadangan") or p.get("cadangan_berbayar") or not p.get("berhasil"):
+        return None
+    st = {k: list(v)[:5] for k, v in (pool_hal or {}).items() if isinstance(v, (list, tuple)) and len(v) >= 4}
+    hari, kini = _tgl_wib(), {}
+    nol = {str(l.get("halaman")) for l in (p.get("log") or []) if l.get("halaman") and l.get("status") == "ok" and not l.get("baru")}
+    for x in out:
+        if x.get("aktif") is False:
+            continue
+        pid = str((x.get("detail") or {}).get("page_id") or "").strip()
+        if not pid.isdigit():
+            continue
+        k = kini.setdefault(pid, [str(x.get("halaman") or "")[:60], 0, 0, hari])
+        k[2] += 1
+        if (x.get("relevansi") or {}).get("label") == "Relevan":
+            k[1] += 1
+    for pid, v in kini.items():
+        if v[1] >= 1:
+            lama_nol = (st.get(pid) or [None] * 5)[4:5]
+            st[pid] = v + ([hari] if pid in nol else [x for x in lama_nol if x])   # [4] = tgl bor tanpa iklan baru
+        elif pid in st:
+            st.pop(pid)   # terlihat lagi tanpa satu pun iklan Relevan → lupakan
+    if len(st) > HALAMAN_MAKS_SIMPAN:
+        st = dict(sorted(st.items(), key=lambda kv: (int(kv[1][1]), kv[1][3]), reverse=True)[:HALAMAN_MAKS_SIMPAN])
+    return st
+
+
+def _hari_selisih(a, b):
+    try:
+        return abs((datetime.strptime(b[:10], "%Y-%m-%d") - datetime.strptime(a[:10], "%Y-%m-%d")).days)
+    except Exception:
+        return 999
+
+
+def halaman_pilih(pool_hal, maks=2, hari=None):
+    """Pilih halaman pengiklan KHUSUS niche untuk dibor tanpa kata kunci (uji 16 Okt dashcam: 70mai Indonesia
+    → 19 iklan baru, 17 Relevan dari 1 permintaan; halaman campuran (Arvento) → 27 baru tapi hanya 3 Relevan).
+    Syarat: ≥3 iklan Relevan aktif & ≥60% iklan aktifnya Relevan. Terbaik selalu + 1 bergiliran harian."""
+    hari = hari or _tgl_wib()
+    kd = []
+    for pid, v in (pool_hal or {}).items():
+        try:
+            nm, r, t = str(v[0]), int(v[1]), max(1, int(v[2]))
+        except Exception:
+            continue
+        if len(v) >= 5 and v[4] and _hari_selisih(str(v[4]), hari) < HALAMAN_ISTIRAHAT_HARI:
+            continue   # dibor tapi semua iklannya sudah tertangkap pencarian kata → istirahat dulu
+        if str(pid).isdigit() and r >= HALAMAN_MIN_R and r / t >= HALAMAN_MIN_RASIO:
+            kd.append((str(pid), nm, r))
+    if not kd or maks <= 0:
+        return []
+    kd.sort(key=lambda z: (-z[2], z[0]))
+    pilih = [kd[0]]
+    sisa = sorted(kd[1:6], key=lambda z: zlib.crc32((hari + "|" + z[0]).encode()))
+    pilih += sisa[:maks - 1]
+    return [(z[0], z[1]) for z in pilih]
+
+
+def tk_perbarui(kata, out, pool, dari_cache=False, senada_baru=None, halaman_baru=None):
+    """Dipanggil di thread latar sesudah scan kata kunci. Best-effort: gagal = kumpulan tidak berubah."""
+    try:
+        with _tk_kunci:
+            kini = _iso_kini()
+            pool = json.loads(json.dumps(pool or {}))
+            iklan = pool.get("iklan") if isinstance(pool.get("iklan"), dict) else {}
+            jejak = _tk_jejak(pool)
+            hari_ini = _tgl_wib()
+            for x in out:
+                aid = str((x.get("detail") or {}).get("archive_id") or "")
+                if not aid:
+                    continue
+                if layak_top(x):
+                    lama = iklan.get(aid) or {}
+                    iklan[aid] = {"x": _tk_ringkas(x), "lihat": kini, "pertama": lama.get("pertama") or kini,
+                                  "n": int(lama.get("n") or 0) + 1}
+                    if not dari_cache:   # hasil cache = pengamatan lama, bukan bukti baru iklan masih jalan
+                        j = jejak.setdefault(aid, {"p": kini, "h": []})
+                        if hari_ini not in j["h"]:
+                            j["h"] = sorted(j["h"] + [hari_ini])[-TOPKUMPUL_JEJAK_HARI:]
+                else:
+                    iklan.pop(aid, None)   # kini mati / bukan Relevan → keluar dari kumpulan
+                    jejak.pop(aid, None)   # …dan jejak bertahannya putus
+            batas = time.time() - TOPKUMPUL_HARI * 86400
+            iklan = {k: v for k, v in iklan.items() if _tk_epoch(v.get("lihat")) >= batas}
+            if len(iklan) > TOPKUMPUL_MAKS:
+                urut = sorted(iklan.items(), key=lambda kv: (-(((kv[1].get("x") or {}).get("jual")) or 0), kv[1].get("lihat") or ""))
+                iklan = dict(urut[:TOPKUMPUL_MAKS])
+            batas_j = _tgl_wib(datetime.fromtimestamp(time.time() - TOPKUMPUL_JEJAK_HARI * 86400, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+            jejak = {k: dict(v, h=[t for t in v["h"] if t >= batas_j]) for k, v in jejak.items()}
+            jejak = {k: v for k, v in jejak.items() if v["h"]}
+            if len(jejak) > TOPKUMPUL_JEJAK_MAKS:   # simpan yang paling baru terlihat, lalu yang paling banyak harinya
+                jejak = dict(sorted(jejak.items(), key=lambda kv: (kv[1]["h"][-1], len(kv[1]["h"])), reverse=True)[:TOPKUMPUL_JEJAK_MAKS])
+            scan = [s for s in (pool.get("scan") or []) if _tk_epoch(s) >= batas]
+            if not dari_cache:
+                scan.append(kini)
+            baru = {"v": 1, "niche": kata, "scan": scan[-60:], "iklan": iklan, "jejak": jejak}
+            sn_ = senada_baru if isinstance(senada_baru, dict) else pool.get("senada")
+            if isinstance(sn_, dict) and sn_:
+                baru["senada"] = sn_   # v1.5.4 statistik senada belajar ikut kumpulan (tanpa SQL baru)
+            hl_ = halaman_baru if isinstance(halaman_baru, dict) else pool.get("halaman")
+            if isinstance(hl_, dict) and hl_:
+                baru["halaman"] = hl_   # v1.5.4 halaman pengiklan khusus niche (dibor scan berikutnya)
+            if setelan_tulis(_tk_kunci_niche(kata), _tk_bungkus(baru)):
+                _TK_CACHE[_tk_kunci_niche(kata)] = (time.time(), baru)
+    except Exception:
+        pass
+
+
+def layak_top(x):
+    """Syarat iklan masuk Top 10 (dipakai juga oleh kumpulan Top 10 lintas scan)."""
+    if x.get("aktif") is False:  # pemenang harus hidup — iklan mati bukan acuan
+        return False
+    rel_x = x.get("relevansi") or {}
+    if rel_x and rel_x.get("label", "Relevan") != "Relevan":   # v1.5.2: Top 10 = etalase → wajib Relevan (dulu ≥15, Longgar ikut)
+        return False
+    if rel_x.get("cocok") and not any(not any(t in c for t in ("sambil lalu", "halaman niche", "halaman lokal", "senada", "kata terpisah"))
+                                      for c in rel_x["cocok"]):
+        return False   # v1.5.2: hanya disebut sambil lalu / terangkat konteks halaman → bukan bukti produknya
+    return True
+
+
+def bangun_top_produk(out, kata="", tambahan=None, info=None):
+    """Agregasi per PRODUK (bukan per iklan) -> ranking 10 teratas
+    berdasarkan penjualan × omzet × lama aktif (Skor Jual).
+    v1.5.3: `tambahan` = iklan dari kumpulan scan sebelumnya (idx lanjut setelah `out`, ditandai kumpul);
+    `info` (dict) diisi jumlah iklan & produk yang lolos syarat → label jujur "Top 10 dari N iklan"."""
+    grup = {}
+    n_layak = n_layak_k = 0
+    for idx, x in enumerate(list(out) + list(tambahan or [])):
+        if not layak_top(x):
+            continue
+        dari_kumpul = idx >= len(out)
+        if dari_kumpul:
+            n_layak_k += 1
+        else:
+            n_layak += 1
         rel_x = x.get("relevansi") or {}
         reln = rel_x.get("nilai", 100)
-        if rel_x and rel_x.get("label", "Relevan") != "Relevan":   # v1.5.2: Top 10 = etalase → wajib Relevan (dulu ≥15, Longgar ikut)
-            continue
-        if rel_x.get("cocok") and not any(not any(t in c for t in ("sambil lalu", "halaman niche", "halaman lokal", "senada", "kata terpisah"))
-                                          for c in rel_x["cocok"]):
-            continue   # v1.5.2: hanya disebut sambil lalu / terangkat konteks halaman → bukan bukti produknya
         det = x["detail"]
         nama = (det.get("title") or "").strip()
         nama = re.sub(r"\{\{[^}]*\}\}", " ", nama).strip()
@@ -2412,14 +3410,23 @@ def bangun_top_produk(out):
         g["umur"] = max(g["umur"], x["umur"])
         g["rel"] = max(g.get("rel", 0), reln)
         g["varian"] += x.get("varian") or 0
+        bt = x.get("bertahan") or None
+        if bt and bt.get("hari", 0) > (g.get("bertahan") or {}).get("hari", 0):
+            g["bertahan"] = bt
         g["ads"].append({"idx": idx, "umur": x["umur"], "skor": x["skor"],
                          "format": x["format"], "skor_jual": x.get("jual")})
+        if bt:
+            g["ads"][-1]["bertahan"] = bt.get("hari")
+        if dari_kumpul:
+            g["ads"][-1]["kumpul"] = True
+            g["ads"][-1]["lihat"] = x.get("kumpul_lihat")
 
     hasil = []
     for g in grup.values():
         baris_tiru = {"umur": g["umur"], "varian": g["varian"],
                       "harga_min": g["harga_min"], "harga_max": g["harga_max"],
-                      "terjual_n": g["terjual"]}
+                      "terjual_n": g["terjual"],
+                      "bertahan_hari": (g.get("bertahan") or {}).get("hari", 0)}
         ek_tiru = {"omzet_min": g["omzet_min"], "omzet_max": g["omzet_max"]}
         sj = skor_jual(baris_tiru, ek_tiru)
         unit = None
@@ -2431,11 +3438,48 @@ def bangun_top_produk(out):
             continue
         g["skor_jual"] = sj["nilai"]
         g["label"] = sj["label"]
+        g["rincian_jual"] = sj["rincian"]
         g["unit"] = unit
-        g["ads"].sort(key=lambda a: -(a["skor_jual"] or 0))
+        g["ads"].sort(key=lambda a: (bool(a.get("kumpul")), -(a["skor_jual"] or 0)))   # iklan scan kini didahulukan (detail terlengkap)
+        if all(a.get("kumpul") for a in g["ads"]):
+            g["kumpul"] = True   # produk ini HANYA terlihat di scan sebelumnya (tidak muncul di scan kini)
+            g["lihat"] = max((a.get("lihat") or "") for a in g["ads"]) or None
         hasil.append(g)
     hasil.sort(key=lambda g: -g["skor_jual"])
-    return hasil[:10]
+    # v1.5.3: maks 2 kartu per MEREK (7 cabang "Rimas Laptop …" tak memenuhi Top 10); kurang dari 10 → isi lagi
+    pilih, cadang, per = [], [], {}
+    for g in hasil:
+        mk = _kunci_merek(g["halaman"], kata)   # v1.5.3: kata niche bukan merek ("Susu Kambing Etawa PrimaGold" ≠ "Susu Etawalin")
+        if mk:   # awalan sama = merek sama ("skintific" ~ "skintificoutlet")
+            mk = next((k for k in per if k and len(min(k, mk, key=len)) >= 5 and (k.startswith(mk) or mk.startswith(k))), mk)
+        if mk and per.get(mk, 0) >= 2:
+            cadang.append(g); continue
+        per[mk] = per.get(mk, 0) + 1; pilih.append(g)
+    if isinstance(info, dict):
+        info.update({"iklan_layak": n_layak, "iklan_layak_kumpul": n_layak_k, "produk_layak": len(hasil)})
+    return (pilih + cadang)[:10]
+
+
+MEREK_UMUM = set("toko shop store official rumah pusat grosir jual info spill rekomendasi review produk belanja the my shopee pilihan "
+                 "barang promo diskon galeri gudang kedai warung mitra agen distributor supplier reseller jakarta bandung surabaya "
+                 "indonesia indo id kak mama bunda mom moms beli racun cek best top super mega "
+                 "beauty cosmetics cosmetic kosmetik skincare makeup clinic klinik care".split())
+
+
+def _kunci_merek(halaman, kata=""):
+    buang = set(re.findall(r"[a-z0-9]+", _norm(kata or "")))
+    h = re.sub(r"(?<=\b[a-z0-9])\.(?=[a-z0-9])|(?<=[a-z0-9])\.(?=[a-z0-9]\b)", "", _norm(halaman or ""))   # "o.two.o" → "otwoo"
+    h = re.sub(r"\b([a-z0-9])\.([a-z0-9]+)\.([a-z0-9])\b", r"\1\2\3", h)
+    for t in re.findall(r"[a-z0-9]+", h):
+        if len(t) >= 4 and t not in MEREK_UMUM and t not in buang:
+            # v1.5.3 "otwooid", "otwooindonesiabeauty" → "otwoo" (akhiran halaman cabang)
+            while True:
+                t2 = re.sub(r"(indonesia|official|store|shop|beauty|outlet|idn|ind|id)$", "", t)
+                if t2 == t or len(t2) < 4:
+                    break
+                t = t2
+            return t
+    return None
 
 
 def status_iklan(umur, skor, jual=None):
@@ -2646,7 +3690,7 @@ def jejak_pengiklan(pid, segar=False):
     return {"ok": True, "cache": False, "diambil": c["t"], "data": data}
 
 
-def scan_dengan_antre(nilai, mode, email):
+def scan_dengan_antre(nilai, mode, email, segar=False):
     """v1.4.7b: 1 scan berjalan per akun + batas per jam + antre di kunci_scan (bukan `lock` global)."""
     admin = is_admin(email)
     with _kunci_scan_jalan:
@@ -2659,7 +3703,7 @@ def scan_dengan_antre(nilai, mode, email):
         if not kunci_scan.acquire(timeout=SCAN_ANTRE_DTK):
             return {"ok": False, "error": "Antrean scan sedang penuh (scan otomatis/pengguna lain). Coba lagi beberapa menit lagi."}
         try:
-            return jalankan_scan(nilai, mode, pemilik=email)
+            return jalankan_scan(nilai, mode, pemilik=email, segar=segar)
         except Exception as e:
             return {"ok": False, "error": str(e)[:300]}
         finally:
@@ -2790,8 +3834,9 @@ def sc_uji():
             "sc": mesin.sc_status()}
 
 
-def jalankan_scan(nilai, mode="cari", pemilik=None):
-    """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor)."""
+def jalankan_scan(nilai, mode="cari", pemilik=None, dari_jadwal=False, segar=False):
+    """Scan penuh per mode: 'cari' (keyword) atau 'halaman' (intip kompetitor).
+    v1.5.4: dari_jadwal → hasil Meta disimpan jadi cache harian; scan user biasa memakai cache itu (kecuali segar)."""
     s = mesin.buka_sesi()
     perluasan = None
     if mode == "halaman":
@@ -2838,23 +3883,41 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
                              f"Coba lagi sekitar {menit} menit lagi — hasil tidak dikarang selama jeda ini."}
     else:
         label = nilai
-        # v1.6 mesin tajam: kata utama × 4 variasi media + kata senada (kamus sinonim → saran Shopee bila kurang)
-        senada = keluarga_sinonim(nilai)[1:]
-        if len(senada) < 4:
-            wadah = []
-            th = threading.Thread(target=lambda: wadah.extend(shp_saran(nilai)), daemon=True)
-            th.start()
-            th.join(4)   # saran Shopee hanya pelengkap: maks 4 detik, gagal = diabaikan
-            for w in list(wadah):
-                if w.lower() not in [x.lower() for x in senada] and w.lower() != nilai.lower().strip():
-                    senada.append(w)
-        ditahan = False
-        try:
-            mentah, perluasan = mesin.kumpul_iklan_v2(nilai, "ID", senada[:6])
-        except mesin.MetaMenahan:
-            mentah, perluasan, ditahan = [], {}, True
-        except Exception as e:
-            mentah, perluasan = [], {"galat": str(e)[:80]}
+        cc = None if (dari_jadwal or segar) else cc_baca(nilai)
+        if cc:
+            mentah = _copy_dalam(cc["ik"])
+            perluasan = dict(cc.get("info") or {}, cache=True, cron=cc.get("t"), umur_cache=int(time.time() - _tk_epoch(cc.get("t"))))
+            ditahan = False
+        else:
+            # v1.6 mesin tajam: kata utama × 4 variasi media + kata senada (kamus sinonim → saran Shopee bila kurang)
+            senada = keluarga_sinonim(nilai)[1:]
+            # v1.5.4 statistik senada belajar dibaca paralel dgn saran Shopee (kumpulan niche, cache 10 mnt; gagal = prior)
+            wadah_sn = []
+            th_sn = threading.Thread(target=lambda: wadah_sn.append(tk_baca(nilai)), daemon=True)
+            th_sn.start()
+            if len(senada) < 8:
+                wadah = []
+                th = threading.Thread(target=lambda: wadah.extend(shp_saran(nilai)), daemon=True)
+                th.start()
+                th.join(4)   # saran Shopee hanya pelengkap: maks 4 detik, gagal = diabaikan
+                for w in list(wadah):
+                    if len(w.split()) > 4 or re.search(r"\b(official|store|shop|toko|termurah|murah|original|ori|cod)\b", w.lower()):
+                        continue   # v1.5.4 saran panjang/berbau toko ("dashcam 70mai official store") = hasil Meta sangat sedikit
+                    if w.lower() not in [x.lower() for x in senada] and w.lower() != nilai.lower().strip():
+                        senada.append(w)
+            th_sn.join(3)
+            stat_sn = ((wadah_sn[0] if wadah_sn else {}) or {}).get("senada") or {}
+            senada = senada_urut(nilai, senada, stat_sn)
+            hal_bor = halaman_pilih(((wadah_sn[0] if wadah_sn else {}) or {}).get("halaman"))
+            ditahan = False
+            try:
+                mentah, perluasan = mesin.kumpul_iklan_v2(nilai, "ID", senada[:8], halaman=hal_bor)
+            except mesin.MetaMenahan:
+                mentah, perluasan, ditahan = [], {}, True
+            except Exception as e:
+                mentah, perluasan = [], {"galat": str(e)[:80]}
+        if dari_jadwal and mentah and not (perluasan or {}).get("cron"):
+            threading.Thread(target=cc_simpan, args=(nilai, _copy_dalam(mentah), perluasan), daemon=True, name="cache-harian").start()
         if mentah:
             jejak_mesin("cache" if perluasan.get("cache") else "meta", nilai, len(mentah), perluasan.get("detik"),
                         f"{perluasan.get('berhasil', '?')}/{perluasan.get('permintaan', '?')} pencarian")
@@ -2965,13 +4028,21 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
             "detail": rincian(o, b) if o else {"skor_detail": {"total": b["skor"]}, "raw": {}},
         })
     if mode == "cari" and pasangan_rel:
-        konteks_halaman(pasangan_rel)   # v1.6: iklan lemah dari halaman yang jelas niche ikut naik
+        kategori_minoritas(pasangan_rel, nilai)   # v1.5.3: halaman kategori luar yg nyasar (Scuto di scan kecantikan)
+        konteks_halaman(pasangan_rel, nilai)   # v1.6: iklan lemah dari halaman yang jelas niche ikut naik
         for x in out:
             x["rel_nilai"] = (x.get("relevansi") or {}).get("nilai", x.get("rel_nilai"))
     rows_hidup = [b for b in rows if b.get("aktif") is not False] or rows
     # v1.6: jumlah yang dicatat/ditampilkan = iklan aktif yang NYAMBUNG (Lepas = derau niche luar)
     n_nyambung = len(rows_hidup) if mode != "cari" else sum(
         1 for x in out if x.get("aktif") is not False and (x.get("relevansi") or {}).get("label") != "Lepas")
+
+    # v1.5.3: kumpulan Top 10 lintas scan dibaca PARALEL dgn gali harga (tak menambah waktu scan)
+    wadah_tk = []
+    th_tk = None
+    if mode == "cari":
+        th_tk = threading.Thread(target=lambda: wadah_tk.append(tk_baca(label)), daemon=True, name="topkumpul")
+        th_tk.start()
 
     # === GALI HARGA: DPA (kartu) + LP + Marketplace (paralel, best-effort) ===
     LP_MAKS, MP_MAKS = 8, 6
@@ -3219,6 +4290,50 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
         if (x.get("relevansi") or {}).get("label") == "Lepas" and (x.get("detail") or {}).get("raw") is not None:
             x = dict(x, detail={k: v for k, v in x["detail"].items() if k != "raw"})
         rows_kirim.append(x)
+    # v1.5.3 Top 10: label jujur + kumpulan lintas scan
+    pool_tk, rows_kumpul = {}, []
+    if th_tk is not None:
+        th_tk.join(3)   # biasanya sudah selesai selama gali harga; lambat → dilewati
+        pool_tk = wadah_tk[0] if wadah_tk else {}
+        try:
+            rows_kumpul = tk_gabung(label, pool_tk, out)
+        except Exception:
+            rows_kumpul = []
+        # v1.5.3 "bertahan lintas scan": hari berbeda iklan terlihat aktif (scan kini dihitung hanya bila bukan dari cache)
+        segar = not bool((perluasan or {}).get("cache"))
+        for x in out:
+            if layak_top(x):
+                bt = tk_bertahan(pool_tk, (x.get("detail") or {}).get("archive_id"), kini=segar)
+                if bt:
+                    x["bertahan"] = bt
+        for x in rows_kumpul:
+            bt = tk_bertahan(pool_tk, (x.get("detail") or {}).get("archive_id"))
+            if bt:
+                x["bertahan"] = bt
+        if wadah_tk:   # hanya bila kumpulan benar-benar terbaca (jangan timpa kumpulan dgn versi kosong)
+            threading.Thread(target=tk_perbarui, daemon=True, name="topkumpul-tulis",
+                             args=(label, out, pool_tk, bool((perluasan or {}).get("cache"))),
+                             kwargs={"senada_baru": senada_catat((pool_tk or {}).get("senada"), perluasan, out),
+                                     "halaman_baru": halaman_catat((pool_tk or {}).get("halaman"), perluasan, out)}).start()
+    info_top = {}
+    top_produk = bangun_top_produk(out, label, rows_kumpul, info_top)
+    dipakai_k = {a["idx"] - len(out) for g in top_produk for a in g["ads"] if a.get("kumpul")}
+    rows_kumpul_kirim = [dict(x, detail={k: v for k, v in (x.get("detail") or {}).items() if k != "raw"}) if j in dipakai_k else None
+                         for j, x in enumerate(rows_kumpul)]   # hanya yang dipakai Top 10 yg dikirim lengkap (respons ringan)
+    batas_tk = time.time() - TOPKUMPUL_HARI * 86400
+    scan_lalu = [s for s in (pool_tk.get("scan") or []) if _tk_epoch(s) >= batas_tk]
+    top_sampel = {
+        "iklan_scan": len(out),
+        "iklan_aktif_scan": sum(1 for x in out if x.get("aktif") is not False),
+        "iklan_layak": info_top.get("iklan_layak", 0),
+        "iklan_layak_kumpul": info_top.get("iklan_layak_kumpul", 0),
+        "produk_layak": info_top.get("produk_layak", 0),
+        "produk_kumpul": sum(1 for g in top_produk if g.get("kumpul")),
+        "produk_bertahan": sum(1 for g in top_produk if (g.get("bertahan") or {}).get("hari", 0) >= 2),
+        "scan_lalu": len(scan_lalu),
+        "sejak": min(scan_lalu) if scan_lalu else None,
+        "hari": TOPKUMPUL_HARI,
+    }
 
     return {
         "ok": True, "kata": label, "mode": mode, "jumlah": n_nyambung, "sejak_lalu": sejak_lalu,
@@ -3228,7 +4343,9 @@ def jalankan_scan(nilai, mode="cari", pemilik=None):
         "tertua": {"nama": tertua_x["halaman"], "hari": tertua_x["umur"]},
         "peta_harga": peta_harga,
         "ekonomi_niche": ekonomi_niche,
-        "top_produk": bangun_top_produk(out),
+        "top_produk": top_produk,
+        "top_sampel": top_sampel,
+        "rows_kumpul": rows_kumpul_kirim,
         "pemenang": pemenang,
         "acuan": acuan,
         "waktu": waktu,
@@ -4303,13 +5420,16 @@ def _item_akun(email, cfg, pesaing_semua):
     return q
 
 
-def _gabung_antrian(st, peserta, pesaing_semua):
-    """Tambahkan item milik `peserta` ke antrean hari ini (niche dulu, lalu pesaing). Return jumlah item baru."""
+def _gabung_antrian(st, peserta, pesaing_semua, shp=None):
+    """Tambahkan item milik `peserta` ke antrean hari ini (Shopee & niche dulu, lalu pesaing). Return jumlah item baru.
+    v1.5.4: `shp` = {email: [item Shopee]} — kata kunci & toko Shopee akun (ringan: 1–2 permintaan, tanpa Meta)."""
     antrian = st.setdefault("antrian", [])
     per_k = {it["k"]: it for it in antrian}
     baru_niche, baru_hal = [], []
-    for email, cfg in peserta.items():
-        for it in _item_akun(email, cfg, pesaing_semua):
+    sumber = [(email, _item_akun(email, cfg, pesaing_semua)) for email, cfg in peserta.items()]
+    sumber += [(email, [dict(x) for x in its]) for email, its in (shp or {}).items()]
+    for email, daftar_it in sumber:
+        for it in daftar_it:
             lama = per_k.get(it["k"])
             if lama:
                 if email not in lama.setdefault("u", []):
@@ -4317,7 +5437,7 @@ def _gabung_antrian(st, peserta, pesaing_semua):
                 continue
             it["u"] = [email]
             per_k[it["k"]] = it
-            (baru_niche if it["mode"] == "cari" else baru_hal).append(it)
+            (baru_niche if it["mode"] in ("cari", "shopee-cari", "shopee-toko", "shopee-flash") else baru_hal).append(it)
     # niche baru disisipkan sebelum item halaman yg belum diproses → niche semua akun didahulukan
     h = st.get("hasil") or {}
     if baru_niche:
@@ -4342,8 +5462,11 @@ def _pekerja_jadwal():
             it = sisa[0]
             st["item_kini"] = it["k"]
         try:
-            with kunci_scan:   # v1.4.7b: kunci khusus scan (sama dengan /scan) → tidak pernah dua scan bersamaan, situs tetap jalan
-                h = jalankan_scan(it["q"], it["mode"], pemilik=list(it.get("u") or []))
+            if str(it.get("mode") or "").startswith("shopee"):
+                h = shp_jalankan_item(it)   # v1.5.4: Shopee tidak memakai jatah/kunci Meta
+            else:
+                with kunci_scan:   # v1.4.7b: kunci khusus scan (sama dengan /scan) → tidak pernah dua scan bersamaan, situs tetap jalan
+                    h = jalankan_scan(it["q"], it["mode"], pemilik=list(it.get("u") or []), dari_jadwal=True)
         except Exception as e:
             h = {"ok": False, "error": str(e)[:160]}
         if h.get("ditahan"):
@@ -4366,7 +5489,7 @@ def _pekerja_jadwal():
             setelan_tulis("jadwal_status", st)
             masih = bool(_sisa(st))
         if masih:
-            time.sleep(15)   # v1.6: sopan ke Meta Ad Library (1 scan = s/d 12 permintaan)
+            time.sleep(4 if str(it.get("mode") or "").startswith("shopee") else 15)   # v1.6: sopan ke Meta Ad Library (1 scan = s/d 12 permintaan)
 
 
 def jadwal_tick(paksa=False, pemicu="cron", email=None):
@@ -4375,15 +5498,20 @@ def jadwal_tick(paksa=False, pemicu="cron", email=None):
     if not _muat_jadwal():
         return {"ok": False, "siap": False, "pesan": "Tabel setelan belum dibuat - jalankan SUPABASE-JADWAL.sql"}
     pesaing_semua = _pesaing_semua()
+    try:
+        shp = shp_item_cron()   # v1.5.4: kata kunci & toko Shopee akun aktif (dibaca 1×/hari)
+    except Exception:
+        shp = {}
     with kunci_jadwal:
         kini = datetime.now(WIB)
         hari = kini.strftime("%Y-%m-%d")
         st = JADWAL["status"] or {}
         if paksa:
             peserta = {email: _cfg_akun(email)} if email else {}
+            shp = {email: shp.get(email) or []} if email else {}
         else:
             aktif = {e: c for e, c in (JADWAL["cfgs"] or {}).items() if c.get("aktif")}
-            if not aktif:
+            if not aktif and not shp:
                 return {"ok": True, "aksi": "nonaktif", "pesan": "Scan otomatis nonaktif di semua akun"}
             if kini.hour < JADWAL["jam"]:
                 return {"ok": True, "aksi": "menunggu", "pesan": f"Menunggu jam {JADWAL['jam']:02d}:00 WIB"}
@@ -4393,7 +5521,7 @@ def jadwal_tick(paksa=False, pemicu="cron", email=None):
             st = {"tanggal": hari, "pemicu": pemicu, "mulai": _iso_kini(), "akhir": None,
                   "antrian": [], "hasil": {}, "item_kini": None}
             JADWAL["status"] = st
-        n_baru = _gabung_antrian(st, peserta, pesaing_semua)
+        n_baru = _gabung_antrian(st, peserta, pesaing_semua, shp)
         if n_baru and not hari_baru:
             st["akhir"] = None
         if paksa and email:   # gagal kemarin/tadi boleh dicoba lagi saat diminta manual
@@ -6306,6 +7434,7 @@ def shopee_flash(paksa=False):
     hasil = {"ok": True, "sesi": sesi, "produk": out, "waktu": _iso_kini(), "potret_hari": sorted(riw["hari"]),
              "n_delta": n_delta, "pembanding": next((t for t in lalu), None), "riwayat_siap": bool(siap)}
     _shp_cache_simpan("flash", "-", hasil)
+    threading.Thread(target=shp_fs_kini_simpan, args=(hasil,), daemon=True, name="shopee-fs-kini").start()   # v1.5.4 dasbor
     return hasil
 
 
@@ -6315,6 +7444,267 @@ def shopee_potret_latar():
     if not siap or _shp_tgl() in riw["hari"]:
         return
     threading.Thread(target=lambda: shopee_flash(paksa=True), daemon=True, name="shopee-potret").start()
+
+
+# ======================= DASBOR SHOPEE v1.5.4 =======================
+# Per akun di intai_setelan "shpakun:<email>" (terkompres, tanpa SQL baru):
+#   {"v":1, "aktif": iso, "q": {"<kata>|<urut>": {"q","urut","lihat","riw":[potret harian ≤14],"prod":[40 teratas terbaru],"saran":[]}},
+#    "toko": {shopid: {"nama","logo","lihat","live","voucher","t"}}}
+# Cron (jadwal_tick) ikut memindai 3 kata kunci + 3 toko terakhir milik akun yang membuka Shopee/dasbor ≤14 hari terakhir.
+SHP_AKUN_MAKS_Q, SHP_AKUN_HARIAN_Q = 6, 3
+SHP_AKUN_MAKS_TOKO, SHP_AKUN_HARIAN_TOKO = 8, 3
+SHP_AKUN_RIW, SHP_AKUN_AKTIF_HARI = 14, 14
+SHP_FS_KINI = "shpfs_kini"           # ringkasan Radar Flash Sale terbaru (untuk dasbor, tanpa memanggil Shopee)
+_shp_akun_lock = threading.Lock()
+
+
+def _shp_akun_baca(email):
+    try:
+        ok, v = setelan_baca("shpakun:" + email)
+    except Exception:
+        ok, v = False, None
+    v = _tk_buka(v) if ok else {}
+    v = v if isinstance(v, dict) else {}
+    v.setdefault("q", {})
+    v.setdefault("toko", {})
+    return v, ok
+
+
+def _shp_akun_tulis(email, v):
+    v["v"] = 1
+    return setelan_tulis("shpakun:" + email, _tk_bungkus(v))
+
+
+def _shp_potret(h):
+    rk, pr = h.get("ringkas") or {}, h.get("produk") or []
+    n = rk.get("n") or len(pr)
+    lc = {k: c for k, c in (rk.get("lencana") or [])}
+    tk = (rk.get("toko") or [None])[0]
+    hg = rk.get("harga") or {}
+    return {"t": h.get("waktu") or _iso_kini(), "hari": _shp_tgl(), "n": n,
+            "harga": {k: hg.get(k) for k in ("min", "p25", "median", "p75", "max")} if hg else None,
+            "diskon": (rk.get("diskon") or {}).get("persen_produk"), "diskon_rata": (rk.get("diskon") or {}).get("rata"),
+            "mall": round(100 * lc.get("Mall", 0) / n) if n else 0, "toko_unik": rk.get("toko_unik"),
+            "rating": rk.get("rating_rata"), "iklan": round(100 * sum(1 for p in pr if p.get("iklan")) / len(pr)) if pr else 0,
+            "dom": {"shopid": str(tk.get("shopid")), "n": tk.get("n"), "contoh": str(tk.get("contoh") or "")[:70],
+                    "lencana": tk.get("lencana")} if tk else None,
+            "ids": [str(p.get("itemid")) for p in pr if p.get("itemid")][:40]}
+
+
+def shp_akun_catat_cari(emails, h, oto=False):
+    """Simpan potret hasil Scan Shopee ke akun (1 potret per hari WIB; yg terbaru menimpa hari yg sama)."""
+    if not isinstance(h, dict) or not h.get("ok") or not h.get("produk"):
+        return
+    emails = [e for e in ([emails] if isinstance(emails, str) else (emails or [])) if e]
+    for email in emails:
+        try:
+            with _shp_akun_lock:
+                v, ok = _shp_akun_baca(email)
+                if not ok and supa_aktif():
+                    continue   # tabel setelan tak terbaca → jangan timpa dengan versi kosong
+                kunci = str(h.get("q") or "").lower() + "|" + str(h.get("urut") or "laris")
+                e = v["q"].get(kunci) or {"q": h.get("q"), "urut": h.get("urut") or "laris", "riw": []}
+                p = _shp_potret(h)
+                p["oto"] = bool(oto)
+                riw = [x for x in (e.get("riw") or []) if isinstance(x, dict) and x.get("hari") != p["hari"]]
+                e["riw"] = (riw + [p])[-SHP_AKUN_RIW:]
+                e["prod"] = [[str(x.get("itemid")), str(x.get("shopid")), str(x.get("nama") or "")[:90], x.get("harga"),
+                              x.get("gambar") or "", x.get("lencana") or ("Mall" if x.get("resmi") else "")]
+                             for x in (h.get("produk") or [])[:40] if x.get("itemid")]
+                e["saran"] = list(h.get("saran") or [])[:8]
+                if not oto:
+                    e["lihat"] = _iso_kini()
+                    v["aktif"] = _iso_kini()
+                e.setdefault("lihat", _iso_kini())
+                v["q"][kunci] = e
+                if len(v["q"]) > SHP_AKUN_MAKS_Q:
+                    v["q"] = dict(sorted(v["q"].items(), key=lambda kv: kv[1].get("lihat") or "", reverse=True)[:SHP_AKUN_MAKS_Q])
+                _shp_akun_tulis(email, v)
+        except Exception:
+            pass
+
+
+def shp_akun_catat_toko(emails, h, oto=False):
+    if not isinstance(h, dict) or not h.get("ok") or not h.get("toko"):
+        return
+    t = h["toko"]
+    sid = str(t.get("shopid") or "")
+    if not sid:
+        return
+    emails = [e for e in ([emails] if isinstance(emails, str) else (emails or [])) if e]
+    for email in emails:
+        try:
+            with _shp_akun_lock:
+                v, ok = _shp_akun_baca(email)
+                if not ok and supa_aktif():
+                    continue
+                lama = v["toko"].get(sid) or {}
+                v["toko"][sid] = {"nama": str(t.get("nama") or lama.get("nama") or "")[:80], "logo": str(t.get("logo") or "")[:300],
+                                  "live": bool(t.get("live")), "voucher": list(t.get("voucher") or [])[:2], "t": h.get("waktu") or _iso_kini(),
+                                  "lihat": lama.get("lihat") if oto and lama.get("lihat") else _iso_kini()}
+                if not oto:
+                    v["aktif"] = _iso_kini()
+                if len(v["toko"]) > SHP_AKUN_MAKS_TOKO:
+                    v["toko"] = dict(sorted(v["toko"].items(), key=lambda kv: kv[1].get("lihat") or "", reverse=True)[:SHP_AKUN_MAKS_TOKO])
+                _shp_akun_tulis(email, v)
+        except Exception:
+            pass
+
+
+def shp_fs_kini_simpan(hasil):
+    """Dipanggil sesudah Radar Flash Sale segar → ringkasan kecil untuk dasbor."""
+    try:
+        pr = [p for p in (hasil.get("produk") or []) if p.get("terjual") is not None]
+        ringkas = lambda p: {k: p.get(k) for k in ("itemid", "nama", "gambar", "harga", "harga_coret", "diskon", "terjual",
+                                                    "delta", "delta_hari", "laku_sesi", "url", "resmi")}
+        naik = sorted([p for p in pr if p.get("delta")], key=lambda p: -p["delta"])[:6]
+        laris = sorted(pr, key=lambda p: -(p.get("terjual") or 0))[:6]
+        setelan_tulis(SHP_FS_KINI, {"t": hasil.get("waktu"), "n": len(hasil.get("produk") or []), "akhir": (hasil.get("sesi") or {}).get("akhir"),
+                                    "pembanding": hasil.get("pembanding"), "naik": [ringkas(p) for p in naik],
+                                    "laris": [ringkas(p) for p in laris]})
+    except Exception:
+        pass
+
+
+def _shp_toko_tumbuh(sid):
+    try:
+        ok, r = setelan_baca("shptoko:" + sid)
+    except Exception:
+        ok, r = False, None
+    riw = sorted(x for x in (r if ok and isinstance(r, list) else []) if isinstance(x, list) and len(x) == 3)
+    if not riw:
+        return None
+    b = riw[-1]
+
+    def selisih(a):
+        if not a:
+            return None
+        try:
+            hr = (datetime.strptime(b[0], "%Y-%m-%d") - datetime.strptime(a[0], "%Y-%m-%d")).days
+        except ValueError:
+            return None
+        return {"hari": hr, "sejak": a[0],
+                "pengikut": (b[1] - a[1]) if (a[1] is not None and b[1] is not None) else None,
+                "ulasan": (b[2] - a[2]) if (a[2] is not None and b[2] is not None) else None}
+    try:
+        batas = (datetime.strptime(b[0], "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+    except ValueError:
+        batas = ""
+    a7 = next((x for x in reversed(riw[:-1]) if x[0] <= batas), riw[0] if len(riw) >= 2 else None)
+    return {"pengikut": b[1], "ulasan": b[2], "hari": b[0], "titik": len(riw),
+            "d1": selisih(riw[-2]) if len(riw) >= 2 else None, "d7": selisih(a7) if a7 and a7 is not b else None}
+
+
+def _shp_ringkas_potret(p):
+    return {k: p.get(k) for k in ("t", "hari", "n", "harga", "diskon", "diskon_rata", "mall", "toko_unik", "rating", "iklan", "dom", "oto")} if p else None
+
+
+def shp_dasbor(email):
+    v, ok = _shp_akun_baca(email)
+    if not ok and supa_aktif():
+        return {"ok": False, "error": "Data Shopee akunmu belum bisa dibaca. Coba muat ulang."}
+    try:   # tandai akun aktif (cron hanya memindai akun aktif) — tulis maks 1×/hari
+        if _tgl_wib(v.get("aktif")) != _tgl_wib() and (v["q"] or v["toko"]):
+            with _shp_akun_lock:
+                v2, ok2 = _shp_akun_baca(email)
+                if ok2 or not supa_aktif():
+                    v2["aktif"] = _iso_kini()
+                    _shp_akun_tulis(email, v2)
+    except Exception:
+        pass
+    kata = []
+    urut_q = sorted(v["q"].values(), key=lambda e: e.get("lihat") or "", reverse=True)
+    for i, e in enumerate(urut_q[:4]):
+        riw = [x for x in (e.get("riw") or []) if isinstance(x, dict)]
+        if not riw:
+            continue
+        a, b = riw[-1], (riw[-2] if len(riw) >= 2 else None)
+        prod = e.get("prod") or []
+        mk = lambda x, pos: {"itemid": x[0], "shopid": x[1], "nama": x[2], "harga": x[3], "gambar": x[4], "lencana": x[5] if len(x) > 5 else "",
+                             "posisi": pos, "url": SHP_BASIS + "/product/" + str(x[1]) + "/" + str(x[0])}
+        baru = []
+        if b and b.get("ids"):
+            lama = set(b["ids"])
+            baru = [mk(x, j + 1) for j, x in enumerate(prod) if x[0] not in lama]
+        keluar = len(set(b.get("ids") or []) - {x[0] for x in prod}) if b else 0
+        kata.append({"q": e.get("q"), "urut": e.get("urut") or "laris", "harian": i < SHP_AKUN_HARIAN_Q,
+                     "kini": _shp_ringkas_potret(a), "lalu": _shp_ringkas_potret(b),
+                     "baru": baru[:6], "n_baru": len(baru), "n_keluar": keluar,
+                     "teratas": [mk(x, j + 1) for j, x in enumerate(prod[:3])],
+                     "seri": [[x.get("hari"), (x.get("harga") or {}).get("median")] for x in riw if (x.get("harga") or {}).get("median")],
+                     "saran": (e.get("saran") or [])[:8]})
+    toko_urut = sorted(v["toko"].items(), key=lambda kv: kv[1].get("lihat") or "", reverse=True)[:6]
+    tumbuh = {}
+
+    def ambil(sid):
+        tumbuh[sid] = _shp_toko_tumbuh(sid)
+    th = [threading.Thread(target=ambil, args=(sid,), daemon=True) for sid, _ in toko_urut]
+    for t in th:
+        t.start()
+    for t in th:
+        t.join(6)
+    toko = [dict(t, shopid=sid, harian=j < SHP_AKUN_HARIAN_TOKO, tumbuh=tumbuh.get(sid)) for j, (sid, t) in enumerate(toko_urut)]
+    fs = None
+    try:
+        ok_f, f = setelan_baca(SHP_FS_KINI)
+        fs = f if ok_f and isinstance(f, dict) else None
+    except Exception:
+        fs = None
+    jam = JADWAL.get("jam", 5)
+    return {"ok": True, "kata": kata, "toko": toko, "flash": fs, "jam": jam,
+            "jumlah": {"kata": len(v["q"]), "toko": len(v["toko"]),
+                       "produk": sum((k["kini"] or {}).get("n") or 0 for k in kata)},
+            "harian_maks": {"kata": SHP_AKUN_HARIAN_Q, "toko": SHP_AKUN_HARIAN_TOKO}}
+
+
+def shp_item_cron():
+    """{email: [item jadwal Shopee]} untuk akun yang aktif ≤14 hari. Dibaca sekali per hari (berat: semua akun)."""
+    hari = _shp_tgl()
+    c = JADWAL.get("shp_cache")
+    if c and c[0] == hari:
+        return c[1]
+    out = {}
+    try:
+        ok, semua = setelan_awalan("shpakun:")
+    except Exception:
+        ok, semua = False, {}
+    if ok:
+        batas = datetime.now(timezone.utc) - timedelta(days=SHP_AKUN_AKTIF_HARI)
+        batas_iso = batas.strftime("%Y-%m-%dT%H:%M:%SZ")
+        for k, raw in (semua or {}).items():
+            email = k.split(":", 1)[1] if ":" in k else ""
+            v = _tk_buka(raw)
+            if not email or not isinstance(v, dict) or str(v.get("aktif") or "") < batas_iso:
+                continue
+            its = []
+            for e in sorted((v.get("q") or {}).values(), key=lambda e: e.get("lihat") or "", reverse=True)[:SHP_AKUN_HARIAN_Q]:
+                q, urut = str(e.get("q") or ""), str(e.get("urut") or "laris")
+                if q:
+                    its.append({"k": "shopee:" + q.lower() + "|" + urut, "mode": "shopee-cari", "q": q, "urut": urut, "nama": "🛍 Shopee: " + q})
+            for sid, t in sorted((v.get("toko") or {}).items(), key=lambda kv: kv[1].get("lihat") or "", reverse=True)[:SHP_AKUN_HARIAN_TOKO]:
+                its.append({"k": "shopeetoko:" + sid, "mode": "shopee-toko", "q": sid, "nama": "🛍 Toko Shopee: " + (t.get("nama") or sid)})
+            if its:   # Radar Flash Sale 1×/hari (kunci sama → digabung jadi 1 item) → "naik sejak kemarin" tetap terisi
+                its.append({"k": "shopee:flash", "mode": "shopee-flash", "q": "-", "nama": "⚡ Radar Flash Sale Shopee"})
+                out[email] = its
+        JADWAL["shp_cache"] = (hari, out)
+    return out
+
+
+def shp_jalankan_item(it):
+    """Pekerja jadwal: 1 item Shopee. Return dict mirip hasil scan (ok, jumlah, error)."""
+    u = list(it.get("u") or [])
+    if it.get("mode") == "shopee-flash":
+        h = shopee_flash()
+        return {"ok": bool(h.get("ok")), "jumlah": len(h.get("produk") or []), "error": h.get("error")}
+    if it.get("mode") == "shopee-cari":
+        h = shopee_cari(it["q"], it.get("urut") or "laris", None)
+        if h.get("ok"):
+            shp_akun_catat_cari(u, h, oto=True)
+        return {"ok": bool(h.get("ok")), "jumlah": len(h.get("produk") or []), "error": h.get("error")}
+    h = shopee_toko(it["q"], None)
+    if h.get("ok"):
+        shp_akun_catat_toko(u, h, oto=True)
+    return {"ok": bool(h.get("ok")), "jumlah": len(h.get("produk") or []), "error": h.get("error")}
 
 
 def shopee_uji():
@@ -6521,9 +7911,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.json_ok(admin_data())
         elif u.path == "/api/shopee/cari":   # v1.5.0
             prm = parse_qs(u.query)
-            self.json_ok(shopee_cari(prm.get("q", [""])[0], prm.get("urut", ["laris"])[0], self.email))
+            h_ = shopee_cari(prm.get("q", [""])[0], prm.get("urut", ["laris"])[0], self.email)
+            if h_.get("ok") and self.email:   # v1.5.4 dasbor Shopee: potret per akun (latar, gagal = diabaikan)
+                threading.Thread(target=shp_akun_catat_cari, args=(self.email, h_), daemon=True).start()
+            self.json_ok(h_)
         elif u.path == "/api/shopee/toko":
-            self.json_ok(shopee_toko(parse_qs(u.query).get("id", [""])[0], self.email))
+            h_ = shopee_toko(parse_qs(u.query).get("id", [""])[0], self.email)
+            if h_.get("ok") and self.email:
+                threading.Thread(target=shp_akun_catat_toko, args=(self.email, h_), daemon=True).start()
+            self.json_ok(h_)
+        elif u.path == "/api/shopee/dasbor":   # v1.5.4
+            self.json_ok(shp_dasbor(self.email) if self.email else {"ok": False, "error": "Silakan masuk dulu"})
         elif u.path == "/api/shopee/flash":
             self.json_ok(shopee_flash())
         elif u.path == "/api/admin/shopee-uji":
@@ -6584,7 +7982,7 @@ class Handler(BaseHTTPRequestHandler):
                            "application/json")
                 return
             nilai = nilai[:200]
-            hasil = scan_dengan_antre(nilai, mode, self.email)
+            hasil = scan_dengan_antre(nilai, mode, self.email, qs.get("segar", [""])[0] == "1")
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
         elif u.path == "/img":
             target = parse_qs(u.query).get("u", [""])[0]
