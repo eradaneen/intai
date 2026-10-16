@@ -993,8 +993,41 @@ html.tt-kunci{overflow:hidden}
 #view-tiktok .tt-rw .sdt-r{font-size:12px;color:#21403A;line-height:1.6;margin-bottom:6px}
 #view-tiktok .tt-akr .no{width:36px;height:36px;border-radius:50%;padding:0}
 #view-tiktok .tt-akr .tx b small{font-size:11px}
+#view-tiktok .tt-akr .tx b{white-space:normal}
+#view-tiktok .tt-akr-b{display:flex;gap:6px;flex:0 0 auto;align-items:center}
+#view-tiktok .tt-akr .tt-naik{display:inline-block;background:#FFF1E0;color:#9A4B00;border-radius:999px;padding:0 7px;font-size:10.5px;font-weight:800;margin-right:2px}
+#view-tiktok .tt-akr .tt-src{display:inline-block;background:#EEF4F1;color:#235347;border-radius:999px;padding:0 7px;font-size:10.5px;font-weight:700;margin-right:2px}
+#view-tiktok .tt-kontak{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px}
+#view-tiktok .tt-kontak .lbl{font-size:10.5px;color:var(--faint);font-weight:700}
+#view-tiktok .tt-kontak a{display:inline-flex;align-items:center;gap:3px;background:#DAF1DE;color:#163832;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-tiktok .tt-kontak a:hover{background:#8EB69B;color:#051F20}
+#view-tiktok .sp-aksi button.on{background:#163832;color:#DAF1DE;border-color:#163832}
+#view-tiktok .sp-kecil.on{background:#163832;color:#DAF1DE;border-color:#163832}
+#view-tiktok .tt-dl{font-weight:800}
+#view-tiktok .tt-dl.p{color:#1F7A4D} #view-tiktok .tt-dl.m{color:#B0413E}
+#view-tiktok .tt-cek-l{display:flex;align-items:center;gap:7px;cursor:pointer}
+#view-tiktok .tt-lagi{display:block;width:100%;margin-top:8px}
+@media (max-width:760px){ #view-tiktok .tt-akr{flex-wrap:wrap} #view-tiktok .tt-akr .tx{flex:1 1 calc(100% - 50px)} #view-tiktok .tt-akr-b{margin-left:46px} }
 #view-tiktok .tt-emb{display:block;width:100%;max-width:560px;height:720px;margin:0 auto;border:0;border-radius:16px;background:#fff}
 @media (max-width:760px){ #view-tiktok .tt-emb{height:620px} }
+
+/* v1.6.4 Ringkasan TikTok */
+.dtt-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dtt-u{position:relative;border:1px solid var(--line);background:#F8FCF9;border-radius:16px;padding:12px 12px 34px;cursor:pointer;transition:transform .25s cubic-bezier(.65,0,.35,1),box-shadow .25s,border-color .25s;min-width:0}
+.dtt-u:hover,.dtt-u:focus-visible{transform:translateY(-2px);border-color:#8EB69B;box-shadow:0 10px 24px rgba(5,31,32,.08);outline:none}
+.dtt-l{font-size:11.5px;font-weight:800;color:#235347;margin-bottom:8px;letter-spacing:.2px}
+.dtt-th{position:relative;display:block;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:#DAF1DE;margin-bottom:8px}
+.dtt-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dtt-th i{position:absolute;left:8px;bottom:6px;font-style:normal;font-size:10px;font-weight:800;color:#163832;opacity:.6}
+.dtt-j{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dtt-m{font-size:12px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtt-m b{color:#163832}
+.dtt-s{font-size:11px;color:var(--faint);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtt-k{font-size:12px;color:var(--muted);line-height:1.55}
+.dtt-u.kosong{background:#fff;border-style:dashed}
+.dtt-buka{position:absolute;right:12px;bottom:10px;font-size:11.5px;font-weight:800;color:#235347}
+.dtt-cat{font-size:11px;color:var(--faint);line-height:1.6;margin-top:12px}
+@media (max-width:760px){ .dtt-g{grid-template-columns:minmax(0,1fr)} .dtt-th{aspect-ratio:16/8} }
 </style>
 <style>
 #view-meta {
@@ -2133,7 +2166,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
       </div>
     </section>
 
-    <div class="dsh-alih" id="dsh-alih" role="tablist" aria-label="Isi ringkasan"><span>Ringkasan</span><button type="button" data-d="meta" class="on" onclick="dashAlih('meta')">Meta</button><button type="button" data-d="shopee" onclick="dashAlih('shopee')">Shopee</button></div>
+    <div class="dsh-alih" id="dsh-alih" role="tablist" aria-label="Isi ringkasan"><span>Ringkasan</span><button type="button" data-d="meta" class="on" onclick="dashAlih('meta')">Meta</button><button type="button" data-d="shopee" onclick="dashAlih('shopee')">Shopee</button><button type="button" data-d="tiktok" onclick="dashAlih('tiktok')">TikTok</button></div>
     <div id="dash-meta">
     <div class="kpi-row">
       <div class="kpi anim d1"><div class="lbl">Iklan dikaji</div><div class="v" id="kpi-iklan">—</div><span class="pill-delta net" id="kpi-iklan-pill">riwayat mesin</span></div>
@@ -2170,6 +2203,14 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     </div>
 
     </div><!-- /dash-meta -->
+
+    <!-- v1.6.4: DASHBOARD TIKTOK — cukup 1 kartu -->
+    <div id="dash-tiktok" style="display:none">
+      <div class="kartu dtt">
+        <div class="judul-kartu"><b>🎵 TikTok minggu ini</b><span id="dtt-sub">memuat…</span></div>
+        <div id="dtt-isi"><div class="chart-kosong" style="color:var(--faint)">Memuat…</div></div>
+      </div>
+    </div>
 
     <!-- v1.5.4: DASHBOARD SHOPEE -->
     <div id="dash-shopee" style="display:none">
@@ -2780,10 +2821,17 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
       <section class="sp-sek" data-sek="akun">
         <form class="sp-form" id="tt-akun-form" autocomplete="off">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
-          <input id="tt-akun-q" type="search" placeholder="@namaakun / link profil — atau ketik niche untuk akun terkait" aria-label="Akun TikTok atau niche">
+          <input id="tt-akun-q" type="search" placeholder="Niche untuk cari kreator — atau @namaakun / link profil untuk intip" aria-label="Akun TikTok atau niche">
           <button type="submit" class="btn" id="tt-akun-btn">Cari</button>
         </form>
-        <div class="sp-riw" id="tt-akun-riw"></div>
+        <div class="tt-riw-baris"><div class="sp-riw" id="tt-akun-riw"></div><button type="button" class="sp-chip tt-atur-b" data-atur="akun" aria-expanded="false" onclick="ttAtur('akun')">⚙ Atur</button></div>
+        <div class="tt-atur" id="tt-atur-akun" hidden>
+          <div class="tt-atur-j">Daftar kreator</div>
+          <div class="tt-atur-r">
+            <label class="tt-atur-l">Urutan <select id="tt-kr-urut" aria-label="Urutan kreator"><option value="muncul">Paling cocok &amp; sering muncul di tren</option><option value="naik">🔥 Sedang naik</option><option value="pengikut">Pengikut terbanyak</option></select></label>
+            <label class="tt-atur-l tt-cek-l"><input type="checkbox" id="tt-kr-kontak"> Hanya yang punya kontak publik di bio</label>
+          </div>
+        </div>
         <div id="tt-akun-isi"></div>
       </section>
     </div>
@@ -3288,16 +3336,56 @@ function cekHP(){
 }
 if(/[?&]cekhp\b/.test(location.search)) setTimeout(cekHP, 3500);
 /* ===== v1.5.4: DASHBOARD SHOPEE ===== */
-const DSH = {mode: LS.get("intai_dash") === "shopee" ? "shopee" : "meta", data: null, t: 0, tok: null, muat: false};
+const DSH = {mode: ["shopee", "tiktok"].indexOf(LS.get("intai_dash")) >= 0 ? LS.get("intai_dash") : "meta", data: null, t: 0, tok: null, muat: false};
 function dashAlih(p, dariHero){
-  if(p !== "meta" && p !== "shopee") return;
+  if(p !== "meta" && p !== "shopee" && p !== "tiktok") return;
   DSH.mode = p; LS.set("intai_dash", p);
   document.querySelectorAll("#dsh-alih button").forEach(function(b){ b.classList.toggle("on", b.dataset.d === p); });
   const m = document.getElementById("dash-meta"), s = document.getElementById("dash-shopee");
   if(m) m.style.display = p === "meta" ? "" : "none";
   if(s) s.style.display = p === "shopee" ? "" : "none";
+  const tk = document.getElementById("dash-tiktok"); if(tk) tk.style.display = p === "tiktok" ? "" : "none";
   if(p === "shopee") muatDasborShp();
+  if(p === "tiktok") muatDasborTT();
   if(!dariHero && window.__hsPilih) window.__hsPilih(p, true);
+}
+/* ---------- v1.6.4 Fase 4: Ringkasan TikTok di Dashboard (1 kartu) ---------- */
+const DTT = {d: null, t: 0, muat: false};
+async function muatDasborTT(paksa){
+  if(DTT.muat) return;
+  if(DTT.d && !paksa && Date.now() - DTT.t < 600000){ gambarDasborTT(); return; }
+  DTT.muat = true; gambarDasborTT();
+  let d = null; try{ d = await (await fetch("/api/tiktok/minggu")).json(); }catch(e){}
+  DTT.muat = false; DTT.d = d && d.ok ? d : {ok: false, error: (d && d.error) || "Server INTAI tidak terhubung."}; DTT.t = Date.now();
+  gambarDasborTT();
+}
+function dttKe(u){ ke(u); }
+function gambarDasborTT(){
+  const el = document.getElementById("dtt-isi"), sub = document.getElementById("dtt-sub"); if(!el) return;
+  const d = DTT.d;
+  if(!d){ el.innerHTML = '<div class="chart-kosong" style="color:var(--faint)">Membaca produk naik, iklan, dan video tren TikTok… ±5 detik</div>'; return; }
+  if(!d.ok){ el.innerHTML = '<div class="chart-kosong">⚠️ ' + esc(d.error) + ' <button class="tombol2" onclick="muatDasborTT(true)">Coba lagi</button></div>'; if(sub) sub.textContent = ""; return; }
+  const N = d.niche || [], n0 = N[0] ? N[0].q : "";
+  if(sub) sub.textContent = N.length ? "niche kamu: " + N.slice(0, 3).map(function(n){ return n.q; }).join(" · ") : "belum ada niche";
+  const enc = encodeURIComponent;
+  const gb = function(u, ph){ const g = ttGbr(u); return '<span class="dtt-th">' + (g ? '<img src="' + esc(g) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : "") + '<i>' + ph + '</i></span>'; };
+  const ubin = function(lbl, isi, url, kosong){
+    return '<div class="dtt-u' + (isi ? "" : " kosong") + '" role="link" tabindex="0" onclick="dttKe(\'' + esc(url) + '\')" onkeydown="if(event.key===\'Enter\')dttKe(\'' + esc(url) + '\')">' +
+      '<div class="dtt-l">' + lbl + '</div>' + (isi || '<div class="dtt-k">' + kosong + '</div>') + '<span class="dtt-buka">Buka ›</span></div>';
+  };
+  const p = d.produk, x = d.iklan, v = d.video;
+  const hp = p ? gb(p.gambar, "Tokopedia") + '<div class="dtt-j" title="' + esc(p.nama) + '">' + esc(p.nama) + '</div>' +
+      '<div class="dtt-m"><b>+' + shpN(p.selisih) + ' terjual</b> 🔵 <span>' + esc(p.dari || "") + ' → ' + esc(p.ke || "") + '</span></div><div class="dtt-s">' + esc(p.niche) + ' · ' + esc(p.toko || "") + '</div>' : "";
+  const hx = x ? gb(x.cover, "Iklan TikTok") + '<div class="dtt-j" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' +
+      '<div class="dtt-m"><b>♥ ' + ttK(x.like) + '</b> 🟢 <span>' + esc(x.merek || "") + '</span></div><div class="dtt-s">' + (x.umum ? "semua kategori" : esc(x.niche)) + ' · terlihat ' + (x.hari || 1) + ' hari' + (x.baru ? " · aktif minggu ini" : "") + '</div>' : "";
+  const hv = v ? gb(v.cover, "Video tren") + '<div class="dtt-j" title="' + esc(v.judul) + '">' + esc(v.judul || "(tanpa teks)") + '</div>' +
+      '<div class="dtt-m"><b>▶ ' + ttK(v.views) + '</b> 🟢 <span>@' + esc(v.u) + '</span></div><div class="dtt-s">' + (v.label_nama ? esc(v.label_nama) : "semua kategori") + ' · 7 hari</div>' : "";
+  el.innerHTML = '<div class="dtt-g">' +
+    ubin("📈 Produk naik", hp, "/tiktok" + (p ? "?nq=" + enc(p.niche) : n0 ? "?nq=" + enc(n0) : ""),
+      N.length ? "Belum ada kenaikan terjual tercatat. Riwayat Tokopedia niche kamu baru " + (d.hari_riwayat || 0) + " hari; kenaikan terlihat setelah minimal 2 hari." : "Pasang 📌 Pantau niche di Scan TikTok, lalu produk Tokopedia yang naik muncul di sini.") +
+    ubin("🏆 Iklan terkuat", hx, x && !x.umum && x.niche ? "/tiktok?tab=konten&nq=" + enc(x.niche) : "/tiktok?tab=konten&lihat=kategori", "Belum ada iklan di arsip untuk niche kamu.") +
+    ubin("🔥 Video tren", hv, "/tiktok?tab=konten&lihat=tren" + (n0 ? "&nq=" + enc(n0) : ""), d.galat && d.galat.video ? "Video tren belum terbaca dari TikTok saat ini." : "Belum ada video tren.") +
+    '</div><div class="dtt-cat">Produk naik = selisih angka terjual Tokopedia antar-hari 🔵 dari niche yang kamu pantau di Scan TikTok + 3 niche otomatis. Iklan terkuat = like tertinggi di arsip iklan TikTok INTAI yang masih terlihat ≤7 hari 🟢. Video tren = views tertinggi 7 hari di Creative Center' + (d.industri ? " (industri " + esc(d.industri) + ")" : "") + ' 🟢. Klik kartu untuk membuka tab terkait.</div>';
 }
 function dshTgl(hari){   /* "2026-10-14" → "14 Okt" */
   try{ return new Date(hari + "T12:00:00+07:00").toLocaleDateString("id-ID", {day: "numeric", month: "short", timeZone: "Asia/Jakarta"}); }catch(e){ return hari || ""; }
@@ -3448,7 +3536,7 @@ function dshMulai(){
     if(langsung) requestAnimationFrame(function(){ ind.style.transition = ""; });
   }
   function pilih(p, dariDash){
-    if(!dariDash && (p === "meta" || p === "shopee") && typeof dashAlih === "function") dashAlih(p, true);   /* v1.5.4: ringkasan ikut tab */
+    if(!dariDash && (p === "meta" || p === "shopee" || p === "tiktok") && typeof dashAlih === "function") dashAlih(p, true);   /* v1.5.4: ringkasan ikut tab */
     semua.forEach(function(t){ t.classList.toggle("on", t.dataset.p === p); });
     document.querySelectorAll("#hero-scan .hs-panel").forEach(function(x){ x.classList.toggle("on", x.dataset.panel === p); });
     geserInd(tabs.querySelector(".hs-tab.on"));
@@ -3458,7 +3546,7 @@ function dshMulai(){
   }
   semua.forEach(function(t){ t.addEventListener("click", function(){ pilih(t.dataset.p); }); });
   window.__hsPilih = pilih;
-  if(DSH.mode === "shopee") setTimeout(function(){ dashAlih("shopee"); }, 0);
+  if(DSH.mode !== "meta") setTimeout(function(){ dashAlih(DSH.mode); }, 0);
   window.__kalibrasiHero = function(){ geserInd(tabs.querySelector(".hs-tab.on"), true); };
   setTimeout(window.__kalibrasiHero, 60);
   setTimeout(window.__kalibrasiHero, 700);
@@ -7878,7 +7966,7 @@ async function sdtJalan(btn){
 }
 function sdtGambar(){ const el = document.getElementById("sdt-wadah"); if(el) el.innerHTML = sdtHTML(); }
 /* ---------- v1.5.8 Scan TikTok: Top Iklan (Creative Center) + Intip akun ---------- */
-const TT = {tab: "pasar", kMode: "", peluang: null, naik: null, tPer: "7", tVl: "auto", trenC: {}, nq: "", niche: null, nTok: null, nRw: null, nStat: null, tokRw: null, pasang: false, filter: null, filterMuat: false, ind: "", sub: "", per: "30", urut: "like", bhs: "id",
+const TT = {tab: "pasar", kMode: "", vidIdx: {}, krUrut: "muncul", krKontak: false, kre: null, simpan: null, akp: null, kreIdx: {}, simpanSemua: false, peluang: null, naik: null, tPer: "7", tVl: "auto", trenC: {}, nq: "", niche: null, nTok: null, nRw: null, nStat: null, tokRw: null, pasang: false, filter: null, filterMuat: false, ind: "", sub: "", per: "30", urut: "like", bhs: "id",
             iklan: null, kunciIklan: "", muat: {iklan: false, akun: false, lagi: false, niche: false, ntok: false, nstat: false}, galat: {iklan: "", akun: "", niche: "", ntok: ""},
             akunQ: "", akun: null, akunUrut: "baru", akunAsal: null, sudut: null, akunBlokir: "",
             tokQ: "", tokUrut: "laris", tok: null};
@@ -7956,6 +8044,8 @@ function ttPasang(){
     TT.tokUrut = $("tt-tok-urut").value; ttCari(q);
   });
   $("tt-t-per").addEventListener("change", function(){ TT.tPer = this.value; ttTrenUbah(); });
+  $("tt-kr-urut").addEventListener("change", function(){ TT.krUrut = this.value; ttKreMuat(); ttGambarKre(); });   /* v1.6.3 */
+  $("tt-kr-kontak").addEventListener("change", function(){ TT.krKontak = this.checked; ttKreMuat(); ttGambarKre(); });
   $("tt-t-vl").addEventListener("change", function(){ TT.tVl = this.value; ttTrenUbah(); });
   $("tt-tok-urut").addEventListener("change", function(){ TT.tokUrut = this.value; if(TT.nq) ttTok(TT.nq, this.value); else ttSimpanUrl(); });
   $("tt-n-form").addEventListener("submit", function(e){
@@ -8039,7 +8129,6 @@ function ttMuatTab(){
     else if(TT.kMode === "niche"){ if(!ttNicheCocok() && !TT.muat.niche) ttNicheMuat(); else { ttKontenMode(); ttGambarNiche(); } }
     else { if((!TT.iklan || TT.kunciIklan !== ttKunci()) && !TT.muat.iklan) ttIklan(); else { ttKontenMode(); ttGambarIklan(); } }
   } else {
-    if(!TT.akun && !TT.muat.akun && !TT.galat.akun && TT.nq && !ttNicheCocok() && !TT.muat.niche) ttNicheMuat();
     ttGambarAkun();
   }
 }
@@ -8204,6 +8293,7 @@ function ttSudutGambar(){ const el = document.getElementById("tt-sdt"); if(el) e
 async function ttAkun(q){
   q = String(q || "").trim(); if(!q) return;
   TT.akunQ = q; TT.akun = null; TT.galat.akun = ""; TT.muat.akun = true; TT.akunUrut = "baru"; TT.akunBlokir = "";
+  const ap = document.getElementById("tt-atur-akun"); if(ap && !ap.hasAttribute("hidden")) ttAtur("akun");   /* v1.6.3 Atur daftar kreator tak relevan di Intip */
   if(TT.tab === "konten" && !TT.akunAsal) TT.akunAsal = {tab: "konten"};
   if(TT.tab !== "akun") ttTab("akun", true);
   document.getElementById("tt-akun-q").value = q;
@@ -8213,7 +8303,7 @@ async function ttAkun(q){
   if(btn) btn.disabled = false;
   if(TT.akunQ !== q) return;
   TT.muat.akun = false;
-  if(d && d.ok){ TT.akun = d; TT.akunQ = d.akun.nama; ttRiwTambah(d.akun.nama, d.akun.tampil); document.getElementById("tt-akun-q").value = "@" + d.akun.nama; ttSimpanUrl(); }
+  if(d && d.ok){ TT.akun = d; TT.akunQ = d.akun.nama; ttSimpanMuat(); ttAkpMuat(); ttRiwTambah(d.akun.nama, d.akun.tampil); document.getElementById("tt-akun-q").value = "@" + d.akun.nama; ttSimpanUrl(); }
   else { TT.galat.akun = (d && d.error) || "Server INTAI tidak terhubung."; TT.akunBlokir = (d && d.blokir && d.nama) || ""; if(TT.akunBlokir) ttRiwTambah(d.nama, d.nama); }
   ttGambarAkun();
 }
@@ -8237,6 +8327,7 @@ function ttAkunKembali(){
 window.addEventListener("keydown", function(e){
   if(e.key !== "Escape" || typeof VT === "undefined" || VT.v !== "tiktok") return;
   if(document.getElementById("tt-ov")){ e.stopImmediatePropagation(); e.preventDefault(); ttTutupModal(); return; }
+  if(document.querySelector(".afv-ov")) return;   /* v1.6.4 modal naskah ditutup oleh penangan .afv-ov */
   if(TT.tab !== "akun" || !(TT.akun || TT.galat.akun || TT.muat.akun)) return;
   const H = document.documentElement, sh = document.querySelector(".shell");
   if(H.classList.contains("bns-buka") || (sh && (sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup"))) || document.querySelector("#area-modal .ov") || (document.getElementById("mbg") && document.getElementById("mbg").style.display === "flex")) return;
@@ -8256,10 +8347,13 @@ function ttGambarAkun(){
     return;
   }
   const d = TT.akun;
-  if(!d && TT.nq){ el.innerHTML = ttAkunNicheHTML() + ttKreatorTrenHTML(); if(!ttTrenData(false) && ttNicheInd()) ttTrenMuat(false); return; }
-  if(!d){
-    el.innerHTML = '<div class="sp-kosong"><b>Intip satu akun TikTok pesaing</b>Ketik <code>@namaakun</code> atau tempel link profilnya. INTAI menampilkan pengikut, total like, 13 video yang ditampilkan TikTok lengkap dengan views, like, komentar, share, dan simpan, plus <b>mana yang ditandai iklan</b> (dipromosikan).<div class="sp-riw">' +
-      ["somethincofficial", "erigostore", "azarinecosmetic"].map(function(u){ return '<button type="button" class="sp-chip" onclick="ttAkun(\'' + u + '\')">@' + u + '</button>'; }).join("") + '</div></div>';
+  if(!d){   /* v1.6.3 Fase 3: daftar kreator rakitan + akun dipantau + kreator tersimpan */
+    const pk = '<div id="tt-kr-pantau">' + ttAkpHTML() + '</div>', sv = '<div id="tt-kr-simpan">' + ttSimpanHTML() + '</div>', dl = '<div id="tt-kr-daftar">' + ttKreDaftarHTML() + '</div>';
+    el.innerHTML = TT.nq ? dl + pk + sv
+      : '<div class="sp-kosong" style="margin-bottom:14px"><b>Cari kreator atau intip akun pesaing</b>Ketik <b>niche</b> (misal: serum wajah) untuk daftar kreator yang cocok, lengkap dengan kontak yang mereka tulis sendiri di bio. Ketik <code>@namaakun</code> atau tempel link profil untuk mengintip satu akun: pengikut, like, 13 video, dan <b>mana yang ditandai iklan</b>.<div class="sp-riw">' +
+        ["somethincofficial", "erigostore", "azarinecosmetic"].map(function(u){ return '<button type="button" class="sp-chip" onclick="ttAkun(\'' + u + '\')">@' + u + '</button>'; }).join("") + '</div></div>' + pk + sv + dl;
+    ttKreMuat(); ttSimpanMuat(); ttAkpMuat();
+    if(TT.nq && !ttTrenData(false) && ttNicheInd()) ttTrenMuat(false);
     return;
   }
   const a = d.akun, rg = d.ringkas || {}, av = ttGbr(a.avatar);
@@ -8270,9 +8364,10 @@ function ttGambarAkun(){
     (a.bisnis ? '<span class="tt-cek">Akun bisnis' + (a.kategori && a.kategori !== "Lainnya" ? " · " + esc(a.kategori) : "") + '</span>' : "") + (a.privat ? '<span class="tt-cek">🔒 Privat</span>' : "");
   el.innerHTML = ttBalikHTML() +
     '<div class="kartu" style="margin-bottom:14px"><div class="sp-toko-kep"><div class="sp-lg tt-av">' + (av ? '<img src="' + esc(av) + '" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '</div>' +
-      '<div class="sp-tnama"><h2>' + esc(a.tampil) + '</h2><div class="sp-sb"><span>@' + esc(a.nama) + '</span>' + (a.dibuat ? '<span>akun sejak ' + esc(ttTgl(a.dibuat)) + '</span>' : "") + '</div><div class="tt-lencana">' + lencana + '</div></div>' +
-      '<span class="sp-aksi"><button onclick="ttEkspor(\'akun\')">＋ Ekspor CSV</button><a class="sp-kecil" style="text-decoration:none" href="https://www.tiktok.com/@' + encodeURIComponent(a.nama) + '" target="_blank" rel="noreferrer noopener">Buka di TikTok ↗</a></span></div>' +
-      (a.bio ? '<div class="tt-bio">' + esc(a.bio) + '</div>' : "") + '</div>' +
+      '<div class="sp-tnama"><h2>' + esc(a.tampil) + '</h2><div class="sp-sb"><a href="https://www.tiktok.com/@' + encodeURIComponent(a.nama) + '" target="_blank" rel="noreferrer noopener" style="color:inherit" title="Buka di TikTok">@' + esc(a.nama) + ' ↗</a>' + (a.dibuat ? '<span>akun sejak ' + esc(ttTgl(a.dibuat)) + '</span>' : "") + '</div><div class="tt-lencana">' + lencana + '</div></div>' +
+      '<span class="sp-aksi" id="tt-ak-aksi">' + ttAkAksiHTML() + '</span></div>' +
+      (a.bio ? '<div class="tt-bio">' + esc(a.bio) + '</div>' : "") +
+      ((a.kontak || []).length ? '<div class="tt-kontak" style="margin-top:10px">' + ttKontakHTML(a.kontak, true) + '</div>' : (a.bio ? '<div class="tt-kontak" style="margin-top:8px"><span class="lbl">📇 Tidak ada email/WA/IG/link yang ditulis di bio publik akun ini.</span></div>' : "")) + '</div>' +
     '<div class="sp-fakta">' +
       '<div class="sp-f"><div class="l">Pengikut 🟢</div><div class="v">' + ttK(a.pengikut) + '</div><div class="s">mengikuti ' + ttK(a.mengikuti) + '</div></div>' +
       '<div class="sp-f"><div class="l">Total like 🟢</div><div class="v">' + ttK(a.like) + '</div><div class="s">seluruh video akun</div></div>' +
@@ -8282,7 +8377,8 @@ function ttGambarAkun(){
       '<div class="sp-f"><div class="l">Dipromosikan 🟢</div><div class="v">' + (rg.dicek_iklan ? rg.dipromosikan + '<small style="font-size:12px;color:var(--muted)"> / ' + rg.dicek_iklan + '</small>' : "—") + '</div><div class="s">video yang ditandai iklan oleh TikTok</div></div>' +
     '</div>' +
     '<div class="kartu"><div class="judul-kartu"><b>Video akun ini 🟢</b><span>' + vid.length + ' video</span>' +
-      '<span class="tt-urut">' + [["baru", "Terbaru"], ["views", "Views"], ["like", "Like"]].map(function(u){ return '<button type="button" class="sp-chip' + (TT.akunUrut === u[0] ? " on" : "") + '" onclick="ttUrutAkun(\'' + u[0] + '\')">' + u[1] + '</button>'; }).join("") + '</span></div>' +
+      '<span class="tt-urut">' + [["baru", "Terbaru"], ["views", "Views"], ["like", "Like"]].map(function(u){ return '<button type="button" class="sp-chip' + (TT.akunUrut === u[0] ? " on" : "") + '" onclick="ttUrutAkun(\'' + u[0] + '\')">' + u[1] + '</button>'; }).join("") + '</span>' +
+      (vid.length ? '<span class="sp-aksi"><button onclick="ttEkspor(\'akun\')">＋ Ekspor CSV</button></span>' : "") + '</div>' +
       (vid.length ? '<div class="sp-grid tt-grid">' + vid.map(function(v){
         const cv = ttGbr(v.cover);
         return '<div class="sp-p tt-p"><a class="sp-th tt-th" href="' + esc(v.url) + '" target="_blank" rel="noreferrer noopener">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") +
@@ -8308,6 +8404,13 @@ function ttEkspor(jenis){
     kol = ["tanggal", "caption", "views", "like", "komentar", "share", "simpan", "durasi_detik", "dipromosikan", "link"];
     baris = d.video.map(function(v){ return [v.unggah ? new Date(v.unggah * 1000).toISOString().slice(0, 10) : "", v.caption, ekAngka(v.tayang), ekAngka(v.like), ekAngka(v.komentar), ekAngka(v.share), ekAngka(v.simpan), ekAngka(v.durasi), v.iklan ? "ya" : "tidak", v.url]; });
     q = "@" + d.akun.nama; filter = "13 video profil TikTok"; mode = "tiktok-akun";
+  } else if(jenis === "kreator" || jenis === "simpan"){   /* v1.6.3 */
+    const L = jenis === "simpan" ? (TT.simpan || []) : ((TT.kre && TT.kre.d && TT.kre.d.kreator) || []);
+    const kt = function(k, j){ return (k.kontak || []).filter(function(x){ return x.j === j; }).map(function(x){ return x.v; }).join(" | "); };
+    kol = ["akun", "nama", "pengikut", "naik", "muncul_di_tren_hari_30", "pengikut_bertambah", "industri", "tagar", "email_bio", "wa_bio", "instagram_bio", "link_bio", "catatan", "link_tiktok"];
+    baris = L.map(function(k){ return ["@" + k.u, k.nama || "", ekAngka(k.pengikut), k.naik ? "ya" : "tidak", ekAngka(k.muncul), ekAngka(k.pengikut_naik), (k.industri || []).join(" | "), (k.tagar || []).map(function(t){ return "#" + t; }).join(" "),
+      kt(k, "email"), kt(k, "wa"), kt(k, "ig"), kt(k, "link"), k.catatan || "", "https://www.tiktok.com/@" + k.u]; });
+    q = jenis === "simpan" ? "Kreator tersimpan" : "Kreator TikTok " + (TT.kre.d.q || "dari tren"); filter = jenis === "simpan" ? "daftar pribadi" : "urut " + TT.krUrut + (TT.krKontak ? " · punya kontak" : ""); mode = "tiktok-kreator";
   } else if(jenis === "niche"){
     const d = TT.niche; if(!d) return;
     kol = ["hook", "merek", "kategori", "label_niche_ai", "sudut_ai", "like", "ctr_peringkat", "budget", "tujuan", "terlihat_hari", "pertama_terlihat", "terakhir_terlihat", "id_iklan", "link_creative_center"];
@@ -8436,7 +8539,7 @@ function ttKartuArsip(x, kode){
       (arsip ? '<div class="sp-mt"><span title="Hari ketika iklan ini terlihat di Top Ads TikTok oleh INTAI">terlihat ' + x.hari + ' hari · ' + esc(ttTglIso(x.pertama)) + (x.terakhir && x.terakhir !== x.pertama ? ' – ' + esc(ttTglIso(x.terakhir)) : "") + '</span>' + (x.sudut_label ? '<span>🧭 ' + esc(x.sudut_label) + '</span>' : "") + '</div>' +
                (x.varian > 1 || x.segmen_lain ? '<div class="sp-lb">' + (x.varian > 1 ? '<span title="Iklan dengan teks sama dari pengiklan yang sama digabung jadi 1 kartu">+' + (x.varian - 1) + ' varian materi</span>' : "") + (x.segmen_lain ? '<span title="Produk khusus anak/bayi/ibu hamil — diletakkan di bawah karena niche yang dicari tidak menyebutnya">produk anak/bayi</span>' : "") + '</div>' : "")
              : (x.cocok ? '<div class="sp-lb"><span class="tt-cocok">cocok kata niche</span></div>' : "")) +
-      '<div class="tt-ak"><button type="button" class="sp-kecil" onclick="ttPutar(\'' + kode + '\')">▶ Detail</button><button type="button" class="sp-kecil" onclick="ttSalinHook(\'' + kode + '\')">Salin hook</button></div>' +
+      '<div class="tt-ak"><button type="button" class="sp-kecil" onclick="ttPutar(\'' + kode + '\')">▶ Detail</button><button type="button" class="sp-kecil" onclick="ttNaskahIklan(\'' + kode + '\')">📝 Naskah</button></div>' +
     '</div></div>';
 }
 function ttChipsNiche(id){
@@ -8592,7 +8695,7 @@ async function ttTrenMuat(semua){
   TT.trenC[k] = {d: d && d.ok ? d : {ok: false, galat: {semua: (d && d.error) || "Server INTAI tidak terhubung"}, tagar: [], tagar_ind: [], per_industri: [], video: []}};
   const a = document.getElementById("tt-tren-niche"); if(a) a.innerHTML = ttTrenNicheHTML();
   if(TT.tab === "konten" && TT.kMode === "tren") ttGambarTren();
-  if(TT.tab === "akun" && !TT.akun && !TT.muat.akun) ttGambarAkun();
+  if(TT.tab === "akun" && !TT.akun && !TT.muat.akun){ ttGambarAkun(); setTimeout(function(){ if(TT.kre && !TT.kre.muat){ TT.kre.k = ""; ttKreMuat(); } }, 1500); }
 }
 function ttSpark(k){
   if(!k || k.length < 2) return "";
@@ -8613,13 +8716,13 @@ function ttTagarBaris(t){
 function ttPersen(x){ return x == null ? "—" : (Number(x) * 100).toFixed(1).replace(".", ",") + "%"; }
 const TT_DARI = {views: "views teratas", interaksi: "interaksi teratas", tonton6: "ditonton ≥6 dtk teratas"};
 function ttVideoKartu(v){
-  const cv = ttGbr(v.cover);
+  const cv = ttGbr(v.cover); TT.vidIdx[v.id] = v;
   return '<div class="sp-p tt-p"><a class="sp-th tt-th" href="' + esc(v.link) + '" target="_blank" rel="noreferrer noopener">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : '') + '<span class="sp-ph">TikTok</span><span class="sp-pos">' + ttK(v.views) + '</span><span class="tt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></a>' +
     '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(v.judul) + '">' + esc(v.judul || "(tanpa teks)") + '</div>' +
     '<div class="sp-mt"><b style="color:var(--ink)">@' + esc(v.u) + '</b><span>' + ttK(v.pengikut) + ' pengikut</span></div>' +
     '<div class="tt-angka"><span title="Views periode ini 🟢">▶ ' + ttK(v.views) + '</span><span title="Engagement rate (interaksi ÷ views) 🟢">ER ' + ttPersen(v.er) + '</span><span title="Persentase penonton yang menonton ≥6 detik 🟢">6 dtk ' + ttPersen(v.vtr6) + '</span></div>' +
     '<div class="sp-lb">' + (v.dari || []).map(function(x){ return '<span>' + esc(TT_DARI[x] || x) + '</span>'; }).join("") + (v.dibuat ? '<span>diunggah ' + esc(ttTglIso(v.dibuat)) + '</span>' : '') + '</div>' +
-    '<div class="tt-ak"><a class="sp-kecil" href="' + esc(v.link) + '" target="_blank" rel="noreferrer noopener">▶ Buka di TikTok</a><button type="button" class="sp-kecil" data-u="' + esc(v.u) + '" onclick="TT.akunAsal={tab:\'konten\'};ttAkun(this.dataset.u)">Intip @' + esc(v.u.slice(0, 14)) + '</button></div></div></div>';
+    '<div class="tt-ak"><button type="button" class="sp-kecil" data-v="' + esc(v.id) + '" onclick="ttNaskahVideo(this.dataset.v)">📝 Naskah</button><button type="button" class="sp-kecil" data-u="' + esc(v.u) + '" onclick="TT.akunAsal={tab:\'konten\'};ttAkun(this.dataset.u)">Intip @' + esc(v.u.slice(0, 14)) + '</button></div></div></div>';
 }
 function ttTrenGalat(d, k, nama){ return d.galat && d.galat[k] ? '<div class="ai-k">⚠️ ' + nama + ' belum terbaca dari TikTok Creative Center (' + esc(d.galat[k]) + '). Bagian lain tetap tampil; coba lagi nanti.</div>' : ""; }
 function ttTrenNicheHTML(){
@@ -8674,6 +8777,294 @@ function ttKreatorTrenHTML(){
         '<div class="tx"><b>@' + esc(k.u) + (k.nama ? ' <span style="font-weight:600;color:var(--muted)">' + esc(k.nama) + '</span>' : '') + '</b>' + ttK(k.pengikut) + ' pengikut · muncul di ' + esc(k.dari.slice(0, 3).join(", ")) + '</div>' +
         '<button type="button" class="sp-kecil" data-u="' + esc(k.u) + '" onclick="TT.akunAsal=null;ttAkun(this.dataset.u)">Intip</button></div>'; }).join("") +
     '<div class="sp-cat">Kreator yang muncul di tagar teratas & video tren (data publik Creative Center). Ini <b>bukan</b> daftar kreator lengkap per niche — tren TikTok tidak dipilah per produk. Kontak hanya dari bio publik saat diintip.</div></div>';
+}
+/* ---------- v1.6.4 Fase 4: naskah TikTok dari konten nyata (aturan 🔵 + variasi AI 🤖) ---------- */
+function ttNamaPendek(n){ return typeof afvNamaPendek === "function" ? afvNamaPendek(n) : String(n || "").slice(0, 40); }
+function ttHookBank(khusus){
+  const L = [], lihat = {};
+  const tambah = function(h, asal, ks){
+    h = String(h || "").replace(/#[^\s#]+/g, "").replace(/\s+/g, " ").trim();
+    if(h.length < 12) return;
+    if(h.length > 140) h = h.slice(0, 137).replace(/\s+\S*$/, "") + "…";
+    const k = h.toLowerCase(); if(lihat[k]) return; lihat[k] = 1;
+    L.push({hook: h, asal: asal, khusus: !!ks});
+  };
+  (khusus || []).forEach(function(x){ tambah(x.hook, x.asal, true); });
+  const n = ttNicheCocok() ? TT.niche : null;
+  if(n) (n.iklan || []).filter(function(x){ return !x.segmen_lain; }).slice().sort(function(a, b){ return (b.like || 0) - (a.like || 0); }).slice(0, 4)
+    .forEach(function(x){ tambah(x.judul, "🟢 iklan TikTok · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")); });
+  if(n) (n.langsung || []).filter(function(x){ return x.cocok; }).slice(0, 3)
+    .forEach(function(x){ tambah(x.judul, "🟢 top iklan kategori · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")); });
+  const t = ttTrenData(false) || ttTrenData(true);
+  if(t) (t.video || []).slice().sort(function(a, b){ return (b.views || 0) - (a.views || 0); }).slice(0, 3)
+    .forEach(function(v){ tambah(v.judul, "🟢 video tren · ▶ " + ttK(v.views) + " · @" + v.u); });
+  return L.slice(0, 8);
+}
+function ttNaskahProduk(i){
+  const p = TT.tok && TT.tok.produk && TT.tok.produk[i]; if(!p) return;
+  ttNaskah({nama: p.nama, harga: p.harga, diskon: p.diskon, terjual: p.terjual_teks, rating: p.rating, url: p.url, asal: "produk"});
+}
+function ttNaskahIklan(kode){
+  const x = ttAmbil(kode); if(!x) return;
+  ttNaskah({nama: TT.nq || x.merek || "", khusus: [{hook: x.judul, asal: "🟢 iklan ini · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")}], asal: "iklan"});
+}
+function ttNaskahVideo(id){
+  const v = TT.vidIdx[id]; if(!v) return;
+  ttNaskah({nama: TT.nq || "", khusus: [{hook: v.judul, asal: "🟢 video ini · ▶ " + ttK(v.views) + " · @" + v.u}], asal: "video"});
+}
+function ttTagarNaskah(kw){
+  const t = ttTrenData(false), tg = [];
+  const k = kw === "produk ini" ? "" : String(kw || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); if(k) tg.push("#" + k);
+  if(t) ((t.tagar_ind && t.tagar_ind.length) ? t.tagar_ind : []).slice(0, 2).forEach(function(x){ tg.push("#" + x.nama); });
+  tg.push("#tiktokshop");
+  return tg.filter(function(x, i, a){ return a.indexOf(x) === i; });
+}
+function ttNaskah(s){
+  document.querySelectorAll(".afv-ov").forEach(function(o){ o.remove(); });
+  const nm = s.nama ? ttNamaPendek(s.nama) : "", umum = !nm && !TT.nq, kw = TT.nq || nm || "produk ini";
+  const obj = nm || (umum ? "produk kamu" : kw);
+  ttPakai("aksi", "naskah-" + (s.asal || "x"));
+  const fakta = [];
+  if(s.terjual) fakta.push(String(s.terjual).toLowerCase().indexOf("terjual") >= 0 ? String(s.terjual) : s.terjual + " terjual di Tokopedia");
+  if(s.rating) fakta.push("rating ★" + String(s.rating).replace(".", ","));
+  const tpl = [
+    {hook: "POV: akhirnya nemu " + kw + " yang beneran cocok buat aku.", asal: "🔵 template", tpl: true},
+    {hook: "Jangan beli " + kw + " sebelum lihat ini.", asal: "🔵 template", tpl: true},
+    {hook: s.terjual ? "Kenapa " + obj + " ini laku " + String(s.terjual).replace(/\s*terjual/i, "") + "? Aku cobain." : "Aku cobain " + obj + " seminggu, ini jujurnya.", asal: "🔵 template dari fakta produk", tpl: true}
+  ];
+  let hooks = ttHookBank(s.khusus).concat(tpl);
+  const n = ttNicheCocok() ? TT.niche : null;
+  const dur = n ? (n.iklan || []).map(function(x){ return x.durasi; }).filter(function(x){ return x > 0; }).sort(function(a, b){ return a - b; }) : [];
+  const medDur = dur.length >= 3 ? dur[Math.floor(dur.length / 2)] : null;
+  const ov = document.createElement("div");
+  ov.className = "afv-ov";
+  ov.addEventListener("click", function(e){ if(e.target === ov) ov.remove(); });
+  ov.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Naskah video TikTok">' +
+    '<div class="afv-mk"><b>📝 Naskah video TikTok — ' + esc(obj) + '</b><button class="afv-x" type="button" aria-label="Tutup" onclick="this.closest(\'.afv-ov\').remove()">✕</button></div>' +
+    (umum ? '<div class="ai-k" style="margin-bottom:4px">💡 Belum ada niche, jadi naskah memakai “produk kamu”. Ketik niche di kotak cari supaya hook & tagarnya lebih spesifik.</div>' : "") +
+    (medDur ? '<div class="ai-k" style="margin-bottom:4px">⏱ Iklan TikTok niche “' + esc(TT.nq) + '” di arsip INTAI rata-rata (median) <b>' + medDur + ' detik</b> 🔵. Naskah di bawah disusun ±' + Math.max(15, Math.min(45, medDur)) + ' detik.</div>' : "") +
+    '<div class="afv-l">1 · PILIH HOOK (0–3 DETIK)</div><div class="afv-hk"></div>' +
+    '<div class="afv-l">2 · NASKAH</div><div class="afv-ns" id="ttn-ns"></div>' +
+    '<div class="afv-l">3 · CAPTION &amp; TAGAR</div><div class="afv-cap" id="ttn-cap"></div>' +
+    '<div class="afv-l">4 · VARIASI NASKAH AI <small style="text-transform:none;letter-spacing:0">opsional</small></div><div class="ai-box" id="ttn-ai"><button type="button" class="tombol2" id="ttn-ai-b">🤖 Tulis 3 variasi dengan AI</button><span class="ai-k">AI menulis dari hook nyata di atas + fakta produk. Angka di luar fakta otomatis dibuang.</span></div>' +
+    '<div class="afv-bawah"><button type="button" class="btn" id="ttn-salin">Salin naskah + caption</button>' + (s.url ? '<a class="tombol2" href="' + esc(s.url) + '" target="_blank" rel="noopener" style="text-decoration:none">Buka produk ↗</a>' : "") + '</div>' +
+    '<div class="afv-nt">Hook 🟢 diambil dari iklan & video TikTok yang benar-benar tayang. Ubah kalimatnya, jangan disalin mentah. Tagar: nama niche + tagar tren industri ini dari Creative Center 🟢.</div></div>';
+  document.body.appendChild(ov);
+  let pilih = 0;
+  const T = medDur && medDur <= 18 ? ["0–2", "2–5", "5–11", "11–14", "14–" + Math.max(15, medDur)] : ["0–3", "3–7", "7–17", "17–24", "24–30"];
+  function susun(){
+    const h = hooks[pilih] ? hooks[pilih].hook : "";
+    const baris = [
+      [T[0] + " dtk", "HOOK — ucapkan + tulis di layar: “" + h + "”"],
+      [T[1] + " dtk", "MASALAH / POV — tunjukkan situasi sebelum memakai " + obj + ". Teks layar singkat, wajah ke kamera."],
+      [T[2] + " dtk", "DEMO — pakai " + obj + " langsung: close-up detail, potong cepat tiap 2–3 detik" + (s.harga ? ", sebut harganya " + ttRp(s.harga) : "") + "."],
+      [T[3] + " dtk", "BUKTI — " + (fakta.length ? fakta.join(" · ") : "tunjukkan hasil pemakaian atau ulasan pembeli") + (s.diskon ? " · lagi diskon " + s.diskon + "%" : "") + "."],
+      [T[4] + " dtk", "AJAKAN — “Produknya aku taruh di keranjang kuning ya, cek sebelum promonya habis.”"]
+    ];
+    document.getElementById("ttn-ns").innerHTML = baris.map(function(b){ return '<div><i>' + b[0] + '</i><span>' + esc(b[1]) + '</span></div>'; }).join("");
+    const cap = h + "\n\n" + obj + (fakta.length ? " — " + fakta.join(", ") : "") + ". Cek keranjang kuning ✨\n\n" + ttTagarNaskah(kw).join(" ");
+    document.getElementById("ttn-cap").textContent = cap;
+    ov.__teks = baris.map(function(b){ return "[" + b[0] + "] " + b[1]; }).join("\n") + "\n\nCAPTION:\n" + cap;
+  }
+  function gambarHook(muat){
+    const hk = ov.querySelector(".afv-hk");
+    hk.innerHTML = hooks.map(function(h, i){
+      return '<button type="button" data-i="' + i + '"' + (i === pilih ? ' class="on"' : "") + '>' + esc(h.hook) + '<small>' + esc(h.asal) + (h.khusus ? " · yang kamu pilih" : "") + '</small></button>'; }).join("") +
+      (muat ? '<div class="ai-muat"><i></i>Mengambil hook dari iklan & video TikTok niche “' + esc(TT.nq) + '”…</div>' : "");
+    hk.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){
+      pilih = +b.dataset.i; diklik = true; hk.querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); }); susun(); }); });
+  }
+  let diklik = false;
+  const perlu = !!TT.nq && (!ttNicheCocok() || !ttTrenData(false));
+  gambarHook(perlu);
+  if(perlu) (async function(){   /* v1.6.4: dari tab Produk & Pasar, hook nyata belum dimuat → ambil dulu */
+    const q = TT.nq;
+    for(let i = 0; i < 50 && TT.muat.niche; i++) await new Promise(function(r){ setTimeout(r, 300); });
+    if(!ttNicheCocok()) await ttNicheMuat();
+    if(ttNicheInd() && !ttTrenData(false)) await ttTrenMuat(false);
+    if(!document.body.contains(ov) || TT.nq !== q) return;
+    const lama = hooks[pilih];
+    hooks = ttHookBank(s.khusus).concat(tpl);
+    pilih = diklik ? Math.max(0, hooks.findIndex(function(h){ return lama && h.hook === lama.hook; })) : 0;
+    gambarHook(false); susun();
+  })();
+  ov.querySelector("#ttn-salin").addEventListener("click", function(){ salin(ov.__teks || ""); ttPakai("aksi", "salin-naskah"); });
+  ov.querySelector("#ttn-ai-b").addEventListener("click", function(){ ttNaskahAI(s, obj, kw, hooks, ov); });
+  aiStatus().then(function(st){ const b = ov.querySelector("#ttn-ai-b"); if(b && !st.aktif){ b.disabled = true; b.nextElementSibling.textContent = "AI belum diaktifkan admin. Naskah template di atas tetap bisa dipakai."; } });
+  susun();
+}
+async function ttNaskahAI(s, obj, kw, hooks, ov){
+  const box = ov.querySelector("#ttn-ai"); if(!box) return;
+  box.innerHTML = '<div class="ai-muat"><i></i>AI sedang menulis 3 variasi naskah TikTok… biasanya 5–20 detik</div>';
+  ttPakai("aksi", "naskah-ai");
+  const d = await aiPost("/api/ai/naskah", {nama: obj, harga: s.harga || 0, diskon: s.diskon || "", terjual: s.terjual || "", rating: s.rating || "", niche: kw || "", platform: "TikTok",
+    hooks: hooks.filter(function(h){ return !h.tpl; }).map(function(h){ return h.hook; }).slice(0, 6)});
+  if(!document.body.contains(ov)) return;
+  if(!d || !d.ok){
+    box.innerHTML = '<div class="ai-k">⚠️ ' + esc((d && d.error) || "AI gagal.") + ' Naskah template di atas tetap bisa dipakai.</div>' + (d && d.jatah ? "" : '<button type="button" class="tombol2" id="ttn-ai-b">Coba lagi</button>');
+    const b = box.querySelector("#ttn-ai-b"); if(b) b.onclick = function(){ ttNaskahAI(s, obj, kw, hooks, ov); };
+    return;
+  }
+  const tg = ttTagarNaskah(kw).join(" ");
+  const teks = function(v){ return "HOOK (0–3 dtk): " + v.hook + "\n" + (v.adegan || []).map(function(a){ return "[" + (a.detik || "") + "] " + (a.visual ? "(" + a.visual + ") " : "") + (a.ucapan || ""); }).join("\n") +
+    (v.penutup ? "\nPENUTUP: " + v.penutup : "") + "\n\nCAPTION:\n" + (v.caption || v.hook) + "\n\n" + tg; };
+  ov.__ai = d.varian;
+  box.innerHTML = d.varian.map(function(v, i){
+    return '<div class="ai-v"><div class="ai-vh"><b>' + esc(v.sudut || ("Variasi " + (i + 1))) + '</b><span class="ai-tg">🤖 AI 🔵</span></div>' +
+      '<div class="ai-hook">“' + esc(v.hook) + '”</div>' +
+      (v.adegan || []).map(function(a){ return '<div class="ai-ad"><i>' + esc(a.detik || "") + '</i><span>' + (a.visual ? '<em>' + esc(a.visual) + '</em>' : "") + esc(a.ucapan || "") + '</span></div>'; }).join("") +
+      (v.penutup ? '<div class="ai-ad"><i>Penutup</i><span>' + esc(v.penutup) + '</span></div>' : "") +
+      (v.caption ? '<div class="ai-cap">' + esc(v.caption) + '</div>' : "") +
+      '<button type="button" class="ai-salin" data-ai="' + i + '">Salin variasi ini</button></div>';
+  }).join("") + '<div class="ai-k">Ditulis AI dari hook TikTok nyata + fakta produk. Angka di luar fakta otomatis dibuang; tetap baca ulang sebelum dipakai.' + (d.sisa != null ? ' Sisa jatah AI kamu hari ini: <b>' + d.sisa + '×</b>.' : "") + '</div>';
+  box.querySelectorAll("[data-ai]").forEach(function(b){ b.addEventListener("click", function(){ salin(teks(ov.__ai[+b.dataset.ai])); }); });
+}
+/* ---------- v1.6.3 Fase 3: daftar kreator rakitan · kontak publik · simpan kreator · akun dipantau ---------- */
+const TT_KR_URUT = {muncul: "paling cocok & sering muncul", naik: "sedang naik", pengikut: "pengikut terbanyak"};
+const TT_KR_SRC = {"tren-tagar": "tagar tren", "tren-video": "video tren", intip: "pernah diintip"};
+function ttKreKunci(){ return String(TT.nq || "").toLowerCase() + "|" + TT.krUrut + "|" + (TT.krKontak ? 1 : 0); }
+async function ttKreMuat(){
+  const k = ttKreKunci(); if(TT.kre && TT.kre.k === k && (TT.kre.d || TT.kre.muat)) return;
+  const lama = TT.kre && TT.kre.d && TT.kre.d.q === (TT.nq || "") ? TT.kre.d : null;
+  TT.kre = {k: k, muat: true, d: lama};
+  let d = null; try{ d = await (await fetch("/api/tiktok/kreator?q=" + encodeURIComponent(TT.nq || "") + "&urut=" + TT.krUrut + (TT.krKontak ? "&kontak=1" : ""))).json(); }catch(e){}
+  if(!TT.kre || TT.kre.k !== k) return;
+  TT.kre = {k: k, d: d && d.ok ? d : null, galat: d && d.ok ? "" : ((d && d.error) || "Server INTAI tidak terhubung.")};
+  ttGambarKre();
+}
+async function ttSimpanMuat(paksa){
+  if((TT.simpan && !paksa) || TT.muat.simpan) return; TT.muat.simpan = true;
+  let d = null; try{ d = await (await fetch("/api/tiktok/simpan")).json(); }catch(e){}
+  TT.muat.simpan = false; if(d && d.ok) TT.simpan = d.simpan || []; else if(!TT.simpan) TT.simpan = [];
+  ttGambarKre();
+}
+async function ttAkpMuat(paksa){
+  if((TT.akp && !paksa) || TT.muat.akp) return; TT.muat.akp = true;
+  let d = null; try{ d = await (await fetch("/api/tiktok/akunpantau")).json(); }catch(e){}
+  TT.muat.akp = false; if(d && d.ok) TT.akp = d; else if(!TT.akp) TT.akp = {akun: [], maks: 3, galat: (d && d.error) || "Server INTAI tidak terhubung."};
+  ttGambarKre();
+}
+function ttGambarKre(){
+  const s = function(i, f){ const el = document.getElementById(i); if(el) el.innerHTML = f(); };
+  s("tt-kr-daftar", ttKreDaftarHTML); s("tt-kr-pantau", ttAkpHTML); s("tt-kr-simpan", ttSimpanHTML); s("tt-ak-aksi", ttAkAksiHTML);
+}
+function ttKontakHTML(L, judul){
+  if(!L || !L.length) return "";
+  const ic = {email: "✉", wa: "WA", ig: "IG", link: "🔗"};
+  return (judul ? '<span class="lbl">📇 Kontak di bio publik</span>' : '<span class="lbl">📇 bio:</span>') + L.map(function(x){
+    const v = String(x.v || "");
+    const href = x.j === "email" ? "mailto:" + v : x.j === "wa" ? "https://wa.me/" + v.replace(/\D/g, "") : x.j === "ig" ? "https://instagram.com/" + encodeURIComponent(v) : "https://" + v.replace(/^https?:\/\//, "");
+    const lbl = x.j === "wa" ? "0" + v.replace(/^62/, "") : x.j === "ig" ? "@" + v : v;
+    return '<a href="' + esc(href) + '" target="_blank" rel="noreferrer noopener" title="' + esc(v) + '" onclick="ttPakai(\'aksi\',\'kontak-' + x.j + '\')"><b>' + ic[x.j] + '</b> ' + esc(lbl) + '</a>';
+  }).join("");
+}
+function ttTersimpan(u){ return !!(TT.simpan || []).some(function(x){ return x.u === u; }); }
+function ttAvHTML(av, u){
+  av = ttGbr(av);
+  return '<span class="no tt-av" style="overflow:hidden">' + (av ? '<img src="' + esc(av) + '" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">' : esc(String(u || "@").charAt(0).toUpperCase())) + '</span>';
+}
+function ttKreBaris(k, tombol2){
+  TT.kreIdx[k.u] = k;
+  const sv = ttTersimpan(k.u) || (TT.simpan == null && k.tersimpan);
+  const meta = [];
+  if(k.pengikut != null) meta.push(ttK(k.pengikut) + ' pengikut 🟢');
+  if(k.pengikut_naik > 0) meta.push('<span class="tt-dl p">+' + ttK(k.pengikut_naik) + '</span> sejak ' + esc(ttTglIso(k.pengikut_dari)) + ' 🔵');
+  if(k.muncul) meta.push('muncul di tren ' + k.muncul + ' hari 🔵');
+  if(k.views_maks) meta.push('video tren ' + ttK(k.views_maks) + ' views');
+  if(k.tagar && k.tagar.length) meta.push(esc(k.tagar.slice(-3).map(function(t){ return "#" + t; }).join(" ")));
+  else if(k.industri && k.industri.length) meta.push(esc(k.industri[0]));
+  const lenc = (k.naik ? '<span class="tt-naik">🔥 naik</span>' : "") + (k.cocok === "kata" ? '<span class="tt-src">cocok kata</span>' : k.cocok === "industri" ? '<span class="tt-src">industri sama</span>' : "") +
+    (k.catatan ? '<span class="tt-src">📝 ' + esc(k.catatan) + '</span>' : "");
+  const b2 = tombol2 || '<button type="button" class="sp-kecil' + (sv ? " on" : "") + '" data-u="' + esc(k.u) + '" onclick="ttSimpanKre(this.dataset.u)">' + (sv ? "★ Tersimpan" : "☆ Simpan") + '</button>';
+  return '<div class="sp-tk tt-akr">' + ttAvHTML(k.avatar, k.u) +
+    '<div class="tx"><b>@' + esc(k.u) + (k.nama && k.nama !== k.u ? ' <small style="font-weight:600;color:var(--muted)">' + esc(k.nama) + '</small>' : "") + '</b>' +
+      (lenc ? lenc + ' ' : "") + meta.join(" · ") +
+      ((k.kontak || []).length ? '<div class="tt-kontak">' + ttKontakHTML(k.kontak) + '</div>' : "") + '</div>' +
+    '<span class="tt-akr-b"><button type="button" class="sp-kecil" data-u="' + esc(k.u) + '" onclick="TT.akunAsal=null;ttAkun(this.dataset.u)">Intip</button>' + b2 + '</span></div>';
+}
+function ttKreDaftarHTML(){
+  const K = TT.kre, d = K && K.d;
+  const judul = TT.nq ? '👥 Kreator untuk “' + esc(TT.nq) + '”' : '🔥 Kreator dari tren TikTok';
+  let h = '<div class="kartu"><div class="judul-kartu"><b>' + judul + ' 📦</b><span>' + (d ? shpN(d.total) + ' kreator · urut ' + esc(TT_KR_URUT[TT.krUrut] || "") + (TT.krKontak ? " · hanya yang punya kontak" : "") : "dirakit INTAI dari data publik") + '</span>' +
+    (d && d.kreator.length ? '<span class="sp-aksi" style="margin-left:auto"><button onclick="ttEkspor(\'kreator\')">＋ Ekspor CSV</button></span>' : "") + '</div>';
+  if(!d && (!K || K.muat)) return h + '<div class="ai-muat"><i></i>Merakit daftar kreator dari arsip INTAI…</div></div>';
+  if(!d) return h + '<div class="ai-k">⚠️ ' + esc(K.galat) + ' <button class="sp-kecil" onclick="TT.kre=null;ttKreMuat();ttGambarKre()">Coba lagi</button></div></div>';
+  const a = d.arsip || {};
+  h += '<div class="sp-info"><span>📦 Arsip kreator INTAI: <b>' + shpN(a.kreator || 0) + ' kreator</b>' + (a.sejak ? ' · sejak ' + esc(ttTglIso(a.sejak)) : "") + '</span>' +
+    (d.total ? '<span style="color:var(--faint)">' + shpN(d.punya_kontak) + ' dari ' + shpN(d.total) + ' menulis kontak di bio</span>' : "") + (d.ind_nama ? '<span style="color:var(--faint)">industri terdekat: ' + esc(d.ind_nama) + '</span>' : "") + '</div>';
+  if(!d.kreator.length){
+    h += '<div class="ai-k">' + (TT.nq ? 'Belum ada kreator di arsip yang cocok dengan “' + esc(TT.nq) + '”' + (TT.krKontak ? " dan menulis kontak di bio" : "") + '. ' : 'Arsip kreator masih kosong' + (TT.krKontak ? " untuk yang punya kontak publik" : "") + '. ') +
+      'Arsip terisi tiap pagi dari tagar & video tren TikTok, dan dari akun yang diintip user INTAI. Jadi makin hari makin lengkap. Kamu juga bisa ketik <b>@namaakun</b> di kotak atas untuk langsung mengintip kreator.' +
+      (TT.krKontak ? ' <button class="sp-kecil" onclick="document.getElementById(\'tt-kr-kontak\').checked=false;TT.krKontak=false;ttKreMuat();ttGambarKre()">Tampilkan semua</button>' : "") + '</div>';
+  } else h += d.kreator.slice(0, 40).map(function(k){ return ttKreBaris(k); }).join("") + (d.total > 40 ? '<div class="ai-k" style="margin-top:6px">Menampilkan 40 teratas dari ' + shpN(d.total) + '. Ekspor CSV memuat 60 baris teratas.</div>' : "");
+  return h + '<div class="sp-cat">Dirakit INTAI dari data publik: kreator yang <b>muncul di tagar & video tren TikTok</b> (Creative Center, tiap pagi + saat dipakai) dan akun yang pernah <b>diintip</b>. ' +
+    '<b>Cocok kata</b> = nama, bio, atau tagarnya memuat kata niche. <b>Industri sama</b> = muncul di tren industri yang sama, belum tentu membahas produkmu. ' +
+    '<b>🔥 naik</b> = muncul di tren ≥2 hari dalam 30 hari terakhir atau pengikutnya bertambah sejak pertama dicatat. ' +
+    '<b>📇 Kontak</b> hanya yang ditulis kreator sendiri di bio publik; INTAI tidak menebak atau membeli kontak. Iklan TikTok tidak dipakai di sini karena hanya mencantumkan merek, bukan akun kreator.</div></div>';
+}
+function ttSimpanHTML(){
+  const L = TT.simpan;
+  let h = '<div class="kartu"><div class="judul-kartu"><b>★ Kreator tersimpan</b><span>' + (L ? L.length + ' kreator · pribadi' : "daftar pribadimu") + '</span>' +
+    (L && L.length ? '<span class="sp-aksi" style="margin-left:auto"><button onclick="ttEkspor(\'simpan\')">＋ Ekspor CSV</button></span>' : "") + '</div>';
+  if(!L) return h + '<div class="ai-muat"><i></i>Memuat…</div></div>';
+  if(!L.length) return h + '<div class="ai-k">Belum ada. Tekan <b>☆ Simpan</b> di daftar kreator atau di halaman Intip akun untuk mengumpulkan calon partner, lalu ekspor ke Excel/Sheets.</div></div>';
+  const tampil = TT.simpanSemua ? L : L.slice(0, 10);
+  return h + tampil.map(function(k){ return ttKreBaris(k, '<button type="button" class="sp-kecil on" data-u="' + esc(k.u) + '" onclick="ttSimpanKre(this.dataset.u)" title="Hapus dari daftar">★ Hapus</button>'); }).join("") +
+    (L.length > 10 ? '<button type="button" class="sp-kecil tt-lagi" onclick="TT.simpanSemua=!TT.simpanSemua;ttGambarKre()">' + (TT.simpanSemua ? "Ringkas" : "Tampilkan semua (" + L.length + ")") + '</button>' : "") + '</div>';
+}
+function ttDelta(v){ if(v == null) return ""; return '<span class="tt-dl ' + (v > 0 ? "p" : v < 0 ? "m" : "") + '">' + (v > 0 ? "+" : "") + ttK(v) + '</span>'; }
+function ttAkpHTML(){
+  const P = TT.akp;
+  let h = '<div class="kartu"><div class="judul-kartu"><b>📌 Akun dipantau</b><span>' + (P ? (P.akun || []).length + ' / ' + (P.maks || 3) + ' · dipotret tiap pagi' : "pribadi · maks 3") + '</span></div>';
+  if(!P) return h + '<div class="ai-muat"><i></i>Memuat…</div></div>';
+  if(P.galat) return h + '<div class="ai-k">⚠️ ' + esc(P.galat) + '</div></div>';
+  if(!(P.akun || []).length) return h + '<div class="ai-k">Belum ada. Intip akun pesaing atau kreator, lalu tekan <b>📌 Pantau akun</b>. Tiap pagi INTAI mencatat pengikut, like, jumlah video, dan video baru, jadi kamu bisa lihat perubahannya dari hari ke hari.</div></div>';
+  return h + P.akun.map(function(k){
+    const m = [];
+    if(!k.hari) m.push("potret pertama sedang dibuat… (±1 menit, atau besok pagi)");
+    else {
+      m.push(ttK(k.pengikut) + ' pengikut ' + ttDelta(k.d_pengikut));
+      if(k.d_video != null) m.push(ttDelta(k.d_video) + ' video' + (k.video_baru ? ' · ' + k.video_baru + ' baru di profil' : ""));
+      else m.push(ttK(k.video_total) + ' video');
+      if(k.median != null) m.push('views tengah ' + ttK(k.median) + ' 🔵');
+      if(k.terbaru) m.push('unggah terakhir ' + esc(ttTglIso(k.terbaru)));
+      m.push(k.banding ? '<span style="color:var(--faint)">dibanding ' + esc(ttTglIso(k.banding)) + '</span>' : '<span style="color:var(--faint)">perbandingan mulai besok</span>');
+    }
+    return '<div class="sp-tk tt-akr">' + ttAvHTML(k.avatar, k.u) + '<div class="tx"><b>@' + esc(k.u) + (k.nama && k.nama !== k.u ? ' <small style="font-weight:600;color:var(--muted)">' + esc(k.nama) + '</small>' : "") + '</b>' + m.join(" · ") + '</div>' +
+      '<span class="tt-akr-b"><button type="button" class="sp-kecil" data-u="' + esc(k.u) + '" onclick="TT.akunAsal=null;ttAkun(this.dataset.u)">Intip</button>' +
+      '<button type="button" class="sp-kecil" data-u="' + esc(k.u) + '" onclick="ttPantauAkun(this.dataset.u, \'hapus\')">Lepas</button></span></div>';
+  }).join("") + '<div class="sp-cat">Angka pengikut/like/video = angka TikTok saat dipotret 🟢; selisih dihitung INTAI 🔵 dibanding ±7 hari sebelumnya. "Baru di profil" = video yang belum ada di 13 video profil pada potret pembanding.</div></div>';
+}
+function ttAkAksiHTML(){
+  const d = TT.akun; if(!d || !d.akun) return "";
+  const u = d.akun.nama, pt = d.dipantau || ((TT.akp && TT.akp.akun) || []).some(function(x){ return x.u === u; });
+  const sv = TT.simpan ? ttTersimpan(u) : d.tersimpan;
+  return '<button type="button" class="' + (pt ? "on" : "") + '" data-u="' + esc(u) + '" onclick="ttPantauAkun(this.dataset.u, \'' + (pt ? "hapus" : "tambah") + '\')">' + (pt ? "✓ Dipantau" : "📌 Pantau akun") + '</button>' +
+    '<button type="button" class="' + (sv ? "on" : "") + '" data-u="' + esc(u) + '" onclick="ttSimpanKre(this.dataset.u)">' + (sv ? "★ Tersimpan" : "☆ Simpan") + '</button>';
+}
+async function ttSimpanKre(u){
+  if(!TT.simpan){ await ttSimpanMuat(); }
+  const ada = ttTersimpan(u);
+  let k = TT.kreIdx[u] || (TT.simpan || []).filter(function(x){ return x.u === u; })[0];
+  if(!k && TT.akun && TT.akun.akun && TT.akun.akun.nama === u){ const a = TT.akun.akun; k = {u: a.nama, nama: a.tampil, avatar: a.avatar, pengikut: a.pengikut}; }
+  k = k || {u: u};
+  let d = null; try{ d = await (await fetch("/api/tiktok/simpan", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({aksi: ada ? "hapus" : "tambah", u: u, nama: k.nama || "", avatar: k.avatar || "", pengikut: k.pengikut})})).json(); }catch(e){}
+  if(!d || !d.ok){ toast("⚠️ " + esc((d && d.error) || "Gagal menyimpan. Coba lagi.")); return; }
+  TT.simpan = d.simpan || []; if(TT.akun && TT.akun.akun && TT.akun.akun.nama === u) TT.akun.tersimpan = !ada;
+  ttPakai("aksi", ada ? "hapus-kreator" : "simpan-kreator");
+  toast(ada ? "@" + esc(u) + " dihapus dari kreator tersimpan." : "★ @" + esc(u) + " disimpan. Lihat di tab Kreator & Akun.");
+  ttGambarKre();
+}
+async function ttPantauAkun(u, aksi){
+  let d = null; try{ d = await (await fetch("/api/tiktok/akunpantau", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({aksi: aksi, u: u})})).json(); }catch(e){}
+  if(!d || !d.ok){ toast("⚠️ " + esc((d && d.error) || "Gagal. Coba lagi.")); return; }
+  if(TT.akun && TT.akun.akun && TT.akun.akun.nama === u) TT.akun.dipantau = aksi !== "hapus";
+  ttPakai("aksi", aksi === "hapus" ? "lepas-akun" : "pantau-akun");
+  toast(aksi === "hapus" ? "@" + esc(u) + " tidak dipantau lagi." : "📌 @" + esc(u) + " dipantau. Perubahannya dicatat tiap pagi.");
+  TT.akp = TT.akp || {akun: [], maks: 3};
+  TT.akp.akun = (d.pantau || []).map(function(x){ return (TT.akp.akun || []).filter(function(y){ return y.u === x; })[0] || {u: x, hari: 0}; });
+  ttGambarKre();
+  setTimeout(function(){ ttAkpMuat(true); }, aksi === "hapus" ? 10 : 6000);
 }
 /* ---------- v1.6.1 Fase 1: skor peluang · Pantau niche · produk naik lintas niche ---------- */
 async function ttPeluangMuat(q){
@@ -8769,14 +9160,15 @@ function ttGambarTok(){
     '</div>' +
     (d.urut === "laris" || TT.peluang ? '<div id="tt-peluang">' + ttPeluangHTML() + '</div>' : "") +
     '<div class="kartu"><div class="judul-kartu"><b>Produk Tokopedia “' + esc(d.q) + '” 🟢</b><span>urut ' + esc(d.urut_label) + ' · ' + d.produk.length + ' produk</span><span class="sp-aksi" style="margin-left:auto">' + ttPantauTombol(d.q) + '<button onclick="ttEkspor(\'tokped\')">＋ Ekspor CSV</button></span></div>' +
-      '<div class="sp-grid">' + d.produk.map(function(p){
+      '<div class="sp-grid">' + d.produk.map(function(p, pi){
         const gb = ttGbr(p.gambar);
         return '<div class="sp-p"><a class="sp-th" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener">' + (gb ? '<img src="' + esc(gb) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '<span class="sp-ph">Tokopedia</span><span class="sp-pos">#' + p.posisi + '</span>' + (p.diskon ? '<span class="sp-lc">-' + p.diskon + '%</span>' : "") + '</a>' +
           '<div class="sp-bd"><a class="sp-nm" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener" title="' + esc(p.nama) + '">' + esc(p.nama) + '</a>' +
           '<div class="tt-harga"><b>' + ttRp(p.harga) + '</b>' + (p.harga_coret ? '<s>' + ttRp(p.harga_coret) + '</s>' : "") + '</div>' +
           '<div class="tt-angka">' + (p.terjual_teks ? '<span title="Angka terjual dari Tokopedia (dibulatkan Tokopedia). Bila toko sinkron dengan TikTok Shop, sudah termasuk penjualan TikTok Shop.">' + esc(p.terjual_teks) + ' terjual</span>' : '<span style="color:var(--muted)">terjual —</span>') + (p.rating ? '<span style="color:#B7791F">★ ' + String(p.rating).replace(".", ",") + '</span>' : "") + '</div>' +
           '<div class="sp-mt"><span' + (p.resmi ? ' style="color:var(--ink);font-weight:800"' : "") + '>' + esc(p.toko) + '</span>' + (p.kota ? '<span>' + esc(p.kota) + '</span>' : "") + '</div>' +
-          (p.label && p.label.length ? '<div class="sp-lb">' + p.label.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("") + '</div>' : "") + '</div></div>';
+          (p.label && p.label.length ? '<div class="sp-lb">' + p.label.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("") + '</div>' : "") +
+          '<div class="tt-ak"><button type="button" class="sp-kecil" onclick="ttNaskahProduk(' + pi + ')">📝 Naskah TikTok</button></div></div></div>';
       }).join("") + '</div>' +
       (g.toko && g.toko.length > 1 ? '<div class="tt-dom"><b>Toko yang paling sering muncul 🔵</b>' + g.toko.map(function(t){ return '<span>' + esc(t.toko) + ' <i>' + t.produk + ' produk</i></span>'; }).join("") + '</div>' : "") +
       '<div class="sp-cat">Sumber: halaman pencarian <b>Tokopedia</b> (urut ' + esc(d.urut_label) + '), dibaca lewat layanan pembaca halaman karena Tokopedia memblokir server. <b>Angka terjual</b> adalah angka yang ditampilkan Tokopedia sendiri dan sudah dibulatkan oleh Tokopedia ("500rb+" = minimal 500 ribu). Untuk toko yang <b>menyinkronkan Tokopedia dan TikTok Shop</b>, angka terjual produknya adalah <b>gabungan kedua platform</b> (aturan resmi Seller Center). Dari halaman publik tidak terlihat toko mana yang sudah sinkron, jadi anggap angka ini minimal penjualan Tokopedia, dan bisa sudah termasuk TikTok Shop. Hasil disimpan 6 jam. Dibaca ' + esc(shpWaktu(d.jam)) + '.</div>' +
@@ -9079,5 +9471,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b8d1093a07a3d9',t:'MTc5MjE3MjA4OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b90fa1e9a2e78b',t:'MTc5MjE3NDY1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

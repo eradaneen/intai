@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.2"
+VERSI = "1.6.4"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -5523,6 +5523,7 @@ def jadwal_tick(paksa=False, pemicu="cron", email=None):
     if not paksa:   # v1.5.12: arsip iklan TikTok + riwayat Tokopedia — jalan sendiri, tidak tergantung niche Meta aktif
         threading.Thread(target=tta_tick, daemon=True, name="tta-tick").start()
         threading.Thread(target=tt_pakai_simpan, args=(True,), daemon=True, name="pakai-tt").start()   # v1.6.0
+        threading.Thread(target=tt_f3_tick, daemon=True, name="tt-f3").start()   # v1.6.3 kreator tren + akun dipantau
     pesaing_semua = _pesaing_semua()
     try:
         shp = shp_item_cron()   # v1.5.4: kata kunci & toko Shopee akun aktif (dibaca 1×/hari)
@@ -9845,6 +9846,18 @@ def tt_uji():
         t = v["items"][0] if v["items"] else {}
         return f"{len(v['items'])} video tren ID minggu s.d. {v.get('akhir') or '-'} · teratas @{t.get('u', '-')} {t.get('views', 0):,} views".replace(",", ".")
     uji("Video tren TikTok (Creative Center)", video)
+
+    def kreator():   # v1.6.3 hanya membaca arsip
+        d = _ttk_muat()
+        with kunci_ttk:
+            rs = list(d.values())
+        batas = (datetime.now(WIB) - timedelta(days=30)).strftime("%Y-%m-%d")
+        naik = sum(1 for r in rs if len([h for h in r.get("hari") or [] if h >= batas]) >= 2)
+        ktk = sum(1 for r in rs if kontak_bio(r.get("bio"), r.get("lb")))
+        ap = _ttap_semua()
+        return (f"{len(rs)} kreator di arsip · {naik} naik (≥2 hari muncul di tren, 30 hari) · {ktk} punya kontak publik di bio · "
+                f"akun dipantau: {len({u for L in ap.values() for u in L})} akun dari {len(ap)} pengguna · pagi terakhir {TTK.get('hari') or '-'}")
+    uji("Arsip kreator TikTok (INTAI)", kreator)
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(tugas)) as ex:
         hasil = list(ex.map(_jalan, tugas))
     return {"ok": True, "hasil": hasil}
@@ -10030,7 +10043,7 @@ def tta_serap_akun(h):
         ak = TTA["akun"]
         r = ak.get(nama) or {"p1": hari, "lb": []}
         r.update({"nama": nama, "tampil": a.get("tampil") or nama, "pengikut": a.get("pengikut"), "like": a.get("like"),
-                  "video_total": a.get("video_total"), "bio": (a.get("bio") or "")[:200], "penjual": a.get("penjual"),
+                  "video_total": a.get("video_total"), "bio": (a.get("bio") or "")[:200], "link_bio": (a.get("link_bio") or "")[:120], "penjual": a.get("penjual"),
                   "bisnis": a.get("bisnis"), "kategori": a.get("kategori") or "", "avatar": a.get("avatar") or "",
                   "p2": hari, "median_tayang": (h.get("ringkas") or {}).get("median_tayang"),
                   "video": [{"id": v.get("id"), "c": (v.get("caption") or "")[:150], "tg": v.get("tagar") or [],
@@ -10046,6 +10059,7 @@ def tta_serap_akun(h):
         while len(ak) > TTA_MAKS_AKUN:
             ak.popitem(last=False)
     _tta_tandai("akun")
+    ttk_serap_intip(h)   # v1.6.3 arsip kreator
     tta_label_latar(maks_panggilan=1)
 
 
@@ -10985,7 +10999,505 @@ def tt_tren(per="7", ind="", vlabel=None, semua=False):
     if out["tagar"] or out["video"]:
         semua_t = out["tagar"] + out["tagar_ind"] + [t for g in out.get("per_industri") or [] for t in g["tagar"]]
         threading.Thread(target=_cc_catat_harian, args=(semua_t, out["video"]), daemon=True).start()
+        threading.Thread(target=ttk_serap_tren, args=(dict(out),), daemon=True).start()   # v1.6.3 arsip kreator
     out["ind_tagar_ada"] = ind in CC_IND_TAGAR
+    return out
+
+
+# ---------- v1.6.3 Fase 3: daftar kreator rakitan · kontak publik · simpan kreator · akun dipantau ----------
+# Kunci setelan: "ttkreator" (arsip kreator bersama, terkompres) · "ttsimpan:<email>" (pribadi) ·
+# "ttakunp:<email>" (akun dipantau, pribadi, maks 3) · "ttakunpot:<akun>" (potret harian akun dipantau, 35 hari)
+TTK = {"d": None, "menulis": False, "kotor": False, "hari": None}
+kunci_ttk = threading.Lock()
+TTK_MAKS = 3000
+TTAP_MAKS = 3            # akun dipantau per akun INTAI
+TTAP_CRON_MAKS = 30      # akun dipantau yang dipotret per pagi (gabungan semua akun)
+TTS_MAKS = 300           # kreator tersimpan per akun
+CC_LABEL_KE_IND = {"11002": "14000000000", "11003": "22000000000", "11010": "27000000000", "11015": "15000000000"}
+
+
+def _ttk_u(u):
+    u = str(u or "").strip().lstrip("@").lower()[:40]
+    return u if re.match(r"^[a-z0-9._]{2,40}$", u) else ""
+
+
+def _ttk_muat():
+    with kunci_ttk:
+        if TTK["d"] is not None:
+            return TTK["d"]
+    ok, v = setelan_baca("ttkreator")
+    d = (_tk_buka(v) or {}) if ok and v else {}
+    d = d.get("k") if isinstance(d, dict) and isinstance(d.get("k"), dict) else {}
+    benih = []
+    try:   # benih: akun yang pernah diintip (arsip v1.5.12)
+        _tta_muat()
+        with kunci_tta:
+            benih = [dict(r) for r in (TTA["akun"] or {}).values()]
+    except Exception:
+        pass
+    with kunci_ttk:
+        if TTK["d"] is None:
+            TTK["d"] = d
+            for r in benih:
+                _ttk_rekam_kunci(d, r.get("nama"), nama=r.get("tampil"), av=r.get("avatar"), pg=r.get("pengikut"), bio=r.get("bio"),
+                                 lb=r.get("link_bio"), kat=r.get("kategori"), penjual=r.get("penjual"), src="intip", hari=r.get("p2"))
+        return TTK["d"]
+
+
+def _html_lepas(t):
+    import html as _h
+    return _h.unescape(_h.unescape(t))
+
+
+def _ttk_rekam_kunci(d, u, nama=None, av=None, pg=None, bio=None, lb=None, ind=None, tagar=None, vv=None, src=None,
+                     hari=None, kat=None, penjual=None, muncul=False):
+    """Dipanggil DENGAN kunci_ttk. muncul=True → hari ini tampil di tren (bahan 'kreator naik')."""
+    u = _ttk_u(u)
+    if not u:
+        return
+    hari = hari or _tta_hari()
+    r = d.get(u) or {"u": u, "hari": [], "pgh": [], "ind": [], "tg": [], "src": [], "p1": hari}
+    if nama:
+        r["nama"] = _html_lepas(str(nama))[:60]
+    if av:
+        r["av"] = str(av)[:400]
+    if bio is not None and bio != "":
+        r["bio"] = _html_lepas(str(bio))[:300]
+    if lb:
+        r["lb"] = str(lb)[:120]
+    if kat:
+        r["kat"] = str(kat)[:40]
+    if penjual is not None:
+        r["pj"] = bool(penjual)
+    if ind and str(ind) not in r["ind"]:
+        r["ind"] = (r["ind"] + [str(ind)])[-6:]
+    if tagar and tagar not in r["tg"]:
+        r["tg"] = (r["tg"] + [str(tagar)[:60]])[-10:]
+    if vv:
+        r["vv"] = max(int(vv), int(r.get("vv") or 0))
+    if src and src not in r["src"]:
+        r["src"].append(src)
+    if muncul and hari not in r["hari"]:
+        r["hari"] = (r["hari"] + [hari])[-40:]
+    if pg:
+        pg = int(pg)
+        r["pg"] = pg
+        if r["pgh"] and r["pgh"][-1][0] == hari:
+            r["pgh"][-1][1] = pg
+        elif not r["pgh"] or r["pgh"][-1][0] < hari:
+            r["pgh"] = (r["pgh"] + [[hari, pg]])[-12:]
+    r["t"] = max(str(r.get("t") or ""), hari)
+    d[u] = r
+
+
+def _ttk_simpan_tunda():
+    time.sleep(20)
+    with kunci_ttk:
+        d = TTK["d"] or {}
+        if len(d) > TTK_MAKS:   # buang yang paling lama tak terlihat, lalu yang pengikutnya paling kecil
+            for u, _r in sorted(d.items(), key=lambda kv: (kv[1].get("t") or "", kv[1].get("pg") or 0))[:len(d) - TTK_MAKS]:
+                d.pop(u, None)
+        salin = json.loads(json.dumps({"k": d}))
+        TTK["kotor"] = False
+    try:
+        setelan_tulis("ttkreator", _tk_bungkus(salin))
+    except Exception:
+        pass
+    with kunci_ttk:
+        TTK["menulis"] = False
+        lagi = TTK["kotor"]
+    if lagi:
+        _ttk_tandai()
+
+
+def _ttk_tandai():
+    with kunci_ttk:
+        TTK["kotor"] = True
+        if TTK["menulis"]:
+            return
+        TTK["menulis"] = True
+    threading.Thread(target=_ttk_simpan_tunda, daemon=True, name="ttk-simpan").start()
+
+
+def ttk_serap_tren(out):
+    """Kreator dari tagar & video tren → arsip kreator. Hanya data publik Creative Center."""
+    try:
+        d = _ttk_muat()
+        hari = _tta_hari()
+        tanda = hari + ":" + str(hash(json.dumps([out.get("ind"), out.get("video_label"), [c.get("u") for t in (out.get("tagar_ind") or []) + (out.get("tagar") or [])
+                                                  for c in t.get("kreator") or []], len(out.get("per_industri") or []),
+                                                  [v.get("id") for v in out.get("video") or []]], default=str)))
+        with kunci_ttk:
+            sudah = TTK.setdefault("tanda", [])
+            if tanda in sudah:
+                return
+            TTK["tanda"] = (sudah + [tanda])[-50:]
+        with kunci_ttk:
+            grup = [(out.get("ind") or None, out.get("tagar_ind") or []), (None, out.get("tagar") or [])]
+            grup += [(g.get("ind"), g.get("tagar") or []) for g in out.get("per_industri") or []]
+            for ind, tg in grup:
+                for t in tg:
+                    for c in t.get("kreator") or []:
+                        _ttk_rekam_kunci(d, c.get("u"), nama=c.get("nama"), av=c.get("avatar"), pg=c.get("pengikut"), ind=ind,
+                                         tagar=t.get("nama"), src="tren-tagar", hari=hari, muncul=True)
+            ind_v = CC_LABEL_KE_IND.get(out.get("video_label") or "")
+            for v in out.get("video") or []:
+                _ttk_rekam_kunci(d, v.get("u"), nama=v.get("nama"), av=v.get("avatar"), pg=v.get("pengikut"), bio=v.get("bio"),
+                                 ind=ind_v, vv=v.get("views"), src="tren-video", hari=hari, muncul=True)
+        _ttk_tandai()
+    except Exception:
+        pass
+
+
+def ttk_serap_intip(h):
+    try:
+        a = h.get("akun") or {}
+        d = _ttk_muat()
+        with kunci_ttk:
+            _ttk_rekam_kunci(d, a.get("nama"), nama=a.get("tampil"), av=a.get("avatar"), pg=a.get("pengikut"), bio=a.get("bio") or "",
+                             lb=a.get("link_bio"), kat=a.get("kategori"), penjual=a.get("penjual"), src="intip")
+        _ttk_tandai()
+    except Exception:
+        pass
+
+
+_KONTAK_LINK = re.compile(r"(?:https?://)?(?:www\.)?((?:linktr\.ee|lynk\.id|bit\.ly|s\.id|beacons\.ai|heylink\.me|linkfly\.to|"
+                          r"tap\.bio|msha\.ke|direct\.me|instabio\.cc|campsite\.bio|bio\.link|linkin\.bio)/[A-Za-z0-9._/-]{2,60})", re.I)
+
+
+def kontak_bio(bio, lb=""):
+    """K4: HANYA kontak yang ditulis kreator sendiri di bio / link bio publik. Tidak menebak, tidak melengkapi."""
+    t = _html_lepas(str(bio or ""))
+    out, lihat = [], set()
+
+    def tambah(j, v):
+        k = j + ":" + v.lower()
+        if v and k not in lihat:
+            lihat.add(k)
+            out.append({"j": j, "v": v})
+    for e in re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}", t):
+        tambah("email", e.lower())
+    for m in re.findall(r"wa\.me/\+?(\d{9,15})", t, re.I):
+        tambah("wa", m if not m.startswith("0") else "62" + m[1:])
+    for m in re.finditer(r"(?<![\d])(\+?62|0)\s?8\d(?:[\s.-]?\d){6,11}(?![\d])", t):
+        n = re.sub(r"\D", "", m.group(0))
+        n = "62" + n[1:] if n.startswith("0") else n
+        if 10 <= len(n) <= 15:
+            tambah("wa", n)
+    for m in re.findall(r"(?:\big\b|instagram)\s*(?:[:=\-–]\s*@?|@|\.com/)\s*([A-Za-z0-9._]{2,30})", t, re.I):
+        if m.lower().strip(".") not in ("com", "me", "official", "dm", "aja", "ya", "kak") and not m.isdigit():
+            tambah("ig", m)
+    for m in _KONTAK_LINK.findall(t):
+        tambah("link", m)
+    if lb:
+        tambah("link", re.sub(r"^https?://(www\.)?", "", str(lb))[:120])
+    return out[:6]
+
+
+def _ttk_keluar(r, batas30, simpan=()):
+    muncul = len([h for h in r.get("hari") or [] if h >= batas30])
+    pgh = [x for x in r.get("pgh") or [] if x[0] >= batas30]
+    pg_naik = (pgh[-1][1] - pgh[0][1]) if len(pgh) >= 2 else None
+    return {"u": r["u"], "nama": r.get("nama") or "", "avatar": r.get("av") or "", "pengikut": r.get("pg"), "bio": _html_lepas(r.get("bio") or ""),
+            "kontak": kontak_bio(r.get("bio"), r.get("lb")), "industri": [TT_INDUK_ID.get(int(i), "") for i in r.get("ind") or [] if str(i).isdigit()],
+            "tagar": (r.get("tg") or [])[-5:], "views_maks": r.get("vv"), "muncul": muncul, "pengikut_naik": pg_naik,
+            "pengikut_dari": pgh[0][0] if len(pgh) >= 2 else None,
+            "naik": muncul >= 2 or bool(pg_naik and pg_naik > 0), "sumber": r.get("src") or [], "penjual": r.get("pj"),
+            "kategori": r.get("kat") or "", "pertama": r.get("p1"), "terakhir": r.get("t"), "tersimpan": r["u"] in simpan}
+
+
+def tt_kreator(q="", urut="muncul", kontak=False, email=None):
+    d = _ttk_muat()
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:60]
+    qn = re.sub(r"\s+", " ", _norm(q)).strip()
+    tok = _tta_token(qn)
+    ind_q, _cara = (_tta_kat_terdekat(tok, []) if tok else (None, None))
+    batas30 = (datetime.now(WIB) - timedelta(days=30)).strftime("%Y-%m-%d")
+    simpan = {x.get("u") for x in tts_daftar(email)} if email else set()
+    with kunci_ttk:
+        semua = [dict(r) for r in d.values()]
+    rows = []
+    for r in semua:
+        skor, cocok = 0.0, ""
+        if tok:
+            teks = _norm(" ".join([r.get("u") or "", r.get("nama") or "", r.get("bio") or "", " ".join(r.get("tg") or []), r.get("kat") or ""]))
+            hit = sum(1 for w in tok if re.search(r"\b" + re.escape(w), teks))
+            if qn and qn in teks:
+                skor += 6
+            skor += 3 * hit / len(tok)
+            if skor:
+                cocok = "kata"
+            if ind_q and str(ind_q) in (r.get("ind") or []):
+                skor += 2
+                cocok = cocok or "industri"
+            if not skor:
+                continue
+        o = _ttk_keluar(r, batas30, simpan)
+        if kontak and not o["kontak"]:
+            continue
+        o["skor"], o["cocok"] = round(skor, 1), cocok
+        rows.append(o)
+    if urut == "pengikut":
+        rows.sort(key=lambda o: (-(o["pengikut"] or 0)))
+    elif urut == "naik":
+        rows.sort(key=lambda o: (not o["naik"], -o["muncul"], -(o["pengikut_naik"] or 0), -(o["pengikut"] or 0)))
+    else:
+        rows.sort(key=lambda o: (-o["skor"], -o["muncul"], -(o["pengikut"] or 0)))
+    p1 = min((r.get("p1") or "9") for r in semua) if semua else None
+    return {"ok": True, "q": q, "urut": urut, "ind": str(ind_q or ""), "ind_nama": TT_INDUK_ID.get(ind_q, "") if ind_q else "",
+            "total": len(rows), "kreator": rows[:60], "punya_kontak": sum(1 for o in rows if o["kontak"]),
+            "arsip": {"kreator": len(semua), "sejak": p1 if p1 and p1 != "9" else None}}
+
+
+# --- simpan kreator (pribadi) ---
+def tts_daftar(email):
+    if not email:
+        return []
+    ok, v = setelan_baca("ttsimpan:" + email)
+    return [x for x in (v or []) if isinstance(x, dict) and x.get("u")] if ok and isinstance(v, list) else []
+
+
+def tts_ubah(email, aksi, data):
+    u = _ttk_u((data or {}).get("u"))
+    if not email or not u:
+        return {"ok": False, "error": "Akun kreator tidak valid."}
+    L = [x for x in tts_daftar(email) if x.get("u") != u]
+    if aksi != "hapus":
+        if len(L) >= TTS_MAKS:
+            return {"ok": False, "error": f"Maksimal {TTS_MAKS} kreator tersimpan."}
+        L.insert(0, {"u": u, "nama": str(data.get("nama") or "")[:60], "avatar": str(data.get("avatar") or "")[:400],
+                     "pengikut": _int(data.get("pengikut"), None), "catatan": str(data.get("catatan") or "")[:200],
+                     "t": _iso_kini()})
+    if not setelan_tulis("ttsimpan:" + email, L):
+        return {"ok": False, "error": "Gagal menyimpan (database belum siap)."}
+    return {"ok": True, "simpan": tts_keluar(email, L)}
+
+
+def tts_keluar(email, L=None):
+    L = tts_daftar(email) if L is None else L
+    d = _ttk_muat()
+    batas30 = (datetime.now(WIB) - timedelta(days=30)).strftime("%Y-%m-%d")
+    out = []
+    with kunci_ttk:
+        for x in L:
+            r = d.get(x["u"])
+            o = _ttk_keluar(dict(r), batas30) if r else {"u": x["u"], "nama": x.get("nama"), "avatar": x.get("avatar"),
+                                                        "pengikut": x.get("pengikut"), "kontak": [], "muncul": 0, "naik": False}
+            o.update(tersimpan=True, catatan=x.get("catatan") or "", disimpan=x.get("t"))
+            out.append(o)
+    return out
+
+
+# --- akun dipantau (pribadi, maks 3) + potret harian ---
+TTAP = {"t": 0.0, "semua": {}, "coba": {}}
+
+
+def _ttap_semua(segar=False):
+    with kunci_ttk:
+        if not segar and time.time() - TTAP["t"] < 600:
+            return TTAP["semua"]
+    ok, v = setelan_awalan("ttakunp:")
+    semua = {}
+    if ok:
+        for k, x in (v or {}).items():
+            if isinstance(x, list):
+                semua[k.split(":", 1)[1]] = [_ttk_u(n) for n in x if _ttk_u(n)][:TTAP_MAKS]
+    with kunci_ttk:
+        if ok or not TTAP["semua"]:
+            TTAP.update({"t": time.time(), "semua": semua})
+        return TTAP["semua"]
+
+
+def ttap_daftar(email):
+    return list(_ttap_semua().get(email) or []) if email else []
+
+
+def ttap_potret(h):
+    """Simpan potret akun bila akun ini dipantau siapa pun (dipanggil tiap Intip berhasil + cron pagi)."""
+    try:
+        a = h.get("akun") or {}
+        u = _ttk_u(a.get("nama"))
+        if not u or not any(u in L for L in (_ttap_semua() or {}).values()):
+            return
+        hari = _tta_hari()
+        ok, v = setelan_baca("ttakunpot:" + u)
+        d = v if ok and isinstance(v, dict) else {}
+        vid = h.get("video") or []
+        ung = sorted(x.get("unggah") for x in vid if x.get("unggah"))
+        rg = h.get("ringkas") or {}
+        d[hari] = {"pg": a.get("pengikut"), "like": a.get("like"), "vt": a.get("video_total"), "med": rg.get("median_tayang"),
+                   "ik": rg.get("dipromosikan"), "dc": rg.get("dicek_iklan"), "baru": _cc_tgl(ung[-1]) if ung else "",
+                   "vids": [str(x.get("id")) for x in vid if x.get("id")][:13], "nama": a.get("tampil") or u, "av": a.get("avatar") or ""}
+        for k in sorted(d)[:-35]:
+            d.pop(k, None)
+        setelan_tulis("ttakunpot:" + u, d)
+    except Exception:
+        pass
+
+
+def ttap_ubah(email, aksi, u):
+    u = _ttk_u(u)
+    if not email or not u:
+        return {"ok": False, "error": "Nama akun TikTok tidak valid."}
+    L = list(_ttap_semua(segar=True).get(email) or [])
+    if aksi == "hapus":
+        L = [x for x in L if x != u]
+    else:
+        if u in L:
+            return {"ok": True, "pantau": L}
+        if len(L) >= TTAP_MAKS:
+            return {"ok": False, "pantau": L, "error": f"Maksimal {TTAP_MAKS} akun dipantau. Lepas salah satu dulu: @" + ", @".join(L) + "."}
+        L.append(u)
+    if not setelan_tulis("ttakunp:" + email, L):
+        return {"ok": False, "error": "Gagal menyimpan (database belum siap)."}
+    with kunci_ttk:
+        TTAP["semua"][email] = L
+    if aksi != "hapus":   # potret pertama langsung (pakai hasil Intip yang masih di cache bila ada)
+        threading.Thread(target=lambda: _coba(lambda: ttap_potret(tt_akun(u))), daemon=True, name="ttap-awal").start()
+    return {"ok": True, "pantau": L}
+
+
+def ttap_laporan(email):
+    out = []
+    for u in ttap_daftar(email):
+        ok, v = setelan_baca("ttakunpot:" + u)
+        d = v if ok and isinstance(v, dict) else {}
+        hs = sorted(d)
+        o = {"u": u, "hari": len(hs), "dari": hs[0] if hs else None, "sampai": hs[-1] if hs else None}
+        if hs:
+            B = d[hs[-1]]
+            batas = (datetime.strptime(hs[-1], "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+            awal = next((h for h in hs if h >= batas and h != hs[-1]), hs[0] if len(hs) > 1 else None)
+            A = d[awal] if awal else None
+            dl = lambda k: (B.get(k) - A.get(k)) if A and B.get(k) is not None and A.get(k) is not None else None
+            o.update(nama=B.get("nama"), avatar=B.get("av"), pengikut=B.get("pg"), like=B.get("like"), video_total=B.get("vt"),
+                     median=B.get("med"), dipromosikan=B.get("ik"), dicek=B.get("dc"), terbaru=B.get("baru"), banding=awal,
+                     d_pengikut=dl("pg"), d_like=dl("like"), d_video=dl("vt"),
+                     video_baru=len([x for x in B.get("vids") or [] if A and x not in (A.get("vids") or [])]) if A else None)
+        out.append(o)
+    return {"ok": True, "akun": out, "maks": TTAP_MAKS}
+
+
+def tt_akun_plus(u, email=None):
+    h = tt_akun(u)
+    if h.get("ok"):
+        h = dict(h)
+        a = dict(h.get("akun") or {})
+        a["kontak"] = kontak_bio(a.get("bio"), a.get("link_bio"))
+        h["akun"] = a
+        nm = _ttk_u(a.get("nama"))
+        h["dipantau"] = nm in ttap_daftar(email)
+        h["tersimpan"] = any(x.get("u") == nm for x in tts_daftar(email))
+        threading.Thread(target=ttap_potret, args=(h,), daemon=True).start()
+    return h
+
+
+# --- cron pagi: kumpulkan kreator dari tren + potret akun dipantau ---
+def tt_f3_tick():
+    try:
+        kini = datetime.now(WIB)
+        if kini.hour < JADWAL.get("jam", 5):
+            return
+        hari = kini.strftime("%Y-%m-%d")
+        with kunci_ttk:
+            if TTK.get("jalan"):
+                return
+            TTK["jalan"] = True
+        try:
+            if TTK.get("hari") != hari:
+                out = tt_tren("7", "", "", True)   # 15 industri + video semua kategori (serap kreator otomatis)
+                for lb in CC_LABEL_VIDEO:
+                    try:
+                        v = cc_video("7", lb)
+                        ttk_serap_tren({"video": v["items"], "video_label": lb})
+                    except Exception:
+                        pass
+                if out.get("tagar") or out.get("per_industri"):
+                    TTK["hari"] = hari
+            daftar = sorted({u for L in (_ttap_semua(segar=True) or {}).values() for u in L})[:TTAP_CRON_MAKS]
+            for u in daftar:
+                k = hari + ":" + u
+                if TTAP["coba"].get(k, 0) >= 2:
+                    continue
+                ok, v = setelan_baca("ttakunpot:" + u)
+                if ok and isinstance(v, dict) and hari in v:
+                    continue
+                TTAP["coba"][k] = TTAP["coba"].get(k, 0) + 1
+                h = _coba(lambda: tt_akun(u)) or {}
+                if h.get("ok"):
+                    ttap_potret(h)
+                time.sleep(2)
+        finally:
+            with kunci_ttk:
+                TTK["jalan"] = False
+    except Exception:
+        pass
+
+
+# ---------- v1.6.4 Fase 4: kartu Dashboard "TikTok minggu ini" (1 produk naik + 1 iklan menang + 1 video tren) ----------
+TTM_CACHE = OrderedDict()
+
+
+def _ttm_iklan(q):
+    """Iklan terkuat di arsip untuk niche q: yang masih terlihat ≤7 hari, urut like (fallback: semua umur)."""
+    qn = re.sub(r"\s+", " ", _norm(q)).strip()
+    tok = _tta_token(qn) or [qn]
+    cocok, _ = _tta_cari(qn, tok)
+    ind, _c = _tta_kat_terdekat(tok, cocok)
+    batas7 = (datetime.now(WIB) - timedelta(days=7)).strftime("%Y-%m-%d")
+    utama = [(s_, r) for s_, r in cocok if not r.get("_seg")] or cocok
+    baru = [(s_, r) for s_, r in utama if (r.get("p2") or "") >= batas7]
+    pil = sorted(baru or utama, key=lambda z: (len((z[1].get("j") or "").strip()) < 15, -(z[1].get("like") or 0), -z[0]))
+    if not pil:
+        return None, ind, 0
+    r = pil[0][1]
+    return dict(_tta_keluar(r, pil[0][0]), baru=bool(baru), niche=q), ind, len(cocok)
+
+
+def tt_minggu(email):
+    k = email or "-"
+    c = TTM_CACHE.get(k)
+    if c and time.time() - c[0] < 1800:
+        return c[1]
+    out = {"ok": True, "niche": [], "produk": None, "iklan": None, "video": None, "galat": {}, "jam": _iso_kini()}
+    naik = _coba(lambda: tt_naik_lintas(email)) or {}
+    out["niche"] = [{"q": n["q"], "hari": n.get("hari", 0), "pantau": n.get("pantau")} for n in naik.get("niche") or []]
+    out["hari_riwayat"] = max([n.get("hari", 0) for n in naik.get("niche") or []] or [0])
+    if naik.get("naik"):
+        out["produk"] = naik["naik"][0]
+    ind = None
+    for n in out["niche"][:3]:
+        try:
+            ik, ind_, jml = _ttm_iklan(n["q"])
+            ind = ind or ind_
+            if ik:
+                out["iklan"] = dict(ik, cocok_total=jml)
+                break
+        except Exception as e:
+            out["galat"]["iklan"] = str(e)[:120]
+    if not out["iklan"]:   # tanpa niche / belum cocok → iklan terkuat arsip yang terlihat ≤7 hari (semua kategori)
+        try:
+            kat = _tta_muat()
+            batas7 = (datetime.now(WIB) - timedelta(days=7)).strftime("%Y-%m-%d")
+            with kunci_tta:
+                semua = [r for d in kat.values() for r in d.values() if (r.get("p2") or "") >= batas7]
+            if semua:
+                r = max(semua, key=lambda r: (len((r.get("j") or "").strip()) >= 15, r.get("like") or 0))
+                out["iklan"] = dict(_tta_keluar(r), baru=True, niche="", umum=True)
+        except Exception as e:
+            out["galat"]["iklan"] = str(e)[:120]
+    label = CC_IND_KE_LABEL.get(str(ind or ""), "")
+    try:
+        v = cc_video("7", label)   # sudah ber-cache 3 jam
+        vids = sorted(v.get("items") or [], key=lambda x: -(x.get("views") or 0))
+        if vids:
+            out["video"] = dict(vids[0], label_nama=CC_LABEL_VIDEO.get(label, ""), umum=not label)
+    except Exception as e:
+        out["galat"]["video"] = str(e)[:120]
+    out["industri"] = TT_INDUK_ID.get(ind, "") if ind else ""
+    TTM_CACHE[k] = (time.time(), out)
+    while len(TTM_CACHE) > 300:
+        TTM_CACHE.popitem(last=False)
     return out
 
 
@@ -11227,7 +11739,7 @@ class Handler(BaseHTTPRequestHandler):
                 elif u.path == "/api/tiktok/detail":
                     self.json_ok(tt_iklan_detail(g("id")))
                 elif u.path == "/api/tiktok/akun":
-                    self.json_ok(tt_akun(g("u")))
+                    self.json_ok(tt_akun_plus(g("u"), self.email))   # v1.6.3 + kontak publik, status pantau/simpan
                 elif u.path == "/api/tiktok/niche":   # v1.5.12 cari niche atas arsip
                     tt_pakai("niche", g("q"))
                     self.json_ok(tt_niche(g("q"), self.email))
@@ -11237,6 +11749,14 @@ class Handler(BaseHTTPRequestHandler):
                     self.json_ok(tt_arsip_status(self.email))
                 elif u.path == "/api/tiktok/peluang":   # v1.6.1
                     self.json_ok(tt_peluang(g("q")))
+                elif u.path == "/api/tiktok/minggu":   # v1.6.4 kartu Dashboard
+                    self.json_ok(tt_minggu(self.email))
+                elif u.path == "/api/tiktok/kreator":   # v1.6.3 daftar kreator rakitan
+                    self.json_ok(tt_kreator(g("q"), g("urut", "muncul"), g("kontak") == "1", self.email))
+                elif u.path == "/api/tiktok/simpan":   # v1.6.3 kreator tersimpan (pribadi)
+                    self.json_ok({"ok": True, "simpan": tts_keluar(self.email), "maks": TTS_MAKS})
+                elif u.path == "/api/tiktok/akunpantau":   # v1.6.3 akun dipantau (pribadi)
+                    self.json_ok(ttap_laporan(self.email))
                 elif u.path == "/api/tiktok/tren":   # v1.6.2 tagar + video tren ID
                     self.json_ok(tt_tren(g("per", "7"), g("ind"), g("vl") if "vl" in qs else None, g("semua") == "1"))
                 elif u.path == "/api/tiktok/naik":   # v1.6.1
@@ -11459,6 +11979,12 @@ class Handler(BaseHTTPRequestHandler):
             d = self.baca_json()
             hasil = ubah_pantau(self.email, str(d.get("aksi") or "tambah"), d.get("page_id"), d.get("nama") or "")
             self.tulis(200, json.dumps(hasil, ensure_ascii=False), "application/json")
+        elif u.path == "/api/tiktok/simpan":   # v1.6.3
+            d = self.baca_json()
+            self.json_ok(tts_ubah(self.email, str(d.get("aksi") or "tambah"), d))
+        elif u.path == "/api/tiktok/akunpantau":   # v1.6.3
+            d = self.baca_json()
+            self.json_ok(ttap_ubah(self.email, str(d.get("aksi") or "tambah"), d.get("u")))
         elif u.path == "/api/tiktok/pantau":   # v1.6.1 Pantau niche (Scan TikTok)
             d = self.baca_json()
             self.json_ok(ttp_ubah(self.email, str(d.get("aksi") or "tambah"), d.get("q")))
