@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.9"
+VERSI = "1.5.10"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9358,6 +9358,66 @@ def _tt_profil_embed(nama):
     return prof, emb, diag
 
 
+# ===== v1.5.10 AKUN TIKTOK LEWAT JINA READER =====
+# IP Render diblokir TikTok → halaman dibaca server Jina (format HTML mentah agar JSON di dalam halaman ikut).
+# Jina sering memblokir akses anonim ke "www.tiktok.com" (penyalahgunaan orang lain) → coba "tiktok.com" dulu, lalu www.
+def _tt_jina_html(jalan, timeout=40):
+    """jalan = '/@nama' dsb. Mengembalikan (html, diag)."""
+    hd = {"X-Timeout": "25", "X-Return-Format": "html"}
+    kunci = (os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip()
+    if kunci:
+        hd["Authorization"] = "Bearer " + kunci
+    diag = []
+    for dom in ("https://tiktok.com", "https://www.tiktok.com"):
+        try:
+            r = requests.get("https://r.jina.ai/" + dom + jalan, headers=hd, timeout=timeout)
+        except Exception as e:
+            diag.append(dom[8:] + ": galat " + str(e)[:50])
+            continue
+        if r.status_code == 200 and len(r.text) > 5000:
+            diag.append(dom[8:] + f": HTTP 200 · {len(r.text) // 1024} KB")
+            return r.text, " | ".join(diag)
+        try:
+            pesan = (r.json().get("name") or r.json().get("message") or "")[:60]
+        except Exception:
+            pesan = r.text[:60].replace("\n", " ")
+        diag.append(dom[8:] + f": HTTP {r.status_code} {pesan}")
+        if r.status_code == 429:
+            break
+    return "", " | ".join(diag)
+
+
+def _tt_video_detail_jina(nama, vid):
+    try:
+        html, _ = _tt_jina_html(f"/@{nama}/video/{vid}", timeout=35)
+        d = _tt_rehidrasi(html).get("webapp.video-detail") or {}
+        it = (d.get("itemInfo") or {}).get("itemStruct") or {}
+        st = it.get("stats") or {}
+        if not it:
+            return None
+        return {"like": _int(st.get("diggCount"), None), "komentar": _int(st.get("commentCount"), None),
+                "share": _int(st.get("shareCount"), None), "simpan": _int(st.get("collectCount"), None),
+                "tayang": _int(st.get("playCount"), None), "unggah": _int(it.get("createTime"), None),
+                "durasi": _int((it.get("video") or {}).get("duration"), None), "iklan": bool(it.get("isAd")),
+                "musik": ((it.get("music") or {}).get("title") or "")[:60],
+                "toko": bool(it.get("anchors")) or "shop" in json.dumps(it.get("anchors") or "").lower()}
+    except Exception:
+        return None
+
+
+def _tt_profil_jina(nama):
+    """(profil, embed, diag) lewat Jina — profil & embed diambil paralel."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        fp = ex.submit(_tt_jina_html, f"/@{nama}")
+        fe = ex.submit(_tt_jina_html, f"/embed/@{nama}")
+        hp, dp = fp.result()
+        he, de = fe.result()
+    prof = _tt_rehidrasi(hp).get("webapp.user-detail") or {} if hp else {}
+    emb = _tt_embed_parse(he, nama) if he else {}
+    return prof, emb, {"jina_profil": dp + (" · ada data akun" if prof.get("userInfo") else ""),
+                       "jina_embed": de + (f" · {len(emb.get('videoList') or [])} video" if emb.get("userInfo") else "")}
+
+
 def tt_akun(u):
     nama = _tt_nama(u)
     if not nama:
@@ -9365,6 +9425,12 @@ def tt_akun(u):
 
     def ambil():
         prof, emb, diag = _tt_profil_embed(nama)
+        jalur = "langsung"
+        if not prof.get("userInfo") and not emb.get("userInfo") and prof.get("statusCode") != 10221:
+            p2, e2, d2 = _tt_profil_jina(nama)
+            diag.update(d2)
+            if p2.get("userInfo") or e2.get("userInfo") or p2.get("statusCode") == 10221:
+                prof, emb, jalur = p2, e2, "jina"
         if prof.get("statusCode") == 10221 or (not prof.get("userInfo") and not emb.get("userInfo")):
             if prof.get("statusCode") == 10221:
                 return {"ok": False, "error": f"Akun @{nama} tidak ditemukan di TikTok."}
@@ -9387,7 +9453,8 @@ def tt_akun(u):
                 "dibuat": _int(us.get("createTime"), None), "privat": bool(us.get("privateAccount") or eu.get("privateAccount"))}
         vl = [v for v in (emb.get("videoList") or []) if isinstance(v, dict) and v.get("id")][:13]
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-            det = list(ex.map(lambda v: _tt_video_detail(akun["nama"], v["id"]), vl))
+            fdet = _tt_video_detail_jina if jalur == "jina" else _tt_video_detail
+            det = list(ex.map(lambda v: fdet(akun["nama"], v["id"]), vl))
         video = []
         for v, dd in zip(vl, det):
             dd = dd or {}
@@ -9411,7 +9478,7 @@ def tt_akun(u):
                 "terbaru_hari": int((time.time() - ung[-1]) // 86400) if ung else None,
                 "per_bulan": round(akun["video_total"] / max((time.time() - akun["dibuat"]) / 2629800, 1), 1)
                 if akun.get("video_total") and akun.get("dibuat") else None}
-        return {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini()}
+        return {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini(), "jalur": jalur}
     hasil = _tt_cache("akun:" + nama, 1800, ambil)
     if not hasil.get("ok"):   # galat jangan di-cache lama
         with kunci_tt:
@@ -9557,16 +9624,19 @@ def tokped_cari(q, urut="laris"):
 
 
 def tt_uji():
-    """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini."""
-    hasil = []
+    """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini. v1.5.10: semua baris jalan paralel (proxy Render putus di 100 dtk)."""
+    tugas = []
 
     def uji(nama, f):
+        tugas.append((nama, f))
+
+    def _jalan(nf):
+        nama, f = nf
         t0 = time.time()
         try:
-            ket = f()
-            hasil.append({"jalur": nama, "ok": True, "ket": ket, "ms": int((time.time() - t0) * 1000)})
+            return {"jalur": nama, "ok": True, "ket": f(), "ms": int((time.time() - t0) * 1000)}
         except Exception as e:
-            hasil.append({"jalur": nama, "ok": False, "ket": str(e)[:700], "ms": int((time.time() - t0) * 1000)})
+            return {"jalur": nama, "ok": False, "ket": str(e)[:700], "ms": int((time.time() - t0) * 1000)}
     with kunci_tt:
         for k in [k for k in TT_CACHE if k.startswith(("cc:top_ads/v2/list?period=7&page=1&limit=20&order_by=like", "akun:somethincofficial"))]:
             TT_CACHE.pop(k, None)
@@ -9576,7 +9646,8 @@ def tt_uji():
         a = tt_akun("somethincofficial")
         if not a.get("ok"):
             raise RuntimeError(str(a.get("error")) + " | " + " · ".join(f"{k}: {v}" for k, v in (a.get("diag") or {}).items()))
-        return f"{a['akun']['pengikut']} pengikut · {len(a['video'])} video · {a['ringkas']['dicek_iklan']} detail video"
+        return (f"{a['akun']['pengikut']} pengikut · {len(a['video'])} video · {a['ringkas']['dicek_iklan']} detail video · jalur "
+                + ("Jina Reader (cadangan)" if a.get("jalur") == "jina" else "langsung"))
     uji("Profil + video akun", akun)
 
     def oembed():
@@ -9593,6 +9664,23 @@ def tt_uji():
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + (" · kunci Jina" if d["kunci"] else " · tanpa kunci")
     uji("Tokopedia lewat Jina Reader", tokped_jina)
+
+    def akun_jina():
+        prof, emb, diag = _tt_profil_jina("somethincofficial")
+        ui = (prof.get("userInfo") or {})
+        st, eu = ui.get("stats") or {}, emb.get("userInfo") or {}
+        if not ui and not eu:
+            raise RuntimeError("tidak terbaca — " + diag.get("jina_profil", "") + " ‖ " + diag.get("jina_embed", ""))
+        vl = emb.get("videoList") or []
+        dd = _tt_video_detail_jina("somethincofficial", vl[0]["id"]) if vl else None
+        kunci = bool((os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip())
+        pg = f"{_int(st.get('followerCount') or eu.get('followerCount'), 0):,}".replace(",", ".")
+        return (f"pengikut {pg} · {_int(st.get('videoCount'), 0) or '?'} video total · "
+                f"{len(vl)} video sampel · detail video: " + (f"like {dd['like']}, iklan {'ya' if dd['iklan'] else 'tidak'}" if dd else "gagal") +
+                (" · kunci Jina" if kunci else " · tanpa kunci"))
+    uji("TikTok akun lewat Jina Reader", akun_jina)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(tugas)) as ex:
+        hasil = list(ex.map(_jalan, tugas))
     return {"ok": True, "hasil": hasil}
 
 
