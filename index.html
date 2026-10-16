@@ -448,161 +448,161 @@
   .hs-tahap span{font-size:10.5px;font-weight:700;color:rgba(218,241,222,.6);padding:4px 10px;border-radius:999px;border:1px solid rgba(218,241,222,.12)}
   .hs-tahap span.kini{color:var(--g950);background:var(--g300);border-color:var(--g300)}
 /* ===== v1.5.0: Scan Shopee ===== */
-#view-shopee{--line2:rgba(11,43,38,.06);--accent2:#163832;--accent-soft:#DAF1DE}
-#view-shopee .sp-beta{display:inline-block;vertical-align:middle;font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;background:#DAF1DE;color:#235347;border-radius:999px;padding:4px 10px;margin-left:6px;transform:translateY(-3px)}
-#view-shopee .sp-tabs{display:inline-flex;gap:4px;padding:5px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin:0 0 14px;max-width:100%;overflow-x:auto;scrollbar-width:none}
-#view-shopee .sp-tabs::-webkit-scrollbar{display:none}
-#view-shopee .sp-tabs button{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:800;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .25s,color .25s}
-#view-shopee .sp-tabs button svg{width:15px;height:15px}
-#view-shopee .sp-tabs button:hover{color:var(--ink)}
-#view-shopee .sp-tabs button.on{background:#0B2B26;color:#DAF1DE}
-#view-shopee .sp-sek{display:none}
-#view-shopee .sp-sek.on{display:block;animation:muncul .3s var(--ease) both}
-#view-shopee .sp-form{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:7px 7px 7px 16px;box-shadow:var(--shadow)}
-#view-shopee .sp-form > svg{width:18px;height:18px;color:var(--accent);flex:0 0 auto}
-#view-shopee .sp-form input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;font-size:15px;font-weight:600;color:var(--ink);padding:10px 2px}
-#view-shopee .sp-form input::placeholder{color:#8DA39A;font-weight:500}
-#view-shopee .sp-form select{border:1px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-size:12.5px;font-weight:800;background:#F6FBF7;color:var(--ink);flex:0 0 auto}
-#view-shopee .sp-form .btn{flex:0 0 auto;padding:11px 20px}
+#view-shopee,#view-tiktok{--line2:rgba(11,43,38,.06);--accent2:#163832;--accent-soft:#DAF1DE}
+:is(#view-shopee,#view-tiktok) .sp-beta{display:inline-block;vertical-align:middle;font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;background:#DAF1DE;color:#235347;border-radius:999px;padding:4px 10px;margin-left:6px;transform:translateY(-3px)}
+:is(#view-shopee,#view-tiktok) .sp-tabs{display:inline-flex;gap:4px;padding:5px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin:0 0 14px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+:is(#view-shopee,#view-tiktok) .sp-tabs::-webkit-scrollbar{display:none}
+:is(#view-shopee,#view-tiktok) .sp-tabs button{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:800;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .25s,color .25s}
+:is(#view-shopee,#view-tiktok) .sp-tabs button svg{width:15px;height:15px}
+:is(#view-shopee,#view-tiktok) .sp-tabs button:hover{color:var(--ink)}
+:is(#view-shopee,#view-tiktok) .sp-tabs button.on{background:#0B2B26;color:#DAF1DE}
+:is(#view-shopee,#view-tiktok) .sp-sek{display:none}
+:is(#view-shopee,#view-tiktok) .sp-sek.on{display:block;animation:muncul .3s var(--ease) both}
+:is(#view-shopee,#view-tiktok) .sp-form{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:7px 7px 7px 16px;box-shadow:var(--shadow)}
+:is(#view-shopee,#view-tiktok) .sp-form > svg{width:18px;height:18px;color:var(--accent);flex:0 0 auto}
+:is(#view-shopee,#view-tiktok) .sp-form input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;font-size:15px;font-weight:600;color:var(--ink);padding:10px 2px}
+:is(#view-shopee,#view-tiktok) .sp-form input::placeholder{color:#8DA39A;font-weight:500}
+:is(#view-shopee,#view-tiktok) .sp-form select{border:1px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-size:12.5px;font-weight:800;background:#F6FBF7;color:var(--ink);flex:0 0 auto}
+:is(#view-shopee,#view-tiktok) .sp-form .btn{flex:0 0 auto;padding:11px 20px}
 /* v1.5.4b: tanpa kotak siku saat kolom cari difokus — dulu gaya global input:focus menggambar cincin/bayangan persegi di dalam bingkai melengkung;
    sorotan fokus kini di bingkai luar (melengkung), kolom & dropdown tanpa tampilan bawaan iOS */
-#view-shopee .sp-form input{-webkit-appearance:none;appearance:none;border-radius:12px;box-shadow:none}
-#view-shopee .sp-form input:focus{border-color:transparent;box-shadow:none;outline:0}
-#view-shopee .sp-form input::-webkit-search-decoration,#view-shopee .sp-form input::-webkit-search-results-decoration{-webkit-appearance:none}
-#view-shopee .sp-form:focus-within{border-color:#8EB69B;box-shadow:var(--shadow),0 0 0 3px rgba(142,182,155,.32)}
-#view-shopee .sp-form select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:30px;
+:is(#view-shopee,#view-tiktok) .sp-form input{-webkit-appearance:none;appearance:none;border-radius:12px;box-shadow:none}
+:is(#view-shopee,#view-tiktok) .sp-form input:focus{border-color:transparent;box-shadow:none;outline:0}
+:is(#view-shopee,#view-tiktok) .sp-form input::-webkit-search-decoration,:is(#view-shopee,#view-tiktok) .sp-form input::-webkit-search-results-decoration{-webkit-appearance:none}
+:is(#view-shopee,#view-tiktok) .sp-form:focus-within{border-color:#8EB69B;box-shadow:var(--shadow),0 0 0 3px rgba(142,182,155,.32)}
+:is(#view-shopee,#view-tiktok) .sp-form select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:30px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23235347' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 10px center;background-size:13px}
-#view-shopee .sp-form select:focus{outline:0;border-color:#8EB69B;box-shadow:0 0 0 3px rgba(142,182,155,.32)}
-#view-shopee .sp-riw{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 2px 14px;min-height:8px}
-#view-shopee .sp-riw .lbl{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-right:2px}
-#view-shopee .sp-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.18s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#view-shopee .sp-chip:hover{background:#DAF1DE;border-color:#BEDCC6}
-#view-shopee .sp-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-#view-shopee .sp-chip i{font-style:normal;font-size:10px;color:var(--faint);font-weight:800;margin-left:4px}
-#view-shopee .sp-chip.on i{color:rgba(255,255,255,.75)}
-#view-shopee .sp-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);line-height:1.6;margin:0 2px 12px}
-#view-shopee .sp-info b{color:var(--ink)}
-#view-shopee .sp-info .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-#view-shopee .sp-aksi button,#view-shopee .sp-kecil{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:.18s;white-space:nowrap}
-#view-shopee .sp-aksi button:hover,#view-shopee .sp-kecil:hover{background:#DAF1DE}
-#view-shopee .sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
-#view-shopee .sp-p{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);min-width:0;transition:transform .2s var(--ease),box-shadow .2s}
-#view-shopee .sp-p:hover{transform:translateY(-2px);box-shadow:0 16px 26px -18px rgba(11,43,38,.4)}
-#view-shopee .sp-th{position:relative;display:block;aspect-ratio:1/1;background:#EAF4EC;overflow:hidden}
-#view-shopee .sp-th img{width:100%;height:100%;object-fit:cover;display:block}
-#view-shopee .sp-th .sp-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8EB69B;font-size:10.5px;font-weight:800}
-#view-shopee .sp-th img + .sp-ph{display:none}
-#view-shopee .sp-pos{position:absolute;top:7px;left:7px;background:#0B2B26;color:#DAF1DE;font-size:10.5px;font-weight:900;border-radius:999px;padding:3px 8px;box-shadow:0 4px 10px rgba(5,31,32,.3)}
-#view-shopee .sp-lc{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:900;border-radius:6px;padding:2px 6px;background:#fff;color:#235347;border:1px solid #CFE3D4}
-#view-shopee .sp-lc.mall{background:#163832;color:#DAF1DE;border-color:#163832}
-#view-shopee .sp-bd{padding:9px 10px 10px;display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
-#view-shopee .sp-nm{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none;min-height:32px}
-#view-shopee .sp-nm:hover{text-decoration:underline}
-#view-shopee .sp-hg{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-#view-shopee .sp-hg b{font-size:14px;font-weight:900;color:#0B2B26;letter-spacing:-.3px}
-#view-shopee .sp-hg s{font-size:10.5px;color:var(--faint)}
-#view-shopee .sp-hg i{font-style:normal;font-size:10px;font-weight:900;color:#2F7D64;background:#E4F0EA;border-radius:6px;padding:1px 5px}
-#view-shopee .sp-mt{font-size:10.5px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-#view-shopee .sp-mt .bintang{color:#B7791F;font-weight:800}
-#view-shopee .sp-lb{display:flex;gap:4px;flex-wrap:wrap}
-#view-shopee .sp-lb span{font-size:9.5px;font-weight:800;color:#557069;background:#F1F8F2;border-radius:6px;padding:2px 6px}
-#view-shopee .sp-tj{font-size:11px;color:var(--ink);font-weight:800;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-#view-shopee .sp-tj small{font-weight:700;color:var(--faint);font-size:10px}
-#view-shopee .sp-tj .naik{color:#2F7D64}
-#view-shopee .sp-kaki{margin-top:auto;padding-top:6px;display:flex;flex-wrap:wrap;gap:6px}   /* v1.5.4b: 3 tombol → boleh turun baris, tidak terpotong */
-#view-shopee .sp-kaki button,#view-shopee .sp-kaki a{flex:1 1 auto;min-width:0;text-align:center;border:1px solid var(--line);background:#F6FBF7;color:var(--accent);border-radius:10px;padding:6px 4px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;white-space:nowrap}
-#view-shopee .sp-kaki button:hover,#view-shopee .sp-kaki a:hover{background:#DAF1DE}
-#view-shopee .sp-tata{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
-#view-shopee .sp-tata .kol{min-width:0}
-#view-shopee .sp-hist{display:flex;align-items:flex-end;gap:5px;height:120px;padding:18px 0 0}
-#view-shopee .sp-hist .bt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;position:relative}
-#view-shopee .sp-hist .bt .b{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#8EB69B,#235347);min-height:3px}
-#view-shopee .sp-hist .bt .b.nol{background:#E6F2E9}
-#view-shopee .sp-hist .bt .n{position:absolute;top:-16px;font-size:9.5px;font-weight:900;color:#235347}
-#view-shopee .sp-hist .bt .lb{font-size:8.5px;font-weight:800;color:var(--faint);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-#view-shopee .sp-kuart{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
-#view-shopee .sp-kuart div{background:#F6FBF7;border:1px solid #DCEBE0;border-radius:12px;padding:8px 9px;min-width:0}
-#view-shopee .sp-kuart small{display:block;font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#557069}
-#view-shopee .sp-kuart b{font-size:13.5px;font-weight:900;color:#051F20}
-#view-shopee .sp-bar{display:flex;flex-direction:column;gap:7px}
-#view-shopee .sp-bar .r{display:grid;grid-template-columns:92px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;font-weight:700;color:var(--ink)}
-#view-shopee .sp-bar .r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#view-shopee .sp-bar .r i{display:block;height:9px;border-radius:999px;background:#E6F2E9;overflow:hidden}
-#view-shopee .sp-bar .r i em{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#235347,#8EB69B)}
-#view-shopee .sp-bar .r b{text-align:right;font-size:11px;color:#235347}
-#view-shopee .sp-fakta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px}
-#view-shopee .sp-f{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);min-width:0}
-#view-shopee .sp-f .l{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#557069}
-#view-shopee .sp-f .v{font-size:20px;font-weight:900;color:#051F20;margin-top:4px;letter-spacing:-.5px;line-height:1.15;overflow-wrap:anywhere}
-#view-shopee .sp-f .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.45}
-#view-shopee .sp-tk{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
-#view-shopee .sp-tk:last-child{border-bottom:0}
-#view-shopee .sp-tk .no{width:26px;height:26px;border-radius:9px;background:#DAF1DE;color:#235347;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-#view-shopee .sp-tk .tx{flex:1;min-width:0;font-size:11.5px;color:var(--muted);line-height:1.45}
-#view-shopee .sp-tk .tx b{display:block;color:var(--ink);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#view-shopee .sp-tk .sp-kecil{flex:0 0 auto}
-#view-shopee .sp-kosong{background:var(--card);border:1px dashed #CFE3D4;border-radius:20px;padding:30px 22px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.75}
-#view-shopee .sp-kosong b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
-#view-shopee .sp-kosong .sp-riw{justify-content:center;margin-bottom:0}
-#view-shopee .sp-galat{background:#FBF3E2;border:1px solid #E8D9B8;color:#6B4A0E;border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.65;margin-bottom:12px}
-#view-shopee .sp-galat b{display:block;font-size:13.5px;margin-bottom:2px}
-#view-shopee .sp-muat{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;color:var(--muted);font-size:12.5px;font-weight:700}
-#view-shopee .sp-muat i{width:18px;height:18px;border-radius:50%;border:2.5px solid #DAF1DE;border-top-color:#235347;animation:sp-putar .8s linear infinite;flex:0 0 auto}
+:is(#view-shopee,#view-tiktok) .sp-form select:focus{outline:0;border-color:#8EB69B;box-shadow:0 0 0 3px rgba(142,182,155,.32)}
+:is(#view-shopee,#view-tiktok) .sp-riw{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 2px 14px;min-height:8px}
+:is(#view-shopee,#view-tiktok) .sp-riw .lbl{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-right:2px}
+:is(#view-shopee,#view-tiktok) .sp-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.18s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-chip:hover{background:#DAF1DE;border-color:#BEDCC6}
+:is(#view-shopee,#view-tiktok) .sp-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+:is(#view-shopee,#view-tiktok) .sp-chip i{font-style:normal;font-size:10px;color:var(--faint);font-weight:800;margin-left:4px}
+:is(#view-shopee,#view-tiktok) .sp-chip.on i{color:rgba(255,255,255,.75)}
+:is(#view-shopee,#view-tiktok) .sp-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);line-height:1.6;margin:0 2px 12px}
+:is(#view-shopee,#view-tiktok) .sp-info b{color:var(--ink)}
+:is(#view-shopee,#view-tiktok) .sp-info .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-aksi button,:is(#view-shopee,#view-tiktok) .sp-kecil{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:.18s;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-aksi button:hover,:is(#view-shopee,#view-tiktok) .sp-kecil:hover{background:#DAF1DE}
+:is(#view-shopee,#view-tiktok) .sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+:is(#view-shopee,#view-tiktok) .sp-p{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);min-width:0;transition:transform .2s var(--ease),box-shadow .2s}
+:is(#view-shopee,#view-tiktok) .sp-p:hover{transform:translateY(-2px);box-shadow:0 16px 26px -18px rgba(11,43,38,.4)}
+:is(#view-shopee,#view-tiktok) .sp-th{position:relative;display:block;aspect-ratio:1/1;background:#EAF4EC;overflow:hidden}
+:is(#view-shopee,#view-tiktok) .sp-th img{width:100%;height:100%;object-fit:cover;display:block}
+:is(#view-shopee,#view-tiktok) .sp-th .sp-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8EB69B;font-size:10.5px;font-weight:800}
+:is(#view-shopee,#view-tiktok) .sp-th img + .sp-ph{display:none}
+:is(#view-shopee,#view-tiktok) .sp-pos{position:absolute;top:7px;left:7px;background:#0B2B26;color:#DAF1DE;font-size:10.5px;font-weight:900;border-radius:999px;padding:3px 8px;box-shadow:0 4px 10px rgba(5,31,32,.3)}
+:is(#view-shopee,#view-tiktok) .sp-lc{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:900;border-radius:6px;padding:2px 6px;background:#fff;color:#235347;border:1px solid #CFE3D4}
+:is(#view-shopee,#view-tiktok) .sp-lc.mall{background:#163832;color:#DAF1DE;border-color:#163832}
+:is(#view-shopee,#view-tiktok) .sp-bd{padding:9px 10px 10px;display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+:is(#view-shopee,#view-tiktok) .sp-nm{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none;min-height:32px}
+:is(#view-shopee,#view-tiktok) .sp-nm:hover{text-decoration:underline}
+:is(#view-shopee,#view-tiktok) .sp-hg{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-hg b{font-size:14px;font-weight:900;color:#0B2B26;letter-spacing:-.3px}
+:is(#view-shopee,#view-tiktok) .sp-hg s{font-size:10.5px;color:var(--faint)}
+:is(#view-shopee,#view-tiktok) .sp-hg i{font-style:normal;font-size:10px;font-weight:900;color:#2F7D64;background:#E4F0EA;border-radius:6px;padding:1px 5px}
+:is(#view-shopee,#view-tiktok) .sp-mt{font-size:10.5px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+:is(#view-shopee,#view-tiktok) .sp-mt .bintang{color:#B7791F;font-weight:800}
+:is(#view-shopee,#view-tiktok) .sp-lb{display:flex;gap:4px;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-lb span{font-size:9.5px;font-weight:800;color:#557069;background:#F1F8F2;border-radius:6px;padding:2px 6px}
+:is(#view-shopee,#view-tiktok) .sp-tj{font-size:11px;color:var(--ink);font-weight:800;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-tj small{font-weight:700;color:var(--faint);font-size:10px}
+:is(#view-shopee,#view-tiktok) .sp-tj .naik{color:#2F7D64}
+:is(#view-shopee,#view-tiktok) .sp-kaki{margin-top:auto;padding-top:6px;display:flex;flex-wrap:wrap;gap:6px}   /* v1.5.4b: 3 tombol → boleh turun baris, tidak terpotong */
+:is(#view-shopee,#view-tiktok) .sp-kaki button,:is(#view-shopee,#view-tiktok) .sp-kaki a{flex:1 1 auto;min-width:0;text-align:center;border:1px solid var(--line);background:#F6FBF7;color:var(--accent);border-radius:10px;padding:6px 4px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;text-decoration:none;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-kaki button:hover,:is(#view-shopee,#view-tiktok) .sp-kaki a:hover{background:#DAF1DE}
+:is(#view-shopee,#view-tiktok) .sp-tata{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+:is(#view-shopee,#view-tiktok) .sp-tata .kol{min-width:0}
+:is(#view-shopee,#view-tiktok) .sp-hist{display:flex;align-items:flex-end;gap:5px;height:120px;padding:18px 0 0}
+:is(#view-shopee,#view-tiktok) .sp-hist .bt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;position:relative}
+:is(#view-shopee,#view-tiktok) .sp-hist .bt .b{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#8EB69B,#235347);min-height:3px}
+:is(#view-shopee,#view-tiktok) .sp-hist .bt .b.nol{background:#E6F2E9}
+:is(#view-shopee,#view-tiktok) .sp-hist .bt .n{position:absolute;top:-16px;font-size:9.5px;font-weight:900;color:#235347}
+:is(#view-shopee,#view-tiktok) .sp-hist .bt .lb{font-size:8.5px;font-weight:800;color:var(--faint);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+:is(#view-shopee,#view-tiktok) .sp-kuart{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+:is(#view-shopee,#view-tiktok) .sp-kuart div{background:#F6FBF7;border:1px solid #DCEBE0;border-radius:12px;padding:8px 9px;min-width:0}
+:is(#view-shopee,#view-tiktok) .sp-kuart small{display:block;font-size:9px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:#557069}
+:is(#view-shopee,#view-tiktok) .sp-kuart b{font-size:13.5px;font-weight:900;color:#051F20}
+:is(#view-shopee,#view-tiktok) .sp-bar{display:flex;flex-direction:column;gap:7px}
+:is(#view-shopee,#view-tiktok) .sp-bar .r{display:grid;grid-template-columns:92px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;font-weight:700;color:var(--ink)}
+:is(#view-shopee,#view-tiktok) .sp-bar .r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-bar .r i{display:block;height:9px;border-radius:999px;background:#E6F2E9;overflow:hidden}
+:is(#view-shopee,#view-tiktok) .sp-bar .r i em{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#235347,#8EB69B)}
+:is(#view-shopee,#view-tiktok) .sp-bar .r b{text-align:right;font-size:11px;color:#235347}
+:is(#view-shopee,#view-tiktok) .sp-fakta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+:is(#view-shopee,#view-tiktok) .sp-f{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);min-width:0}
+:is(#view-shopee,#view-tiktok) .sp-f .l{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#557069}
+:is(#view-shopee,#view-tiktok) .sp-f .v{font-size:20px;font-weight:900;color:#051F20;margin-top:4px;letter-spacing:-.5px;line-height:1.15;overflow-wrap:anywhere}
+:is(#view-shopee,#view-tiktok) .sp-f .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+:is(#view-shopee,#view-tiktok) .sp-tk{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
+:is(#view-shopee,#view-tiktok) .sp-tk:last-child{border-bottom:0}
+:is(#view-shopee,#view-tiktok) .sp-tk .no{width:26px;height:26px;border-radius:9px;background:#DAF1DE;color:#235347;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+:is(#view-shopee,#view-tiktok) .sp-tk .tx{flex:1;min-width:0;font-size:11.5px;color:var(--muted);line-height:1.45}
+:is(#view-shopee,#view-tiktok) .sp-tk .tx b{display:block;color:var(--ink);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-tk .sp-kecil{flex:0 0 auto}
+:is(#view-shopee,#view-tiktok) .sp-kosong{background:var(--card);border:1px dashed #CFE3D4;border-radius:20px;padding:30px 22px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.75}
+:is(#view-shopee,#view-tiktok) .sp-kosong b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+:is(#view-shopee,#view-tiktok) .sp-kosong .sp-riw{justify-content:center;margin-bottom:0}
+:is(#view-shopee,#view-tiktok) .sp-galat{background:#FBF3E2;border:1px solid #E8D9B8;color:#6B4A0E;border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.65;margin-bottom:12px}
+:is(#view-shopee,#view-tiktok) .sp-galat b{display:block;font-size:13.5px;margin-bottom:2px}
+:is(#view-shopee,#view-tiktok) .sp-muat{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;color:var(--muted);font-size:12.5px;font-weight:700}
+:is(#view-shopee,#view-tiktok) .sp-muat i{width:18px;height:18px;border-radius:50%;border:2.5px solid #DAF1DE;border-top-color:#235347;animation:sp-putar .8s linear infinite;flex:0 0 auto}
 @keyframes sp-putar{to{transform:rotate(360deg)}}
-#view-shopee .sp-cat{font-size:11px;color:var(--muted);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
-#view-shopee .sp-balik{display:flex;align-items:center;gap:10px;margin:0 0 12px;min-width:0}   /* v1.5.4b: tombol Kembali di Intip toko */
-#view-shopee .sp-balik-b{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);
+:is(#view-shopee,#view-tiktok) .sp-cat{font-size:11px;color:var(--muted);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+:is(#view-shopee,#view-tiktok) .sp-balik{display:flex;align-items:center;gap:10px;margin:0 0 12px;min-width:0}   /* v1.5.4b: tombol Kembali di Intip toko */
+:is(#view-shopee,#view-tiktok) .sp-balik-b{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);
   border-radius:999px;padding:9px 14px 9px 10px;font:inherit;font-size:13px;font-weight:800;text-transform:none;cursor:pointer;box-shadow:var(--shadow);
   -webkit-tap-highlight-color:transparent;transition:background .18s,border-color .18s,transform .15s}
-#view-shopee .sp-balik-b svg{width:17px;height:17px;color:var(--accent)}
-#view-shopee .sp-balik-b:hover{background:#F6FBF7;border-color:#8EB69B}
-#view-shopee .sp-balik-b:active{transform:scale(.96)}
-#view-shopee .sp-esc{margin-left:3px;font-size:10px;font-weight:800;color:#557069;border:1px solid var(--line);border-radius:7px;padding:1px 6px;background:#F6FBF7}
-#view-shopee .sp-balik-k{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (hover:none),(max-width:1024px){#view-shopee .sp-esc{display:none}}
-#view-shopee .sp-toko-kep{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-#view-shopee .sp-toko-kep .sp-lg{width:64px;height:64px;border-radius:18px;background:#EAF4EC;overflow:hidden;flex:0 0 auto;border:1px solid var(--line)}
-#view-shopee .sp-toko-kep .sp-lg img{width:100%;height:100%;object-fit:cover;display:block}
-#view-shopee .sp-toko-kep .sp-tnama{flex:1 1 220px;min-width:0}
-#view-shopee .sp-toko-kep .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-#view-shopee .sp-toko-kep h2{font-size:19px;letter-spacing:-.4px;color:var(--ink);margin:0}
-#view-shopee .sp-toko-kep .sp-sb{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-#view-shopee .sp-live{background:#B5443A;color:#fff;font-size:9.5px;font-weight:900;letter-spacing:.6px;border-radius:6px;padding:2px 7px}
-#view-shopee .sp-vouc{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-#view-shopee .sp-vouc span{font-size:10.5px;font-weight:800;color:#235347;background:#F1F8F2;border:1px dashed #BEDCC6;border-radius:8px;padding:4px 8px}
-#view-shopee .sp-sesi{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-#view-shopee .sp-sesi span{font-size:11px;font-weight:800;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#fff}
-#view-shopee .sp-sesi span.on{background:#0B2B26;color:#DAF1DE;border-color:#0B2B26}
-#view-shopee .sp-legenda{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;margin:22px 2px 6px;padding-top:14px;border-top:1px dashed var(--line);font-size:11px;color:var(--muted)}
-#view-shopee .sp-legenda b{font-weight:400}
-#view-shopee .sp-legenda-ket{flex-basis:100%;line-height:1.65;color:var(--faint)}
-#view-shopee .sp-legenda-ket b{font-weight:800;color:var(--muted)}
-#view-shopee .sp-saran{display:flex;gap:6px;flex-wrap:wrap}
-#view-shopee .sp-tabel{width:100%;border-collapse:collapse;font-size:11.5px}
-#view-shopee .sp-tabel th{text-align:left;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--faint);padding:6px 6px;border-bottom:1px solid var(--line)}
-#view-shopee .sp-tabel td{padding:7px 6px;border-bottom:1px solid var(--line2);color:var(--ink);vertical-align:top}
-#view-shopee .sp-tabel td.n{text-align:right;font-weight:800;white-space:nowrap}
-#view-shopee .sp-tabel a{color:var(--ink);text-decoration:none}
-#view-shopee .sp-tabel a:hover{text-decoration:underline}
-#view-shopee .sp-geser{overflow-x:auto}
-@media (max-width:1100px){#view-shopee .sp-tata{grid-template-columns:1fr}}
+:is(#view-shopee,#view-tiktok) .sp-balik-b svg{width:17px;height:17px;color:var(--accent)}
+:is(#view-shopee,#view-tiktok) .sp-balik-b:hover{background:#F6FBF7;border-color:#8EB69B}
+:is(#view-shopee,#view-tiktok) .sp-balik-b:active{transform:scale(.96)}
+:is(#view-shopee,#view-tiktok) .sp-esc{margin-left:3px;font-size:10px;font-weight:800;color:#557069;border:1px solid var(--line);border-radius:7px;padding:1px 6px;background:#F6FBF7}
+:is(#view-shopee,#view-tiktok) .sp-balik-k{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (hover:none),(max-width:1024px){:is(#view-shopee,#view-tiktok) .sp-esc{display:none}}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-lg{width:64px;height:64px;border-radius:18px;background:#EAF4EC;overflow:hidden;flex:0 0 auto;border:1px solid var(--line)}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-lg img{width:100%;height:100%;object-fit:cover;display:block}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-tnama{flex:1 1 220px;min-width:0}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-aksi{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep h2{font-size:19px;letter-spacing:-.4px;color:var(--ink);margin:0}
+:is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-sb{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+:is(#view-shopee,#view-tiktok) .sp-live{background:#B5443A;color:#fff;font-size:9.5px;font-weight:900;letter-spacing:.6px;border-radius:6px;padding:2px 7px}
+:is(#view-shopee,#view-tiktok) .sp-vouc{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+:is(#view-shopee,#view-tiktok) .sp-vouc span{font-size:10.5px;font-weight:800;color:#235347;background:#F1F8F2;border:1px dashed #BEDCC6;border-radius:8px;padding:4px 8px}
+:is(#view-shopee,#view-tiktok) .sp-sesi{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+:is(#view-shopee,#view-tiktok) .sp-sesi span{font-size:11px;font-weight:800;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#fff}
+:is(#view-shopee,#view-tiktok) .sp-sesi span.on{background:#0B2B26;color:#DAF1DE;border-color:#0B2B26}
+:is(#view-shopee,#view-tiktok) .sp-legenda{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;margin:22px 2px 6px;padding-top:14px;border-top:1px dashed var(--line);font-size:11px;color:var(--muted)}
+:is(#view-shopee,#view-tiktok) .sp-legenda b{font-weight:400}
+:is(#view-shopee,#view-tiktok) .sp-legenda-ket{flex-basis:100%;line-height:1.65;color:var(--faint)}
+:is(#view-shopee,#view-tiktok) .sp-legenda-ket b{font-weight:800;color:var(--muted)}
+:is(#view-shopee,#view-tiktok) .sp-saran{display:flex;gap:6px;flex-wrap:wrap}
+:is(#view-shopee,#view-tiktok) .sp-tabel{width:100%;border-collapse:collapse;font-size:11.5px}
+:is(#view-shopee,#view-tiktok) .sp-tabel th{text-align:left;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--faint);padding:6px 6px;border-bottom:1px solid var(--line)}
+:is(#view-shopee,#view-tiktok) .sp-tabel td{padding:7px 6px;border-bottom:1px solid var(--line2);color:var(--ink);vertical-align:top}
+:is(#view-shopee,#view-tiktok) .sp-tabel td.n{text-align:right;font-weight:800;white-space:nowrap}
+:is(#view-shopee,#view-tiktok) .sp-tabel a{color:var(--ink);text-decoration:none}
+:is(#view-shopee,#view-tiktok) .sp-tabel a:hover{text-decoration:underline}
+:is(#view-shopee,#view-tiktok) .sp-geser{overflow-x:auto}
+@media (max-width:1100px){:is(#view-shopee,#view-tiktok) .sp-tata{grid-template-columns:1fr}}
 @media (max-width:640px){
-  #view-shopee .sp-tabs{display:flex;width:100%}
-  #view-shopee .sp-tabs button{flex:1 1 0;justify-content:center;padding:9px 6px;font-size:11.5px;gap:5px}
-  #view-shopee .sp-tabs button{white-space:normal;line-height:1.15;text-align:center;padding:8px 4px;font-size:11px}
-  #view-shopee .sp-tabs button svg{display:none}   /* v1.5.4: 4 tab muat di layar HP */
-  #view-shopee .sp-form{flex-wrap:wrap;padding:7px 7px 7px 13px}
-  #view-shopee .sp-form input{flex:1 1 calc(100% - 40px);font-size:16px}
-  #view-shopee .sp-form select{flex:1 1 auto}
-  #view-shopee .sp-form .btn{flex:1 1 auto;justify-content:center}
-  #view-shopee .sp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  #view-shopee .sp-fakta{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #view-shopee .sp-info .sp-aksi{margin-left:0;width:100%}
-  #view-shopee .sp-bar .r{grid-template-columns:78px 1fr 30px}
-  #view-shopee .sp-toko-kep .sp-tnama{flex:1 1 calc(100% - 80px)}
-  #view-shopee .sp-toko-kep .sp-aksi{margin-left:0;width:100%}
-  #view-shopee .sp-toko-kep .sp-aksi > *{flex:1 1 0;text-align:center}
+  :is(#view-shopee,#view-tiktok) .sp-tabs{display:flex;width:100%}
+  :is(#view-shopee,#view-tiktok) .sp-tabs button{flex:1 1 0;justify-content:center;padding:9px 6px;font-size:11.5px;gap:5px}
+  :is(#view-shopee,#view-tiktok) .sp-tabs button{white-space:normal;line-height:1.15;text-align:center;padding:8px 4px;font-size:11px}
+  :is(#view-shopee,#view-tiktok) .sp-tabs button svg{display:none}   /* v1.5.4: 4 tab muat di layar HP */
+  :is(#view-shopee,#view-tiktok) .sp-form{flex-wrap:wrap;padding:7px 7px 7px 13px}
+  :is(#view-shopee,#view-tiktok) .sp-form input{flex:1 1 calc(100% - 40px);font-size:16px}
+  :is(#view-shopee,#view-tiktok) .sp-form select{flex:1 1 auto}
+  :is(#view-shopee,#view-tiktok) .sp-form .btn{flex:1 1 auto;justify-content:center}
+  :is(#view-shopee,#view-tiktok) .sp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  :is(#view-shopee,#view-tiktok) .sp-fakta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  :is(#view-shopee,#view-tiktok) .sp-info .sp-aksi{margin-left:0;width:100%}
+  :is(#view-shopee,#view-tiktok) .sp-bar .r{grid-template-columns:78px 1fr 30px}
+  :is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-tnama{flex:1 1 calc(100% - 80px)}
+  :is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-aksi{margin-left:0;width:100%}
+  :is(#view-shopee,#view-tiktok) .sp-toko-kep .sp-aksi > *{flex:1 1 0;text-align:center}
 }
 /* v1.4.7 M7: Rekam jejak pengiklan */
 .jj-kartu{margin-bottom:14px}
@@ -694,6 +694,61 @@
 .akl-tb{border:1px solid #8EB69B;background:#DAF1DE;color:#0B2B26;border-radius:999px;padding:4px 11px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;margin-left:2px}
 .akl-tb:hover{background:#8EB69B}
 @media(max-width:560px){.akl-r{grid-template-columns:1fr;gap:3px}.akl-r>span{justify-self:start;padding:2px 8px}.kk-in{width:112px}}
+/* v1.5.6 scan affiliator + Shopee Video */
+#view-shopee .afv-scan{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;background:#F6FBF7;border:1px solid #DCEBDF;border-radius:16px;padding:10px 12px;margin:0 0 12px}
+#view-shopee .afv-scan .btn{flex:none;border-radius:999px;padding:9px 16px;font-size:12.5px;text-transform:none;letter-spacing:0;display:inline-flex;align-items:center;gap:7px}
+#view-shopee .afv-scan .btn[disabled]{opacity:.75;cursor:wait}
+#view-shopee .afv-scan .btn i{width:12px;height:12px;border-radius:50%;border:2px solid #DAF1DE;border-top-color:transparent;animation:afvPutar .8s linear infinite}
+#view-shopee .afv-scan span{flex:1 1 220px;min-width:0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+#view-shopee .afv-scan span b{color:var(--ink)}
+#view-shopee .afv-src{background:#E6F0FA !important;color:#1F4E79 !important}
+#view-shopee .afv-tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px;margin:0 0 12px}
+#view-shopee .afv-tg > div{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff}
+#view-shopee .afv-tg .n{font-weight:800;font-size:13.5px;color:var(--ink);overflow-wrap:anywhere}
+#view-shopee .afv-tg .n small{font-size:10.5px;font-weight:800;color:#235347;background:#DAF1DE;border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:1px}
+#view-shopee .afv-tg .r{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:6px;font-size:11.5px;color:var(--muted)}
+#view-shopee .afv-tg .r b{color:var(--ink);text-align:right;font-weight:800}
+#view-shopee .afv-h3{font-size:12.5px;font-weight:800;color:var(--ink);margin:14px 0 8px}
+#view-shopee .afv-h3 small{font-weight:600;color:var(--muted);font-size:11.5px}
+#view-shopee .afv-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+#view-shopee .afv-chips span{font-size:11.5px;font-weight:700;color:#235347;background:#F3F8F4;border:1px solid #DCEBDF;border-radius:999px;padding:4px 10px}
+#view-shopee .afv-vd{display:grid;gap:8px}
+#view-shopee .afv-v{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:9px 12px;background:#fff}
+#view-shopee .afv-v .c{font-size:12.5px;color:var(--ink);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+#view-shopee .afv-v .m{grid-column:1;font-size:11px;color:var(--muted)}
+#view-shopee .afv-v a{grid-row:1 / span 2;grid-column:2;border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:800;color:var(--accent);text-decoration:none;white-space:nowrap}
+/* ===== v1.5.7 AI asisten ===== */
+.ai-box{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.ai-k{font-size:11.5px;color:var(--faint,#6B8A80);line-height:1.5}
+.ai-tg{display:inline-block;font-size:10.5px;font-weight:800;color:#2B5C8A;background:#EAF2FA;border:1px solid #CFE0F0;border-radius:999px;padding:2px 8px;text-transform:none;letter-spacing:0}
+.ai-muat{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#2F4A43;font-weight:600}
+.ai-muat i{width:14px;height:14px;border-radius:50%;border:2px solid #8EB69B;border-top-color:#163832;animation:afvPutar .8s linear infinite;flex:0 0 auto}
+.ai-v{width:100%;box-sizing:border-box;border:1px solid #DCEBDF;background:#F8FCF9;border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.ai-vh{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ai-vh b{font-size:12.5px;color:#163832;text-transform:capitalize}
+.ai-hook{font-weight:800;color:#051F20;font-size:14px;line-height:1.4}
+.ai-ad{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:12.5px;line-height:1.45;color:#21403A}
+.ai-ad i{font-style:normal;font-weight:800;color:#557069;font-size:11px}
+.ai-ad em{display:block;font-style:normal;color:#6B8A80;font-size:11.5px}
+.ai-cap{font-size:12px;color:#2F4A43;background:#fff;border:1px dashed #C9DFCF;border-radius:10px;padding:7px 9px}
+.ai-salin,#afv-ai-b{align-self:flex-start;text-transform:none;font:inherit;font-size:12.5px;font-weight:800;color:#0B2B26;background:#DAF1DE;border:1px solid #BFDCC6;border-radius:999px;padding:7px 14px;cursor:pointer;transition:background .2s}
+.ai-salin:hover,#afv-ai-b:hover{background:#C9E8D0}
+#afv-ai-b:disabled{opacity:.55;cursor:not-allowed}
+.afv-ai{color:#2B5C8A!important;background:#EAF2FA!important;border-color:#CFE0F0!important}
+.sdt{margin-top:14px;border-top:1px solid #E3EFE6;padding-top:12px;display:flex;flex-direction:column;gap:9px}
+.sdt-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.sdt-h b{font-size:13.5px;color:#051F20}
+.sdt-h span{font-size:11.5px;color:#6B8A80}
+.sdt .tombol2{text-transform:none;align-self:flex-start}
+.sdt-r{font-size:12.5px;color:#163832;font-weight:600;line-height:1.5}
+.sdt-b{display:flex;flex-direction:column;gap:4px}
+.sdt-l{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.sdt-l b{color:#163832}
+.sdt-l span{color:#557069;font-size:11.5px}
+.sdt-bar{height:8px;border-radius:999px;background:#E8F2EA;overflow:hidden}
+.sdt-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#235347,#8EB69B)}
+.sdt-c{font-size:11.5px;color:#2F4A43;line-height:1.45}
+.sdt-c small{color:#6B8A80}
 /* ===== v1.5.5 tab Affiliator & Video ===== */
 #view-shopee .afv-intro{font-size:13px;line-height:1.55;color:var(--muted);background:#F6FBF7;border:1px solid #DCEBDF;border-radius:16px;padding:11px 14px;margin:0 0 12px}
 #view-shopee .afv-intro b{color:var(--ink)}
@@ -779,6 +834,72 @@
   #view-shopee .afv-th{width:68px;height:68px}
   .afv-ov{padding:10px;align-items:flex-end}
   .afv-ov .modal{max-height:88vh;border-radius:22px}
+}
+
+/* ===== v1.5.8 Scan TikTok (memakai kelas .sp-* Shopee + tambahan tt-*) ===== */
+#view-tiktok .tt-form{flex-wrap:wrap}
+#view-tiktok .tt-form select{flex:1 1 130px;min-width:0}
+#view-tiktok .tt-th{aspect-ratio:3/4;border:0;padding:0;width:100%;cursor:pointer;font:inherit}
+#view-tiktok .tt-th img{object-fit:cover}
+#view-tiktok .tt-dur,#view-tiktok .tt-views{position:absolute;bottom:7px;font-size:10px;font-weight:800;color:#fff;background:rgba(5,31,32,.72);border-radius:6px;padding:2px 6px}
+#view-tiktok .tt-dur{right:7px}
+#view-tiktok .tt-views{left:7px}
+#view-tiktok .tt-play{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:rgba(5,31,32,.6);color:#DAF1DE;display:flex;align-items:center;justify-content:center;transition:transform .2s var(--ease),background .2s}
+#view-tiktok .tt-play svg{width:20px;height:20px;margin-left:2px}
+#view-tiktok .tt-th:hover .tt-play{transform:scale(1.1);background:#163832}
+#view-tiktok .tt-ikl{background:#B7791F;color:#fff;font-size:9.5px}
+#view-tiktok .tt-hook{min-height:32px}
+#view-tiktok .tt-angka{display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;font-weight:800;color:#163832}
+#view-tiktok .tt-angka.kecil{font-size:10.5px;gap:7px;color:#2F4A43}
+#view-tiktok .tt-ctr{color:#2B5C8A}
+#view-tiktok .tt-bud.b2{background:#163832!important;color:#DAF1DE!important}
+#view-tiktok .tt-bud.b1{background:#DAF1DE!important;color:#163832!important}
+#view-tiktok .tt-ak{display:flex;gap:5px;flex-wrap:wrap;margin-top:auto;padding-top:3px}
+#view-tiktok .tt-ak .sp-kecil{padding:5px 9px;font-size:10.5px}
+#view-tiktok .tt-av{border-radius:50%!important}
+#view-tiktok .tt-lencana{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+#view-tiktok .tt-cek{font-size:10px;font-weight:800;color:#235347;background:#EAF4EC;border:1px solid #CFE3D4;border-radius:999px;padding:2px 8px}
+#view-tiktok .tt-bio{margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.6;white-space:pre-line;overflow-wrap:anywhere}
+#view-tiktok .tt-urut{margin-left:auto;display:flex;gap:4px}
+#view-tiktok .judul-kartu{flex-wrap:wrap;gap:6px 10px}
+#view-tiktok .sdt-c{font-size:11.5px;color:#557069;line-height:1.5}
+.tt-ov{position:fixed;inset:0;z-index:950;background:rgba(5,31,32,.72);display:flex;align-items:center;justify-content:center;padding:18px;opacity:0;transition:opacity .25s}
+.tt-ov.on{opacity:1}
+html.tt-kunci{overflow:hidden}
+.tt-mod{position:relative;background:#fff;border-radius:24px;max-width:860px;width:100%;max-height:calc(100vh - 36px);overflow:auto;display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);box-shadow:0 30px 80px rgba(5,31,32,.45);transform:translateY(12px) scale(.98);transition:transform .3s cubic-bezier(.65,0,.35,1)}
+.tt-ov.on .tt-mod{transform:none}
+.tt-x{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:#F1F8F2;color:#051F20;font-size:14px;font-weight:900;cursor:pointer;text-transform:none}
+.tt-vid{background:#051F20;display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:24px 0 0 24px;overflow:hidden}
+.tt-vid video{width:100%;max-height:calc(100vh - 36px);display:block;background:#051F20}
+.tt-vgagal{color:#DAF1DE;font-size:12.5px;line-height:1.6;padding:24px;text-align:center}
+.tt-info{padding:22px 22px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tt-pk{font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#557069;padding-right:36px}
+.tt-info h3{margin:0;font-size:16px;line-height:1.45;color:#051F20;overflow-wrap:anywhere}
+.tt-mrk{font-size:12px;font-weight:800;color:#235347}
+.tt-kotak{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tt-kotak div{background:#F6FBF7;border:1px solid #E3EFE6;border-radius:12px;padding:8px 6px;text-align:center;min-width:0}
+.tt-kotak b{display:block;font-size:14px;color:#051F20}
+.tt-kotak span{font-size:9.5px;color:#557069;font-weight:700}
+.tt-chips{display:flex;gap:5px;flex-wrap:wrap}
+.tt-chips span{font-size:10.5px;font-weight:800;color:#557069;background:#F1F8F2;border-radius:6px;padding:3px 8px}
+.tt-chips .tt-bud.b2{background:#163832;color:#DAF1DE}
+.tt-tg{font-size:11.5px;color:#2B5C8A;overflow-wrap:anywhere}
+.tt-lain{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#21403A}
+.tt-lain i{display:block;font-style:normal;font-size:10px;font-weight:800;color:#557069;text-transform:uppercase;letter-spacing:.4px}
+.tt-lain a{color:#235347;font-weight:700;overflow-wrap:anywhere}
+.tt-aksi{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.tt-b{display:inline-flex;align-items:center;gap:6px;border:1px solid #CFE3D4;background:#fff;color:#163832;border-radius:999px;padding:9px 15px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;text-decoration:none;text-transform:none;transition:background .18s}
+.tt-b:hover{background:#DAF1DE}
+.tt-b.utama{background:#163832;border-color:#163832;color:#DAF1DE}
+.tt-b.utama:hover{background:#235347}
+@media (max-width:760px){
+  .tt-ov{padding:0;align-items:flex-end}
+  .tt-mod{grid-template-columns:1fr;border-radius:22px 22px 0 0;max-height:94vh}
+  .tt-vid{border-radius:22px 22px 0 0;min-height:200px}
+  .tt-vid video{max-height:52vh}
+  .tt-kotak b{font-size:13px}
+  #view-tiktok .tt-form select{flex:1 1 calc(50% - 8px)}
+  #view-tiktok .tt-urut{margin-left:0}
 }
 </style>
 <style>
@@ -1849,7 +1970,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     <div class="sb-seksi">Hasil scan</div>
     <div id="sb-scan"><div class="sb-kosong">Belum ada data scan.</div></div>
 
-    <div class="sb-foot">Meta aktif · Shopee beta · <span class="v-intai">v1.5</span><br>TikTok: disiapkan</div>
+    <div class="sb-foot">Meta aktif · Shopee &amp; TikTok beta · <span class="v-intai">v1.5</span></div>
   </aside>
 
   <nav class="bn" id="bn" aria-label="Navigasi cepat">
@@ -1867,7 +1988,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     <div class="bns-grid">
       <button class="bns-kartu" type="button" data-v="meta" style="--i:0" onclick="bnScanPilih('meta')"><i class="bns-ik"></i><b>Meta Ads</b><small>Iklan Facebook &amp; Instagram</small></button>
       <button class="bns-kartu" type="button" data-v="shopee" style="--i:1" onclick="bnScanPilih('shopee')"><i class="bns-ik"></i><b>Shopee</b><small>Harga, terlaris &amp; toko</small></button>
-      <button class="bns-kartu" type="button" data-v="tiktok" style="--i:2" onclick="bnScanPilih('tiktok')"><i class="bns-ik"></i><b>TikTok</b><small>Sedang dibangun</small><em class="bns-segera">Segera</em></button>
+      <button class="bns-kartu" type="button" data-v="tiktok" style="--i:2" onclick="bnScanPilih('tiktok')"><i class="bns-ik"></i><b>TikTok</b><small>Top iklan &amp; intip akun</small></button>
     </div>
   </div>
 
@@ -1885,7 +2006,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
           <span class="hs-ind" id="hs-ind"></span>
           <button type="button" class="hs-tab on" data-p="meta" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>Meta Ad Library <span class="hs-st ok">Aktif</span></button>
           <button type="button" class="hs-tab" data-p="shopee" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Shopee <span class="hs-st ok">Beta</span></button>
-          <button type="button" class="hs-tab" data-p="tiktok" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>TikTok <span class="hs-st">Tahap 3</span></button>
+          <button type="button" class="hs-tab" data-p="tiktok" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg>TikTok <span class="hs-st ok">Beta</span></button>
         </div>
 
         <div class="hs-panel on" data-panel="meta">
@@ -1906,7 +2027,15 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
           <div class="hs-bawah" id="hs-chips-shp"></div>
           <div class="hs-info">Membaca <b>±40 produk terlaris Shopee</b> untuk kata kunci itu: peta harga, diskon, jenis toko, kota, dan toko dominan · ±5 detik · ada juga <b>Radar Flash Sale</b> dan <b>Intip toko</b> di halaman Scan Shopee.</div>
         </div>
-        <div class="hs-panel" data-panel="tiktok"><div class="hs-segera"><div class="ik-bulat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v9.5a4 4 0 1 1-3.2-3.92"/><path d="M14 4c.6 2.4 2.2 3.8 4.5 4"/></svg></div><div><b>Mesin TikTok — tahap 3</b><span>Video &amp; iklan TikTok Shop yang sedang naik daun. Menyusul setelah Shopee.</span></div><button type="button" class="hs-btn" onclick="ke('/tiktok')">Lihat rencana <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button></div></div>
+        <div class="hs-panel" data-panel="tiktok">
+          <form class="hs-form" id="hs-form-tt" autocomplete="off">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+            <input id="hs-q-tt" type="text" placeholder="Intip akun TikTok — misal: @somethincofficial" aria-label="Akun TikTok">
+            <button type="submit" class="hs-btn">Intip <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
+          </form>
+          <div class="hs-bawah" id="hs-chips-tt"><span class="lbl">Top iklan TikTok</span><button type="button" class="hs-chip" data-ind="">Semua kategori</button><button type="button" class="hs-chip" data-ind="14000000000">Kecantikan</button><button type="button" class="hs-chip" data-ind="27000000000">Makanan &amp; Minuman</button><button type="button" class="hs-chip" data-ind="22000000000">Fashion</button><button type="button" class="hs-chip" data-ind="29000000000">Kesehatan</button></div>
+          <div class="hs-info">Ketik akun pesaing untuk melihat <b>pengikut, 13 video + views, like, komentar, dan mana yang dipromosikan</b> · atau klik kategori untuk melihat <b>iklan TikTok terkuat 30 hari terakhir</b> (like, CTR, budget, video aslinya).</div>
+        </div>
       </div>
     </section>
 
@@ -2375,6 +2504,8 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
           <div class="kol">
             <div class="kartu"><div class="judul-kartu"><b>Scan otomatis</b><span id="adm-put-tgl">—</span></div><div id="adm-putaran"></div></div>
             <div class="kartu"><div class="judul-kartu"><b>Mesin scan Meta</b><span id="adm-mesin-t">—</span></div><div id="adm-mesin"></div></div>
+            <div class="kartu"><div class="judul-kartu"><b>🤖 AI asisten</b><span id="adm-ai-t">—</span></div><div id="adm-ai"></div></div>
+            <div class="kartu"><div class="judul-kartu"><b>🎵 Jalur TikTok &amp; Tokopedia</b><span id="adm-tt-t">belum diuji</span></div><div><small style="color:var(--faint)">Cek dari server Render: Creative Center (Top Iklan), profil + video akun, dan Tokopedia (untuk fitur angka terjual berikutnya).</small><br><button class="cs-tb" style="margin-top:8px" onclick="admTTUji(this)">Uji jalur sekarang</button><div id="adm-tt-hasil"></div></div></div>
           </div>
         </div>
       </div>
@@ -2477,10 +2608,12 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
         <div class="sp-riw" id="afv-riw"></div>
         <div class="afv-loncat" id="afv-loncat">
           <button type="button" onclick="afvLoncat('afv-a1')">📣 Diiklankan affiliator</button>
+          <button type="button" onclick="afvLoncat('afv-sv')">🎬 Shopee Video</button>
           <button type="button" onclick="afvLoncat('afv-a3')">⭐ Layak dipromosikan</button>
           <button type="button" onclick="afvLoncat('afv-kalk')">🧮 Kalkulator komisi</button>
         </div>
         <div id="afv-a1"></div>
+        <div id="afv-sv"></div>
         <div id="afv-a3"></div>
         <div id="afv-kalk"></div>
       </section>
@@ -2494,27 +2627,41 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
     </div>
 
     <!-- v0.9: modul TikTok (mesin disiapkan, tanpa data) -->
-    <div id="view-tiktok" class="view-modul" style="display:none">
-      <div class="mk">
-        <div class="mk-ikon" style="background:#E7F1F2;color:#14262A"><svg class=ik><use href=#ik-music></use></svg></div>
-        <div class="mk-badge"><i></i> Mesin disiapkan</div>
-        <h1>Scan TikTok — sedang dibangun</h1>
-        <div class="mk-sub">Halaman ini sudah jadi rumah modul TikTok. Yang belum ada adalah mesin pengambil datanya — dan INTAI <b>tidak</b> akan memasang data palsu sebagai penggantinya.</div>
-        <div class="mk-list">
-          <div class="mk-b"><svg class=ik><use href=#ik-box></use></svg><div><b>Struktur modul siap.</b> Nanti di sini: ranking produk, harga, dan pola jualan TikTok — format yang sama dengan modul Meta.</div></div>
-          <div class="mk-b"><svg class=ik><use href=#ik-shield></use></svg><div><b>Riset jalur data sedang berjalan.</b> TikTok menjaga halamannya dengan anti-bot ketat; INTAI hanya akan memakai jalur yang sah dan stabil.</div></div>
-          <div class="mk-b"><svg class=ik><use href=#ik-check></use></svg><div><b>Prinsip: jujur.</b> Selama mesinnya belum jadi, statusnya tetap "disiapkan" — bukan demo berisi angka karangan.</div></div>
+    <div id="view-tiktok" style="display:none">
+      <div class="sapaan-bar">
+        <div>
+          <h1>Scan TikTok <span class="sp-beta">Beta</span></h1>
+          <div class="sub2">Iklan TikTok yang paling kuat di Indonesia per kategori (like, CTR, budget, video aslinya) dan intip akun pesaing: pengikut, video terbaru, views, dan mana yang sedang dipromosikan.</div>
         </div>
-        <div class="mk-kini">
-          <div class="k">Yang sudah bisa dipakai sekarang</div>
-          Banyak iklan Meta mengarah ke TikTok Shop, Shopee, dan Tokopedia. Scan kata kunci di <b>Scan Meta</b>, lalu klik chip <code>Marketplace</code> di atas tabel — terlihat siapa saja yang mengirim iklannya ke marketplace, lengkap dengan umur iklan, status, dan skor.
-        </div>
-        <div class="mk-aksi">
-          <button class="btn" onclick="ke('/meta')"><svg class=ik><use href=#ik-search></use></svg>Buka Scan Meta</button>
-          <button class="btn2" onclick="ke('/dashboard')">← Kembali ke Dashboard</button>
-        </div>
-        <div class="mk-foot"><div>INTAI <span class="v-intai">v1.4</span> · modul TikTok · status: mesin disiapkan</div><div>Modul Meta sudah penuh &amp; siap dipakai</div></div>
       </div>
+      <div class="sp-tabs" role="tablist" id="tt-tabs">
+        <button type="button" data-t="iklan" onclick="ttTab('iklan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3.5 4.5 5 4.5 9a4.5 4.5 0 0 1-9 0c0-1.6.7-2.9 1.6-3.9.2 1.4 1 2.4 2 2.9C10.6 8.6 11 5.6 12 3z"/></svg>Top Iklan TikTok</button>
+        <button type="button" data-t="akun" onclick="ttTab('akun')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>Intip akun</button>
+      </div>
+
+      <section class="sp-sek" data-sek="iklan">
+        <form class="sp-form tt-form" id="tt-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          <select id="tt-ind" aria-label="Kategori"><option value="">Semua kategori</option></select>
+          <select id="tt-sub" aria-label="Subkategori" style="display:none"><option value="">Semua subkategori</option></select>
+          <select id="tt-per" aria-label="Periode"><option value="7">7 hari</option><option value="30" selected>30 hari</option><option value="180">180 hari</option></select>
+          <select id="tt-urut" aria-label="Urutan"><option value="like">Like terbanyak</option><option value="ctr">CTR tertinggi</option><option value="impression">Tayangan terbanyak</option><option value="for_you">Pilihan TikTok</option></select>
+          <select id="tt-bhs" aria-label="Bahasa iklan"><option value="id">Bahasa Indonesia</option><option value="">Semua bahasa</option></select>
+          <button type="submit" class="btn" id="tt-btn">Scan</button>
+        </form>
+        <div class="sp-riw" id="tt-riw"></div>
+        <div id="tt-iklan-isi"></div>
+      </section>
+
+      <section class="sp-sek" data-sek="akun">
+        <form class="sp-form" id="tt-akun-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+          <input id="tt-akun-q" type="search" placeholder="@namaakun atau link profil TikTok — misal: @somethincofficial" aria-label="Akun TikTok">
+          <button type="submit" class="btn" id="tt-akun-btn">Intip</button>
+        </form>
+        <div class="sp-riw" id="tt-akun-riw"></div>
+        <div id="tt-akun-isi"></div>
+      </section>
     </div>
   </main>
 </div>
@@ -3208,6 +3355,16 @@ function dshMulai(){
     if(q.length < 2){ document.getElementById("hs-q-shp").focus(); toast("Ketik dulu produk yang mau diintip di Shopee."); return; }
     ke("/shopee?q=" + encodeURIComponent(q));
   });
+  document.getElementById("hs-form-tt").addEventListener("submit", function(e){   /* v1.5.8 */
+    e.preventDefault();
+    const q = (document.getElementById("hs-q-tt").value || "").trim();
+    if(q.replace("@", "").length < 2){ document.getElementById("hs-q-tt").focus(); toast("Ketik nama akun TikTok, misal @somethincofficial."); return; }
+    ke("/tiktok?u=" + encodeURIComponent(q));
+  });
+  document.getElementById("hs-chips-tt").addEventListener("click", function(e){
+    const b = e.target.closest(".hs-chip");
+    if(b) ke("/tiktok" + (b.dataset.ind ? "?ind=" + b.dataset.ind : "?tab=iklan"));
+  });
   document.getElementById("hs-chips-shp").addEventListener("click", function(e){
     const b = e.target.closest(".hs-chip");
     if(b && b.dataset.kata) ke("/shopee?q=" + encodeURIComponent(b.dataset.kata));
@@ -3723,7 +3880,9 @@ function detailHTML(x){
   h += '<div class="subjudul">Info Iklan</div><div class="grid2">' +
     sel("CTA", cta || "—") + sel("Format", esc(d.display_format)) +
     sel("Relevansi kata kunci", '<span class="chip" style="color:' + wr + ';border-color:' + wr + '33;background:' + wr + '12">' + esc(rel.label) + ' (' + rel.nilai + '/100)</span>' +
-      (rel.cocok && rel.cocok.length ? '<div style="font-size:11px;color:#557069;margin-top:4px">cocok: ' + esc(rel.cocok.join(", ")) + '</div>' : "")) +
+      (rel.cocok && rel.cocok.length ? '<div style="font-size:11px;color:#557069;margin-top:4px">cocok: ' + esc(rel.cocok.join(", ")) + '</div>' : "") +
+      (rel.ai ? '<div style="font-size:11px;color:#2B5C8A;margin-top:4px" title="Hakim AI hanya menilai iklan zona abu-abu (skor 15–59)">🤖 Pendapat AI: <b>' + esc({inti: "menjual niche ini", sebut: "hanya menyebut niche", lepas: "tidak nyambung"}[rel.ai.kelas] || rel.ai.kelas) + '</b> (' + rel.ai.yakin + '%)' + (rel.ai.alasan ? ' — ' + esc(rel.ai.alasan) : "") +
+        (rel.ai.usul && rel.ai.usul !== rel.ai.asal ? (rel.ai.mode === "ubah" ? ' · label diubah ' + esc(rel.ai.asal) + '→' + esc(rel.ai.usul) : ' · menurut AI: ' + esc(rel.ai.usul) + ' (tidak dipakai — label tetap dari aturan)') : "") + '</div>' : "")) +
     sel("Mulai tayang", esc(d.mulai)) + sel("Berakhir", esc(d.berakhir)) +
     sel("Umur", d.umur + " hari") + sel("Status", d.is_active ? "🟢 Aktif" : "🔴 Tidak aktif") +
     sel("Varian (batch)", (d.varian != null ? d.varian + " iklan" : "—")) +
@@ -4899,6 +5058,11 @@ async function scan(segar){
         (tp.length < 10 ? ' · <span class="kecil">sampel kecil: hanya ' + tp.length + ' produk yang lolos syarat (relevan, aktif, ada bukti jualan)</span>' : '') +
         (!(s.scan_lalu) && MODE !== "halaman" ? ' · <span title="Tiap scan niche ini (manual / terjadwal) menambah kumpulan; Top 10 berikutnya ikut menimbang iklan yang tidak muncul di potongan scan">makin sering niche ini discan, makin lengkap sampelnya</span>' : '');
     })();
+    (function(){   /* v1.5.7 bedah sudut jualan */
+      const ch = document.getElementById("ch-hook"); if(!ch) return;
+      if(SDT && SDT.q !== (window.SCAN_Q || "")) SDT = null;
+      ch.insertAdjacentHTML("beforeend", '<div id="sdt-wadah">' + sdtHTML() + '</div>');
+    })();
     document.getElementById("top10").innerHTML = tp.length
       ? '<div class="mp-grid">' + tp.map((p, i) => {
           const img = p.foto
@@ -5965,6 +6129,7 @@ function admGambarAkun(){
 }
 function admR(k, v){ return '<div class="adm-r"><span>' + k + '</span><b>' + v + '</b></div>'; }
 function admGambarSistem(){
+  setTimeout(function(){ try{ admAIMuat(); }catch(e){} }, 0);
   if(!ADM.d || !document.getElementById("adm-server")) return;
   const s = ADM.d.sistem || {}, a = s.arsip || {}, cs = s.cs || {};
   const ya = function(b, t1, t2){ return b ? '<span class="ok">✓ ' + t1 + '</span>' : '<span class="buruk">✗ ' + t2 + '</span>'; };
@@ -6423,7 +6588,7 @@ function tampilView(v, push){
     el.classList.remove("view-masuk"); void el.offsetWidth; el.classList.add("view-masuk");
     clearTimeout(el.__tvm); el.__tvm = setTimeout(function(){ el.classList.remove("view-masuk"); }, 420);
   })();
-  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Scan Shopee" : v === "tiktok" ? "INTAI — Modul TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : v === "galeri" ? "INTAI — Galeri Iklan" : "INTAI — Dashboard";
+  document.title = v === "meta" ? "INTAI — Scan Meta" : v === "shopee" ? "INTAI — Scan Shopee" : v === "tiktok" ? "INTAI — Scan TikTok" : v === "pesaing" ? "INTAI — Pesaing Dipantau" : v === "pengiklan" ? "INTAI — Profil Pengiklan" : v === "tren" ? "INTAI — Tren Harian" : v === "galeri" ? "INTAI — Galeri Iklan" : "INTAI — Dashboard";
   const nav = document.getElementById("sb-nav");
   if(nav){
     const items = nav.querySelectorAll(".sb-item");
@@ -6453,6 +6618,8 @@ function tampilView(v, push){
   }
   if(v === "galeri") muatGaleri();
   if(v === "shopee"){ const o = push === false ? shpDariUrl(location.search) : (window.__shpOpsi || {}); window.__shpOpsi = null; shpMasuk(o); }   /* v1.5.0: setelah pushState */
+  if(v === "tiktok"){ const o = push === false ? ttDariUrl(location.search) : (window.__ttOpsi || {}); window.__ttOpsi = null; ttMasuk(o); }   /* v1.5.8 */
+  if(v !== "tiktok" && typeof ttTutupModal === "function") ttTutupModal();
   window.scrollTo(0, 0);
   sbKlipUlang();
 }
@@ -6541,7 +6708,7 @@ function shpMasuk(opsi){
   shpPasang();
   opsi = opsi || {};
   if(opsi.tab) SHP.tab = opsi.tab;
-  if(opsi.aq != null && opsi.aq !== AFV.q){ AFV.q = opsi.aq.slice(0, 80); AFV.iklan = null; AFV.produk = null; AFV.galat = {iklan: "", produk: ""}; AFV.muat = {iklan: false, produk: false}; }
+  if(opsi.aq != null && opsi.aq !== AFV.q){ AFV.q = opsi.aq.slice(0, 80); AFV.iklan = null; AFV.produk = null; AFV.video = null; AFV.galat = {iklan: "", produk: "", video: ""}; AFV.muat = {iklan: false, produk: false, video: false}; AFV.scanHasil = null; }
   shpTab(SHP.tab, true);
   const urut = opsi.urut || "laris";
   if(SHP.tab === "afv") return;   /* v1.5.5: tab afv dimuat oleh afvMasuk (lewat shpTab) */
@@ -7056,7 +7223,7 @@ function shpGambarFlash(){
 /* ===================== v1.5.5 TAB AFFILIATOR & VIDEO ===================== */
 /* A1 diiklankan affiliator (arsip iklan Meta berlink Shopee) · A2 kepadatan affiliator · A3 skor layak dipromosikan (kartu Shopee)
    A4 kalkulator komisi · V1 naskah Shopee Video (hook dari iklan nyata + fakta produk). Label: 🟢 asli · 🔵 hitungan INTAI · 🟠 perkiraan */
-var AFV = {q: "", iklan: null, produk: null, muat: {iklan: false, produk: false}, galat: {iklan: "", produk: ""}, coba: 0, pasang: false, semua: false, urut: []};
+var AFV = {q: "", iklan: null, produk: null, video: null, muat: {iklan: false, produk: false, video: false}, galat: {iklan: "", produk: "", video: ""}, coba: 0, pasang: false, semua: false, urut: [], scan: false, scanHasil: null};
 const AFV_KANAL = {
   medsos: {nama: "Media sosial (link affiliate)", maks: 7},
   video:  {nama: "Shopee Video", maks: 5},
@@ -7091,7 +7258,9 @@ function afvCari(q, diam){
   if(AFV.iklan && AFV.iklan.q !== q) AFV.iklan = null;   /* kata kunci berganti → jangan tampilkan hasil kata kunci lama */
   shpSimpanUrl();
   afvMuatIklan();
-  if(q.length >= 2) afvMuatProduk(); else { AFV.produk = null; AFV.galat.produk = ""; AFV.muat.produk = false; }
+  AFV.scanHasil = null;
+  if(q.length >= 2){ afvMuatProduk(); afvMuatVideo(); }
+  else { AFV.produk = null; AFV.galat.produk = ""; AFV.muat.produk = false; AFV.video = null; AFV.galat.video = ""; AFV.muat.video = false; }
   afvGambar();
   if(!diam) afvLoncat("afv-a1");
 }
@@ -7106,6 +7275,7 @@ async function afvMuatIklan(){
     AFV.iklan = d;
     /* short link dibuka bertahap (maks 40 per permintaan) → minta lagi otomatis beberapa kali */
     if(d.belum_dibuka > 0 && d.dibuka > 0 && AFV.coba < 4){ AFV.coba++; AFV.muat.iklan = true; setTimeout(function(){ if(AFV.q === q) afvMuatIklan(); }, 300); }
+    else if(q.length >= 2 && d.ai_aktif && d.ai_peran && d.ai_peran.belum > 0) afvPeranAI(q);   /* v1.5.7 */
   } else if(!AFV.iklan || AFV.iklan.q !== q){
     AFV.iklan = null; AFV.galat.iklan = (d && d.error) || "Server INTAI tidak terhubung.";
   }
@@ -7152,28 +7322,32 @@ function afvGambar(){
   riw.innerHTML = '<span class="lbl">' + (r.length ? "Terakhir" : "Coba") + '</span>' + daftar.map(function(k){
     return '<button type="button" class="sp-chip" data-k="' + esc(k) + '" onclick="afvCari(this.dataset.k)">' + esc(k) + '</button>'; }).join("") +
     (AFV.q ? '<button type="button" class="sp-chip" onclick="afvCari(\'\')">Semua arsip</button>' : "");
-  afvGambarA1(); afvGambarA3();
+  afvGambarA1(); afvGambarSV(); afvGambarA3();
 }
 function afvGambarA1(){
   const el = document.getElementById("afv-a1"); if(!el) return;
   const d = AFV.iklan, q = AFV.q;
   let isi = '<div class="kartu afv-sek"><div class="judul-kartu"><b>📣 Diiklankan affiliator di Meta 🟢</b><span>' + (q ? "“" + esc(q) + "”" : "seluruh arsip") + '</span></div>' +
     '<div class="afv-sub">Produk Shopee yang dipromosikan affiliator lewat <b>iklan Meta berbayar</b>. Affiliator hanya mau terus membiayai iklan untuk produk yang menghasilkan komisi, jadi iklan yang tayang lama adalah bukti terkuat.</div>';
+  isi += afvScanBar(d);
   if(!d && AFV.muat.iklan){ el.innerHTML = isi + shpMuatHTML("Membaca arsip iklan Meta dan membuka link Shopee…") + '</div>'; return; }
   if(!d && AFV.galat.iklan){ el.innerHTML = isi + shpGalatHTML(AFV.galat.iklan, "afvMuatIklan()") + '</div>'; return; }
   if(!d){ el.innerHTML = isi + '</div>'; return; }
   const h = d.hitung || {};
   isi += '<div class="afv-ring"><span><b>' + shpN(d.iklan_shopee) + '</b> iklan Meta berlink Shopee</span>' +
     '<span><b>' + shpN(h.aff || 0) + '</b> lewat link affiliate</span>' + (h.penjual ? '<span><b>' + shpN(h.penjual) + '</b> iklan resmi penjual</span>' : "") +
-    (h.langsung ? '<span><b>' + shpN(h.langsung) + '</b> link langsung toko</span>' : "") + (h.belum ? '<span><b>' + shpN(h.belum) + '</b> link belum dibuka</span>' : "") + '</div>';
+    (h.langsung ? '<span><b>' + shpN(h.langsung) + '</b> link langsung toko</span>' : "") + (h.belum ? '<span><b>' + shpN(h.belum) + '</b> link belum dibuka</span>' : "") +
+    (d.iklan_scan ? '<span class="afv-src"><b>' + shpN(d.iklan_scan) + '</b> hanya dari Scan Affiliator</span>' : "") +
+    (d.ai_peran && (d.ai_peran.affiliator || d.ai_peran.penjual) ? '<span class="afv-ai" title="Iklan berlink langsung ke toko (tanpa link affiliate) dinilai AI dari nama halaman + teks iklan">🤖 link langsung: <b>' + d.ai_peran.penjual + '</b> toko penjual · <b>' + d.ai_peran.affiliator + '</b> dugaan affiliator</span>' : "") + '</div>';
   if(AFV.muat.iklan) isi += '<div class="afv-lagi"><i></i>Membuka link pendek berikutnya…</div>';
   const pr = d.produk || [];
   if(!pr.length){
     isi += d.iklan_shopee
       ? '<div class="afv-kos"><b>Belum ada produk lewat link affiliate</b>Ada ' + shpN(d.iklan_shopee) + ' iklan berlink Shopee untuk kata kunci ini, tapi semuanya iklan penjual/link langsung' + (h.belum ? " atau link pendeknya belum dibuka" : "") + '.' +
         (h.belum ? '<div class="afv-ak"><button type="button" class="utama" onclick="AFV.coba=0;afvMuatIklan()">Buka link berikutnya</button></div>' : "") + '</div>'
-      : '<div class="afv-kos"><b>Arsip belum punya iklan Meta berlink Shopee' + (q ? " untuk “" + esc(q) + "”" : "") + '</b>Arsip INTAI terisi dari setiap Scan Meta (semua akun + scan harian otomatis). Jalankan Scan Meta untuk kata kunci ini, lalu kembali ke sini.' +
-        (q ? '<div class="afv-ak"><button type="button" class="utama" onclick="afvKeMeta()">Scan Meta “' + esc(q) + '” sekarang</button></div>' : "") + '</div>';
+      : '<div class="afv-kos"><b>Belum ada iklan Meta berlink Shopee' + (q ? " untuk “" + esc(q) + "”" : "") + '</b>' +
+        (q ? (AFV.scan ? 'Scan affiliator sedang berjalan…' : 'Jalankan <b>Scan iklan affiliator</b> di atas — INTAI mencari iklan affiliator untuk kata ini langsung di Meta Ad Library.')
+           : 'Ketik kata kunci produk, lalu jalankan Scan iklan affiliator.') + '</div>';
   } else {
     isi += '<div class="afv-list">' + pr.slice(0, AFV.semua ? 40 : 12).map(function(x, i){
       const jd = (x.hook && x.hook[0]) || "Produk Shopee #" + x.itemid;
@@ -7182,6 +7356,8 @@ function afvGambarA1(){
         '<div class="afv-fk"><span class="afv-pd ' + x.kepadatan + '" title="🟢 dihitung dari ID affiliate (an_…) di link">' + afvKepadatanTeks(x) + '</span>' +
           '<span title="🟢 umur iklan dari Meta">⏱ terlama ' + shpN(x.umur_maks) + ' hari</span>' +
           '<span title="🟢 status terakhir saat discan">📣 ' + x.iklan + ' iklan · ' + x.aktif + ' masih tayang</span>' +
+          (x.dari_scan ? '<span class="afv-src" title="Ditemukan oleh Scan Affiliator (tidak ada di arsip Scan Meta)">🔎 Scan Affiliator</span>' : "") +
+          (x.dari_ai ? '<span class="afv-ai" title="Iklan berlink langsung ke toko, tapi menurut AI pengiklannya affiliator (halaman review/racun). Dugaan, bukan bukti link affiliate.">🤖 dugaan AI: ' + x.dari_ai + ' iklan</span>' : "") +
           (x.niche || []).slice(0, 2).map(function(n){ return '<span>#' + esc(n) + '</span>'; }).join("") + '</div>' +
         '<div class="afv-kt">' + (x.halaman.length ? 'Pengiklan: ' + x.halaman.slice(0, 3).map(esc).join(", ") : "") +
           (x.tag.length ? (x.halaman.length ? " · " : "") + 'tag konten affiliator: ' + x.tag.slice(0, 2).map(esc).join(", ") : "") + '</div>' +
@@ -7194,7 +7370,7 @@ function afvGambarA1(){
     }).join("") + '</div>' +
     (pr.length > 12 && !AFV.semua ? '<div class="afv-ak" style="margin-top:10px"><button type="button" onclick="AFV.semua=true;afvGambarA1()">Tampilkan semua (' + pr.length + ')</button></div>' : "");
   }
-  isi += '<div class="afv-cat">Sampel = iklan yang pernah terlihat oleh scan INTAI, bukan seluruh iklan Meta. Jumlah affiliator 🟢 dihitung dari ID affiliate (<code>an_…</code>) di link Shopee; ' +
+  isi += '<div class="afv-cat">Sampel = iklan yang pernah tertangkap Scan Meta dan Scan Affiliator INTAI, bukan seluruh iklan Meta. Scan Affiliator mencari “kata + shopee”, “racun shopee kata”, “spill kata”, dan kata polos, lalu hanya menyimpan iklan yang menyebut Shopee — terpisah dari arsip Scan Meta, jadi Top 10 dan Tren niche penjual tidak tercampur. Jumlah affiliator 🟢 dihitung dari ID affiliate (<code>an_…</code>) di link Shopee; ' +
     '“sepi” = baru 1 affiliator yang beriklan, peluang masih terbuka. Nama produk diambil dari teks iklan. Link pendek dibuka bertahap.</div></div>';
   el.innerHTML = isi;
 }
@@ -7223,6 +7399,117 @@ function afvGambarA3(){
   }).join("") + '</div>' +
   '<div class="afv-cat">Skor bukan tarif komisi — tarif pastinya hanya terlihat di aplikasi Shopee Affiliate saat menyalin link. Pakai skor untuk menyaring, lalu cek komisinya di aplikasi.</div></div>';
   el.innerHTML = isi;
+}
+/* ---------- v1.5.6 Scan Affiliator (Meta, disimpan terpisah dari arsip Scan Meta) ---------- */
+function afvScanBar(d){
+  const q = AFV.q;
+  if(q.length < 2) return '<div class="afv-scan"><span>Ketik kata kunci produk untuk menjalankan <b>Scan iklan affiliator</b> — tanpa kata kunci, daftar di bawah berisi seluruh arsip.</span></div>';
+  const st = d && d.scan_kw, sh = AFV.scanHasil;
+  let ket;
+  if(AFV.scan) ket = 'Mencari iklan affiliator “' + esc(q) + '” di Meta Ad Library… biasanya 10–40 detik. Jangan tutup halaman.';
+  else if(sh && sh.cache) ket = esc(sh.pesan || "Hasil scan sebelumnya dipakai ulang.");
+  else if(sh) ket = 'Scan selesai: <b>' + shpN(sh.iklan_meta) + '</b> iklan Meta → <b>' + shpN(sh.shopee) + '</b> berlink Shopee, <b>' + shpN(sh.baru) + '</b> belum ada di arsip Scan Meta.';
+  else if(st) ket = 'Terakhir discan ' + esc(shpWaktu(st.t)) + ': <b>' + shpN(st.iklan_meta) + '</b> iklan Meta → <b>' + shpN(st.shopee) + '</b> berlink Shopee.';
+  else ket = 'Belum pernah discan khusus affiliator — daftar di bawah baru berasal dari arsip Scan Meta.';
+  return '<div class="afv-scan"><button type="button" class="btn" onclick="afvScan()"' + (AFV.scan ? " disabled" : "") + '>' +
+    (AFV.scan ? '<i></i>Memindai…' : '🔎 Scan iklan affiliator') + '</button><span>' + ket + '</span></div>';
+}
+async function afvScan(){
+  const q = AFV.q;
+  if(q.length < 2){ toast("Ketik kata kunci produk minimal 2 huruf."); return; }
+  if(AFV.scan) return;
+  AFV.scan = true; AFV.scanHasil = null; afvGambarA1();
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/afv/scan?q=" + encodeURIComponent(q))).json(); }catch(e){}
+  AFV.scan = false;
+  if(AFV.q !== q){ afvGambarA1(); return; }
+  if(d && d.ok){
+    AFV.iklan = d; AFV.galat.iklan = ""; AFV.scanHasil = d.scan || null;
+    if(d.scan && !d.scan.cache) toast("Scan selesai: " + (d.scan.shopee || 0) + " iklan berlink Shopee, " + (d.scan.baru || 0) + " baru.");
+    if(d.belum_dibuka > 0){ AFV.coba = 0; setTimeout(function(){ if(AFV.q === q) afvMuatIklan(); }, 300); }
+  } else {
+    toast((d && d.error) || "Scan affiliator gagal — server INTAI tidak terhubung.");
+  }
+  afvGambarA1();
+}
+/* ---------- v1.5.6 Shopee Video per tagar (halaman SEO publik Shopee Video) ---------- */
+async function afvMuatVideo(){
+  const q = AFV.q;
+  if(q.length < 2) return;
+  AFV.muat.video = true; AFV.galat.video = ""; afvGambarSV();
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/video?q=" + encodeURIComponent(q))).json(); }catch(e){}
+  if(AFV.q !== q) return;
+  AFV.muat.video = false;
+  if(d && d.ok){ AFV.video = d; }
+  else { AFV.video = null; AFV.galat.video = (d && d.error) || "Server INTAI tidak terhubung."; }
+  afvGambarSV();
+}
+function afvJamLalu(ep){
+  if(!ep) return "";
+  const m = Math.max(0, Math.round((Date.now() / 1000 - ep) / 60));
+  return m < 60 ? m + " menit lalu" : m < 1440 ? Math.round(m / 60) + " jam lalu" : Math.round(m / 1440) + " hari lalu";
+}
+function afvAngkaS(n){
+  n = Number(n) || 0;
+  if(n >= 1e9) return (n / 1e9).toFixed(1).replace(".", ",").replace(",0", "") + " M";
+  if(n >= 1e6) return (n / 1e6).toFixed(1).replace(".", ",").replace(",0", "") + " jt";
+  if(n >= 1e4) return Math.round(n / 1e3) + " rb";
+  return n.toLocaleString("id-ID");
+}
+function afvGambarSV(){
+  const el = document.getElementById("afv-sv"); if(!el) return;
+  const q = AFV.q;
+  let isi = '<div class="kartu afv-sek"><div class="judul-kartu"><b>🎬 Shopee Video 🟢</b><span>' + (q ? "tagar “" + esc(q.replace(/\s+/g, "").toLowerCase()) + "” &amp; terkait" : "per tagar") + '</span></div>' +
+    '<div class="afv-sub">Data asli dari halaman tagar publik Shopee Video: seberapa banyak ditonton, seberapa padat kreatornya, dan <b>produk apa yang paling banyak ditag kreator</b> saat ini.</div>';
+  if(q.length < 2){ el.innerHTML = isi + '<div class="afv-kos"><b>Ketik kata kunci produk</b>INTAI membaca tagar Shopee Video untuk kata itu (misal “kipas angin” → #kipasangin).</div></div>'; return; }
+  if(AFV.muat.video){ el.innerHTML = isi + shpMuatHTML("Membaca tagar Shopee Video untuk “" + esc(q) + "”…") + '</div>'; return; }
+  if(AFV.galat.video){ el.innerHTML = isi + shpGalatHTML(AFV.galat.video, "afvMuatVideo()") + '</div>'; return; }
+  const d = AFV.video;
+  if(!d){ el.innerHTML = isi + '</div>'; return; }
+  isi += '<div class="afv-tg">' + (d.tagar || []).map(function(t){
+    return '<div><div class="n">#' + esc(t.nama) + (t.resmi ? '<small>resmi</small>' : "") + '</div><div class="r">' +
+      '<span title="🟢 total tayangan semua video bertagar ini">Total tayangan</span><b>' + afvAngkaS(t.tayang) + '</b>' +
+      '<span title="🟢 jumlah video bertagar ini">Jumlah video</span><b>' + afvAngkaS(t.video_total) + '</b>' +
+      '<span title="🔵 total tayangan ÷ jumlah video">Rata-rata / video</span><b>' + (t.rata != null ? afvAngkaS(t.rata) : "—") + '</b>' +
+      (t.per_jam != null ? '<span title="🔵 dari waktu unggah ' + t.sampel + ' video terbaru">Video baru / jam</span><b>±' + String(t.per_jam).replace(".", ",") + '</b>' : "") +
+      '</div></div>'; }).join("") + '</div>';
+  const pr = d.produk || [];
+  isi += '<div class="afv-h3">Produk paling banyak ditag kreator <small>· dari ' + shpN(d.jumlah_video) + ' video terbaru</small></div>';
+  if(!pr.length) isi += '<div class="afv-kos">Video terbaru di tagar ini belum men-tag produk.</div>';
+  else isi += '<div class="afv-g">' + pr.slice(0, 12).map(function(p, i){
+    const g = shpGbr(p.gambar, true), nm = p.nama || "Produk Shopee #" + p.itemid;
+    return '<div class="afv-p"><a class="afv-th" href="' + esc(p.url) + '" target="_blank" rel="noopener">' +
+        (g ? '<img loading="lazy" referrerpolicy="no-referrer" src="' + esc(g) + '" alt="" onerror="this.remove()">' : "") +
+        '<span class="afv-skor" title="🟢 jumlah kreator berbeda yang men-tag produk ini">' + p.kreator + '</span></a>' +
+      '<div style="min-width:0"><a class="afv-nm" href="' + esc(p.url) + '" target="_blank" rel="noopener" title="' + esc(nm) + '">' + esc(nm) + '</a>' +
+        '<div class="afv-hg">' + (p.harga ? shpRp(p.harga) : "harga di Shopee") + (p.diskon ? ' <small style="color:#B5443A;font-weight:800">-' + esc(String(p.diskon)) + '%</small>' : "") + '</div>' +
+        '<div class="afv-rc"><span class="ya">' + p.kreator + ' kreator · ' + p.video + ' video</span>' +
+          (p.tayang ? '<span>' + afvAngkaS(p.tayang) + ' tayangan</span>' : "") + (p.terjual ? '<span>' + afvAngkaS(p.terjual) + ' terjual</span>' : "") + '</div></div>' +
+      '<div class="afv-ak"><button type="button" class="utama" onclick="afvNaskahSV(' + i + ')">🎬 Naskah video</button>' +
+        (p.harga ? '<button type="button" onclick="afvKeKalk(' + (Number(p.harga) || 0) + ')">🧮 Hitung komisi</button>' : "") +
+        '<button type="button" onclick="shpToko(\'' + esc(String(p.shopid)) + '\')">Intip toko</button></div></div>';
+  }).join("") + '</div>';
+  if((d.terkait || []).length) isi += '<div class="afv-h3">Tagar yang ikut dipakai kreator <small>· pakai di caption</small></div><div class="afv-chips">' +
+    d.terkait.map(function(t){ return '<span>#' + esc(t) + '</span>'; }).join("") + '</div>';
+  const vd = (d.video || []).slice(0, 8);
+  if(vd.length) isi += '<div class="afv-h3">Video terbaru dengan tayangan tertinggi</div><div class="afv-vd">' + vd.map(function(v){
+    return '<div class="afv-v"><div class="c">' + esc(v.caption || "(tanpa caption)") + '</div>' +
+      '<div class="m">@' + esc(v.kreator) + (v.centang ? " ✔" : "") + ' · ' + afvAngkaS(v.tayang) + ' tayangan · ' + afvAngkaS(v.suka) + ' suka · ' + esc(afvJamLalu(v.unggah)) + (v.produk && v.produk.length ? " · " + v.jml_produk + " produk ditag" : "") + '</div>' +
+      '<a href="' + esc(v.url) + '" target="_blank" rel="noopener">Tonton ↗</a></div>'; }).join("") + '</div>';
+  isi += '<div class="afv-cat">Sumber: halaman tagar publik Shopee Video (tidak resmi, bisa berubah sewaktu-waktu). Untuk tagar biasa, Shopee hanya menampilkan ±30 video <b>terbaru</b>, jadi tayangan per video masih kecil — angka yang kuat adalah total tayangan, rata-rata per video, dan kecepatan unggah kreator 🔵. ' +
+    '“Produk paling banyak ditag” = pilihan kreator saat ini, bukan jaminan laku. Komisi Shopee Video maks 5% untuk pesanan langsung (aturan Jan 2026) 🟠.</div></div>';
+  el.innerHTML = isi;
+}
+function afvNaskahSV(i){
+  const d = AFV.video, p = d && (d.produk || [])[i]; if(!p) return;
+  const hk = [];
+  (d.video || []).forEach(function(v){
+    if(!(v.produk || []).some(function(x){ return String(x.itemid) === String(p.itemid); })) return;
+    const c = String(v.caption || "").replace(/#[^\s#]+/g, " ").replace(/@\S+/g, " ").replace(/\s+/g, " ").trim();
+    if(c.length >= 12 && hk.length < 3) hk.push({hook: c.slice(0, 140), halaman: "@" + v.kreator + " · Shopee Video", umur: 0, aktif: true, khusus: true});
+  });
+  afvNaskah({nama: p.nama || AFV.q, harga: p.harga, terjual: p.terjual ? afvAngkaS(p.terjual) + " terjual" : "", diskon: p.diskon, url: p.url, hooks: afvHookBank(hk)});
 }
 function afvKeMeta(){
   const q = AFV.q;
@@ -7332,10 +7619,12 @@ function afvNaskah(s){
   ov.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Naskah Shopee Video">' +
     '<div class="afv-mk"><b>🎬 Naskah Shopee Video — ' + esc(nm) + '</b><button class="afv-x" type="button" aria-label="Tutup" onclick="this.closest(\'.afv-ov\').remove()">✕</button></div>' +
     '<div class="afv-l">1 · PILIH HOOK (0–3 DETIK)</div><div class="afv-hk">' + hooks.map(function(h, i){
-      const asal = h.tpl ? "🔵 template dari fakta produk" : "🟢 dari iklan nyata" + (h.halaman ? " · " + esc(h.halaman) : "") + (h.umur ? " · tayang " + h.umur + " hari" : "") + (h.khusus ? " · produk ini" : "");
+      const sv = /Shopee Video$/.test(String(h.halaman || ""));
+      const asal = h.tpl ? "🔵 template dari fakta produk" : (sv ? "🟢 dari caption kreator · " + esc(h.halaman) : "🟢 dari iklan nyata" + (h.halaman ? " · " + esc(h.halaman) : "") + (h.umur ? " · tayang " + h.umur + " hari" : "")) + (h.khusus ? " · produk ini" : "");
       return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : "") + '>' + esc(h.hook) + '<small>' + asal + '</small></button>'; }).join("") + '</div>' +
     '<div class="afv-l">2 · NASKAH 20–30 DETIK</div><div class="afv-ns" id="afv-ns"></div>' +
     '<div class="afv-l">3 · CAPTION &amp; TAGAR</div><div class="afv-cap" id="afv-cap"></div>' +
+    '<div class="afv-l">4 · VARIASI NASKAH AI <small style="text-transform:none;letter-spacing:0">opsional</small></div><div class="ai-box" id="afv-ai"><button type="button" class="tombol2" id="afv-ai-b">🤖 Tulis 3 variasi dengan AI</button><span class="ai-k">AI menulis dari hook nyata + fakta produk di atas. Hanya angka dari fakta produk yang boleh muncul.</span></div>' +
     '<div class="afv-bawah"><button type="button" class="btn" id="afv-salin">Salin naskah + caption</button>' + (s.url ? '<a class="tombol2" href="' + esc(s.url) + '" target="_blank" rel="noopener" style="text-decoration:none">Buka produk ↗</a>' : "") + '</div>' +
     '<div class="afv-nt">Tag produk di video supaya penonton bisa langsung beli dari Shopee Video. Komisi Shopee Video untuk pesanan langsung maks 5% (aturan Jan 2026) 🟠 — angka pasti per produk ada di aplikasi Affiliate. ' +
     'Hook 🟢 diambil dari iklan Meta yang benar-benar tayang; ubah kalimatnya, jangan disalin mentah.</div></div>';
@@ -7352,17 +7641,535 @@ function afvNaskah(s){
     ];
     document.getElementById("afv-ns").innerHTML = baris.map(function(b){ return '<div><i>' + b[0] + '</i><span>' + esc(b[1]) + '</span></div>'; }).join("");
     const tag = String(kw).toLowerCase().replace(/[^a-z0-9]+/g, "");
-    const cap = h + "\n\n" + nm + (fakta.length ? " — " + fakta.join(", ") : "") + ". Cek produknya di keranjang bawah video ✨\n\n#racunshopee #shopeevideo #shopeehaul" + (tag ? " #" + tag : "");
+    const tgSV = ((AFV.video && AFV.video.terkait) || []).slice(0, 3).map(function(t){ return "#" + t; });
+    const tgAll = ["#racunshopee", "#shopeevideo"].concat(tag ? ["#" + tag] : []).concat(tgSV).filter(function(t, i, a){ return a.indexOf(t) === i; });
+    const cap = h + "\n\n" + nm + (fakta.length ? " — " + fakta.join(", ") : "") + ". Cek produknya di keranjang bawah video ✨\n\n" + tgAll.join(" ");
     document.getElementById("afv-cap").textContent = cap;
     ov.__teks = baris.map(function(b){ return "[" + b[0] + "] " + b[1]; }).join("\n") + "\n\nCAPTION:\n" + cap;
   }
   ov.querySelectorAll(".afv-hk button").forEach(function(b){ b.addEventListener("click", function(){
     pilih = +b.dataset.i; ov.querySelectorAll(".afv-hk button").forEach(function(x){ x.classList.toggle("on", x === b); }); susun(); }); });
   ov.querySelector("#afv-salin").addEventListener("click", function(){ salin(ov.__teks || ""); });
+  ov.querySelector("#afv-ai-b").addEventListener("click", function(){ afvNaskahAI(s, hooks, ov); });
+  aiStatus().then(function(st){ const b = ov.querySelector("#afv-ai-b"); if(b && !st.aktif){ b.disabled = true; b.nextElementSibling.textContent = "AI belum diaktifkan admin — naskah template di atas tetap bisa dipakai."; } });
   susun();
 }
 document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ const o = document.querySelector(".afv-ov"); if(o) o.remove(); } });
 
+/* ---------- v1.5.7 AI asisten (menilai & menulis; angka tetap dari Meta/Shopee) ---------- */
+let AI_ST = null, AI_ST_P = null;
+function aiStatus(segar){
+  if(AI_ST && !segar) return Promise.resolve(AI_ST);
+  if(!AI_ST_P || segar) AI_ST_P = fetch("/api/ai/status").then(function(r){ return r.json(); }).then(function(d){ AI_ST = d || {}; AI_ST_P = null; return AI_ST; })
+    .catch(function(){ AI_ST_P = null; return {aktif: false}; });
+  return AI_ST_P;
+}
+async function aiPost(jalur, body){
+  try{ return await (await fetch(jalur, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})).json(); }
+  catch(e){ return {ok: false, error: "Server INTAI tidak terhubung."}; }
+}
+function afvTagar(){
+  const tag = String(AFV.q || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const tgSV = ((AFV.video && AFV.video.terkait) || []).slice(0, 3).map(function(t){ return "#" + t; });
+  return ["#racunshopee", "#shopeevideo"].concat(tag ? ["#" + tag] : []).concat(tgSV).filter(function(t, i, a){ return a.indexOf(t) === i; });
+}
+function afvTeksAI(v){
+  return "HOOK (0–3 dtk): " + v.hook + "\n" + (v.adegan || []).map(function(a){ return "[" + (a.detik || "") + "] " + (a.visual ? "(" + a.visual + ") " : "") + (a.ucapan || ""); }).join("\n") +
+    (v.penutup ? "\nPENUTUP: " + v.penutup : "") + "\n\nCAPTION:\n" + (v.caption || v.hook) + "\n\n" + afvTagar().join(" ");
+}
+async function afvNaskahAI(s, hooks, ov){
+  const box = ov.querySelector("#afv-ai"); if(!box) return;
+  box.innerHTML = '<div class="ai-muat"><i></i>AI sedang menulis 3 variasi naskah… biasanya 5–20 detik</div>';
+  const d = await aiPost("/api/ai/naskah", {nama: s.nama || AFV.q, harga: s.harga || 0, diskon: s.diskon || "", terjual: s.terjual || "",
+    rating: s.rating || "", niche: AFV.q || "", platform: "Shopee Video", hooks: hooks.filter(function(h){ return !h.tpl; }).map(function(h){ return h.hook; }).slice(0, 6)});
+  if(!document.body.contains(ov)) return;
+  if(!d || !d.ok){
+    box.innerHTML = '<div class="ai-k">⚠️ ' + esc((d && d.error) || "AI gagal.") + '</div>' + (d && d.jatah ? "" : '<button type="button" class="tombol2" id="afv-ai-b">Coba lagi</button>');
+    const b = box.querySelector("#afv-ai-b"); if(b) b.onclick = function(){ afvNaskahAI(s, hooks, ov); };
+    return;
+  }
+  ov.__ai = d.varian;
+  box.innerHTML = d.varian.map(function(v, i){
+    return '<div class="ai-v"><div class="ai-vh"><b>' + esc(v.sudut || ("Variasi " + (i + 1))) + '</b><span class="ai-tg">🤖 AI 🔵</span></div>' +
+      '<div class="ai-hook">“' + esc(v.hook) + '”</div>' +
+      (v.adegan || []).map(function(a){ return '<div class="ai-ad"><i>' + esc(a.detik || "") + '</i><span>' + (a.visual ? '<em>' + esc(a.visual) + '</em>' : "") + esc(a.ucapan || "") + '</span></div>'; }).join("") +
+      (v.penutup ? '<div class="ai-ad"><i>Penutup</i><span>' + esc(v.penutup) + '</span></div>' : "") +
+      (v.caption ? '<div class="ai-cap">' + esc(v.caption) + '</div>' : "") +
+      '<button type="button" class="ai-salin" data-ai="' + i + '">Salin variasi ini</button></div>';
+  }).join("") +
+    '<div class="ai-k">Ditulis AI dari fakta produk + hook nyata. Angka di luar fakta produk otomatis dibuang; tetap baca ulang sebelum dipakai.' +
+    (d.sisa != null ? ' Sisa jatah AI kamu hari ini: <b>' + d.sisa + '×</b>.' : "") + '</div>';
+  box.querySelectorAll("[data-ai]").forEach(function(b){ b.addEventListener("click", function(){ salin(afvTeksAI(ov.__ai[+b.dataset.ai])); }); });
+}
+/* peran pengiklan link-langsung (affiliator/penjual) — dinilai AI di latar, sekali per kata kunci */
+async function afvPeranAI(q){
+  if(AFV.peranQ === q) return;
+  AFV.peranQ = q;
+  let d = null;
+  try{ d = await (await fetch("/api/ai/peran?q=" + encodeURIComponent(q))).json(); }catch(e){}
+  if(AFV.q === q && d && d.ok && d.dinilai > 0) afvMuatIklan();
+}
+/* ---------- v1.5.7 Bedah sudut jualan (Scan Meta → Rak Angle) ---------- */
+let SDT = null;
+function sdtHTML(){
+  const q = window.SCAN_Q || "";
+  let h = '<div class="sdt"><div class="sdt-h"><b>🧭 Sudut jualan pesaing</b><span>cara iklan membujuk: masalah, promo, testimoni, demo…</span></div>';
+  if(!SDT || SDT.q !== q || SDT.mode !== MODE){
+    return h + '<button type="button" class="tombol2" onclick="sdtJalan(this)">🤖 Bedah sudut jualan</button><span class="ai-k" style="margin-left:8px">Mengelompokkan sampai 40 iklan aktif ' + (MODE === "halaman" ? "halaman ini" : "yang nyambung") + ' (separuh awet ≥30 hari, separuh baru). Persentase dihitung INTAI dari hasil pengelompokan.</span></div>';
+  }
+  if(SDT.muat) return h + '<div class="ai-muat"><i></i>Membedah ' + SDT.n + ' iklan… 5–25 detik</div></div>';
+  const d = SDT.d;
+  if(!d || !d.ok) return h + '<div class="ai-k">⚠️ ' + esc((d && d.error) || "Gagal.") + '</div><button type="button" class="tombol2" onclick="SDT=null;sdtJalan(this)">Coba lagi</button></div>';
+  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span></div>';
+  h += d.sudut.map(function(z){
+    return '<div class="sdt-b"><div class="sdt-l"><b>' + esc(z.label) + '</b><span>' + z.jumlah + ' iklan · ' + z.persen + '%' + (z.persen_lama != null ? ' · awet: ' + z.persen_lama + '%' : "") + (z.persen_baru != null ? ' · baru: ' + z.persen_baru + '%' : "") + '</span></div>' +
+      '<div class="sdt-bar"><i style="width:' + Math.max(3, z.persen) + '%"></i></div>' +
+      (z.contoh && z.contoh[0] ? '<div class="sdt-c">“' + esc(z.contoh[0].teks.slice(0, 110)) + (z.contoh[0].teks.length > 110 ? "…" : "") + '” <small>— ' + esc(z.contoh[0].halaman) + ' · ' + z.contoh[0].umur + ' hari' + (z.contoh[0].pola ? ' · pola: ' + esc(z.contoh[0].pola) : "") + '</small></div>' : "") + '</div>';
+  }).join("");
+  if(d.catatan) h += '<div class="ai-k">' + esc(d.catatan) + '</div>';
+  return h + '</div>';
+}
+async function sdtJalan(btn){
+  const q = window.SCAN_Q || "";
+  /* sampel seimbang: ≤20 iklan awet (≥30 hari) + ≤20 iklan baru, teks bermakna (bukan cuma link/domain), 1 teks sama = 1 iklan */
+  const lihat = {};
+  const layak = (DATA || []).filter(function(x){
+    if(x.aktif === false || (MODE !== "halaman" && x.relevansi && x.relevansi.label === "Lepas")) return false;
+    const t = String(x.teks || "").replace(/https?:\/\/\S+/g, " ").replace(/\b[\w-]+\.(?:co\.id|com|id|net|shop)\b\S*/gi, " ").trim();
+    const k = t.toLowerCase().slice(0, 80);
+    if(t.replace(/[^a-zA-Z]/g, "").length < 15 || lihat[k]) return false;
+    lihat[k] = 1; return true;
+  });
+  const awet = layak.filter(function(x){ return (x.umur || 0) >= 30; }).sort(function(a, b){ return (b.umur || 0) - (a.umur || 0); });
+  const baru = layak.filter(function(x){ return (x.umur || 0) < 30; }).sort(function(a, b){ return (a.umur || 0) - (b.umur || 0); });
+  let pilih = awet.slice(0, 20).concat(baru.slice(0, 20));
+  if(pilih.length < 40) pilih = pilih.concat(awet.slice(20, 20 + 40 - pilih.length));
+  if(pilih.length < 40) pilih = pilih.concat(baru.slice(20, 20 + 40 - pilih.length));
+  const iklan = pilih.map(function(x){ return {id: (x.detail && x.detail.archive_id) || x._id, teks: String(x.teks).slice(0, 300), umur: x.umur || 0, halaman: x.halaman || ""}; });
+  if(iklan.length < 3){ toast("Butuh minimal 3 iklan aktif bertulisan untuk dibedah."); return; }
+  SDT = {q: q, mode: MODE, muat: true, n: iklan.length}; sdtGambar();
+  const d = await aiPost("/api/ai/sudut", {kata: q, iklan: iklan});
+  if(!SDT || SDT.q !== q) return;
+  SDT.muat = false; SDT.d = d; sdtGambar();
+}
+function sdtGambar(){ const el = document.getElementById("sdt-wadah"); if(el) el.innerHTML = sdtHTML(); }
+/* ---------- v1.5.8 Scan TikTok: Top Iklan (Creative Center) + Intip akun ---------- */
+const TT = {tab: "iklan", pasang: false, filter: null, filterMuat: false, ind: "", sub: "", per: "30", urut: "like", bhs: "id",
+            iklan: null, kunciIklan: "", muat: {iklan: false, akun: false, lagi: false}, galat: {iklan: "", akun: ""},
+            akunQ: "", akun: null, akunUrut: "baru", akunAsal: null, sudut: null};
+const TT_URUT_LBL = {like: "Like terbanyak", ctr: "CTR tertinggi", impression: "Tayangan terbanyak", for_you: "Pilihan TikTok"};
+function ttK(n){   /* angka ringkas: 3,7 jt · 12,4 rb */
+  if(n == null || n === "") return "—"; n = Number(n);
+  if(n >= 1e9) return (n / 1e9).toLocaleString("id-ID", {maximumFractionDigits: 1}) + " M";
+  if(n >= 1e6) return (n / 1e6).toLocaleString("id-ID", {maximumFractionDigits: 1}) + " jt";
+  if(n >= 1e4) return (n / 1e3).toLocaleString("id-ID", {maximumFractionDigits: 1}) + " rb";
+  return n.toLocaleString("id-ID");
+}
+function ttDurasi(d){ d = Number(d) || 0; return d ? Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0") : ""; }
+function ttTgl(t){ try{ return new Date(t * 1000).toLocaleDateString("id-ID", {day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Jakarta"}); }catch(e){ return ""; } }
+function ttGbr(u){ u = String(u || ""); return /^https:\/\/[a-z0-9.-]+\.(tiktokcdn\.com|tiktokcdn-us\.com|ibyteimg\.com|byteimg\.com|tiktokv\.com|muscdn\.com)\//.test(u) ? u : ""; }
+function ttCtr(c){ if(c == null || c === "") return null; const p = Math.max(1, Math.round(Number(c) * 100)); return "Top " + p + "%"; }
+function ttRiwKunci(){ return "intai_tt_v1:" + ((AKUN && AKUN.email) || "-"); }
+function ttRiw(){ try{ const v = JSON.parse(localStorage.getItem(ttRiwKunci()) || "{}"); return {akun: v.akun || []}; }catch(e){ return {akun: []}; } }
+function ttRiwTambah(nama, tampil){
+  const r = ttRiw(); r.akun = [{u: nama, nama: tampil || nama}].concat(r.akun.filter(function(x){ return x.u !== nama; })).slice(0, 8);
+  try{ localStorage.setItem(ttRiwKunci(), JSON.stringify(r)); }catch(e){}
+}
+function ttUrl(){
+  const p = new URLSearchParams();
+  if(TT.tab === "akun"){ p.set("tab", "akun"); if(TT.akunQ) p.set("u", TT.akunQ); }
+  else { const ind = TT.sub || TT.ind; if(ind) p.set("ind", ind); if(TT.per !== "30") p.set("per", TT.per); if(TT.urut !== "like") p.set("urut", TT.urut); if(TT.bhs !== "id") p.set("bhs", TT.bhs || "semua"); }
+  const s = p.toString(); return "/tiktok" + (s ? "?" + s : "");
+}
+function ttSimpanUrl(){ if(location.pathname.indexOf("/tiktok") !== 0) return; try{ history.replaceState({v: "tiktok"}, "", ttUrl()); }catch(e){} }
+function ttDariUrl(cari){
+  const p = new URLSearchParams(cari == null ? location.search : cari), o = {};
+  if(p.get("tab") === "akun" || p.get("tab") === "iklan") o.tab = p.get("tab");
+  const u = (p.get("u") || "").trim(); if(u){ o.u = u; o.tab = "akun"; }
+  const ind = (p.get("ind") || "").replace(/\D/g, ""); if(ind){ o.ind = ind; o.tab = "iklan"; }
+  const per = p.get("per"); if(per === "7" || per === "30" || per === "180") o.per = per;
+  const ur = p.get("urut"); if(ur && TT_URUT_LBL[ur]) o.urut = ur;
+  const b = p.get("bhs"); if(b) o.bhs = b === "semua" ? "" : b;
+  return o;
+}
+function ttPasang(){
+  if(TT.pasang) return; TT.pasang = true;
+  const $ = function(i){ return document.getElementById(i); };
+  $("tt-form").addEventListener("submit", function(e){ e.preventDefault(); ttBacaForm(); ttIklan(); });
+  ["tt-per", "tt-urut", "tt-bhs", "tt-sub"].forEach(function(i){ $(i).addEventListener("change", function(){ ttBacaForm(); ttIklan(); }); });
+  $("tt-ind").addEventListener("change", function(){ ttIsiSub(this.value, ""); ttBacaForm(); ttIklan(); });
+  $("tt-akun-form").addEventListener("submit", function(e){
+    e.preventDefault(); const q = ($("tt-akun-q").value || "").trim();
+    if(q.replace("@", "").length < 2){ $("tt-akun-q").focus(); toast("Ketik nama akun TikTok, misal @somethincofficial, atau tempel link profilnya."); return; }
+    TT.akunAsal = null; ttAkun(q);
+  });
+}
+function ttBacaForm(){
+  const v = function(i){ return document.getElementById(i).value; };
+  TT.ind = v("tt-ind"); TT.sub = TT.ind ? v("tt-sub") : ""; TT.per = v("tt-per"); TT.urut = v("tt-urut"); TT.bhs = v("tt-bhs");
+}
+function ttIsiForm(){
+  const s = function(i, val){ const el = document.getElementById(i); if(el) el.value = val; };
+  s("tt-ind", TT.ind); ttIsiSub(TT.ind, TT.sub); s("tt-per", TT.per); s("tt-urut", TT.urut); s("tt-bhs", TT.bhs);
+}
+function ttIsiSub(ind, pilih){
+  const el = document.getElementById("tt-sub"); if(!el) return;
+  const g = ((TT.filter && TT.filter.induk) || []).find(function(x){ return x.id === ind; });
+  if(!g || !g.sub.length){ el.style.display = "none"; el.innerHTML = '<option value="">Semua subkategori</option>'; return; }
+  el.innerHTML = '<option value="">Semua subkategori</option>' + g.sub.map(function(x){ return '<option value="' + esc(x.id) + '">' + esc(x.nama) + '</option>'; }).join("");
+  el.value = pilih || ""; el.style.display = "";
+}
+async function ttMuatFilter(){
+  if(TT.filter || TT.filterMuat) return; TT.filterMuat = true;
+  let d = null; try{ d = await (await fetch("/api/tiktok/filter")).json(); }catch(e){}
+  TT.filterMuat = false;
+  if(!d || !d.ok) return;   /* gagal → tetap bisa scan "Semua kategori" */
+  TT.filter = d;
+  const el = document.getElementById("tt-ind");
+  el.innerHTML = '<option value="">Semua kategori</option>' + d.induk.map(function(x){ return '<option value="' + esc(x.id) + '">' + esc(x.nama) + '</option>'; }).join("");
+  /* id dari URL bisa berupa subkategori → cari induknya */
+  if(TT.ind && !d.induk.some(function(x){ return x.id === TT.ind; })){
+    const g = d.induk.find(function(x){ return x.sub.some(function(s){ return s.id === TT.ind; }); });
+    if(g){ TT.sub = TT.ind; TT.ind = g.id; }
+  }
+  ttIsiForm();
+}
+/* dipanggil tampilView("tiktok") */
+function ttMasuk(opsi){
+  ttPasang(); opsi = opsi || {};
+  if(opsi.tab) TT.tab = opsi.tab;
+  ["ind", "per", "urut", "bhs"].forEach(function(k){ if(opsi[k] != null) TT[k] = opsi[k]; });
+  if(opsi.ind != null) TT.sub = "";
+  if(opsi.ind && TT.filter && !TT.filter.induk.some(function(x){ return x.id === opsi.ind; })){
+    const g = TT.filter.induk.find(function(x){ return x.sub.some(function(s){ return s.id === opsi.ind; }); });
+    if(g){ TT.sub = opsi.ind; TT.ind = g.id; }
+  }
+  ttIsiForm(); ttMuatFilter();
+  ttTab(TT.tab, true);
+  if(TT.tab === "akun"){
+    if(opsi.u && opsi.u !== TT.akunQ){ TT.akunAsal = (VT.lalu && VT.lalu !== "tiktok") ? {view: VT.lalu} : null; ttAkun(opsi.u); }
+    else { ttGambarAkun(); ttSimpanUrl(); }
+  } else {
+    if(!TT.iklan || TT.kunciIklan !== ttKunci()) ttIklan(); else { ttGambarIklan(); ttSimpanUrl(); }
+  }
+}
+function ttTab(t, diam){
+  TT.tab = t;
+  document.querySelectorAll("#tt-tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.t === t); });
+  document.querySelectorAll("#view-tiktok .sp-sek").forEach(function(s){ s.classList.toggle("on", s.dataset.sek === t); });
+  if(t === "iklan"){ if(!diam && !TT.iklan && !TT.muat.iklan) ttIklan(); else ttGambarIklan(); }
+  else ttGambarAkun();
+  if(!diam) ttSimpanUrl();
+}
+function ttGalatHTML(pesan, ulang){
+  return '<div class="sp-galat"><b>TikTok belum mengirim data</b>' + esc(pesan || "Coba lagi beberapa menit lagi.") +
+    (ulang ? ' <button class="sp-kecil" style="margin-left:6px" onclick="' + ulang + '">Coba lagi</button>' : '') +
+    '<div style="margin-top:6px;font-size:11px;opacity:.85">Ini bukan error di akunmu. Jalur publik TikTok bisa menutup sementara, dan INTAI sengaja tidak menampilkan angka karangan sebagai gantinya.</div></div>';
+}
+
+/* ---------- Top Iklan ---------- */
+function ttKunci(){ return [TT.sub || TT.ind, TT.per, TT.urut, TT.bhs].join("|"); }
+async function ttIklan(lagi){
+  const k = ttKunci();
+  if(lagi){ if(!TT.iklan || TT.muat.lagi || !TT.iklan.ada_lagi) return; TT.muat.lagi = true; }
+  else { TT.iklan = null; TT.sudut = null; TT.galat.iklan = ""; TT.muat.iklan = true; TT.kunciIklan = k; }
+  ttSimpanUrl(); ttGambarIklan();
+  const btn = document.getElementById("tt-btn"); if(btn) btn.disabled = true;
+  const hal = lagi ? TT.iklan.halaman + 1 : 1;
+  let d = null;
+  try{ d = await (await fetch("/api/tiktok/iklan?ind=" + encodeURIComponent(TT.sub || TT.ind) + "&per=" + TT.per + "&urut=" + TT.urut + "&bhs=" + encodeURIComponent(TT.bhs) + "&hal=" + hal)).json(); }catch(e){}
+  if(btn) btn.disabled = false;
+  if(k !== ttKunci()) return;   /* filter sudah diganti */
+  if(lagi){
+    TT.muat.lagi = false;
+    if(d && d.ok){ const lihat = {}; TT.iklan.iklan.forEach(function(x){ lihat[x.id] = 1; }); TT.iklan.iklan = TT.iklan.iklan.concat(d.iklan.filter(function(x){ return !lihat[x.id]; })); TT.iklan.halaman = d.halaman; TT.iklan.ada_lagi = d.ada_lagi; }
+    else toast("Halaman berikutnya belum bisa dimuat — coba lagi.");
+  } else {
+    TT.muat.iklan = false;
+    if(d && d.ok) TT.iklan = d; else TT.galat.iklan = (d && d.error) || "Server INTAI tidak terhubung.";
+  }
+  ttGambarIklan();
+}
+function ttLabelKat(){
+  const g = ((TT.filter && TT.filter.induk) || []).find(function(x){ return x.id === TT.ind; });
+  const s = g && TT.sub ? g.sub.find(function(x){ return x.id === TT.sub; }) : null;
+  return g ? g.nama + (s ? " · " + s.nama : "") : "semua kategori";
+}
+function ttKartuIklan(x, i){
+  const cv = ttGbr(x.cover), ctr = ttCtr(x.ctr);
+  return '<div class="sp-p tt-p">' +
+    '<button type="button" class="sp-th tt-th" onclick="ttPutar(' + i + ')" aria-label="Putar video iklan">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") +
+      '<span class="sp-ph">TikTok</span><span class="sp-pos">#' + x.peringkat + '</span>' + (x.durasi ? '<span class="tt-dur">' + ttDurasi(x.durasi) + '</span>' : "") + '<span class="tt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></button>' +
+    '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' +
+      '<div class="sp-mt">' + (x.merek ? '<b style="color:var(--ink)">' + esc(x.merek) + '</b>' : "") + '<span>' + esc(x.kategori || "") + '</span></div>' +
+      '<div class="tt-angka"><span title="Like di video iklan 🟢">♥ ' + ttK(x.like) + '</span>' + (ctr ? '<span class="tt-ctr" title="Peringkat CTR dibanding iklan sejenis (persentil dari TikTok). Top 3% = klik-nya lebih tinggi dari 97% iklan lain">CTR ' + ctr + '</span>' : "") + '</div>' +
+      '<div class="sp-lb">' + (x.budget ? '<span class="tt-bud b' + x.budget_n + '">Budget ' + esc(x.budget) + '</span>' : "") + '<span>' + esc(x.tujuan) + '</span>' + (x.cari ? '<span>Iklan pencarian</span>' : "") + '</div>' +
+      '<div class="tt-ak"><button type="button" class="sp-kecil" onclick="ttPutar(' + i + ')">▶ Detail</button><button type="button" class="sp-kecil" onclick="ttSalinHook(' + i + ')">Salin hook</button></div>' +
+    '</div></div>';
+}
+function ttGambarIklan(){
+  const el = document.getElementById("tt-iklan-isi"); if(!el) return;
+  const riw = document.getElementById("tt-riw");
+  if(riw) riw.innerHTML = '<span class="lbl">Cepat</span>' + [["", "Semua"], ["14000000000", "Kecantikan"], ["27000000000", "Makanan & Minuman"], ["22000000000", "Fashion"], ["29000000000", "Kesehatan"], ["18000000000", "Rumah tangga"], ["12000000000", "Bayi & Anak"]].map(function(c){
+    return '<button type="button" class="sp-chip' + ((TT.sub ? "" : TT.ind) === c[0] && !TT.sub ? " on" : "") + '" onclick="ttPilihKat(\'' + c[0] + '\')">' + esc(c[1]) + '</button>'; }).join("");
+  if(TT.muat.iklan){ el.innerHTML = shpMuatHTML("Membaca iklan TikTok terkuat di Indonesia — " + esc(ttLabelKat()) + "…"); return; }
+  if(TT.galat.iklan){ el.innerHTML = ttGalatHTML(TT.galat.iklan, "ttIklan()"); return; }
+  const d = TT.iklan; if(!d){ el.innerHTML = ""; return; }
+  if(!d.iklan.length){ el.innerHTML = '<div class="sp-kosong"><b>Belum ada iklan untuk filter ini</b>Coba periode 180 hari, pilih <b>Semua bahasa</b>, atau kategori induknya.</div>'; return; }
+  const kuat = d.iklan.filter(function(x){ return x.ctr != null && x.ctr <= 0.2; }).length;
+  const tinggi = d.iklan.filter(function(x){ return x.budget_n === 2; }).length;
+  el.innerHTML =
+    '<div class="sp-fakta">' +
+      '<div class="sp-f"><div class="l">Iklan di daftar 🟢</div><div class="v">' + shpN(d.total) + '</div><div class="s">' + esc(ttLabelKat()) + ' · ' + d.periode + ' hari · ' + (d.bahasa === "id" ? "bahasa Indonesia" : "semua bahasa") + '</div></div>' +
+      '<div class="sp-f"><div class="l">CTR Top 20% 🔵</div><div class="v">' + kuat + '<small style="font-size:12px;color:var(--muted)"> / ' + d.iklan.length + '</small></div><div class="s">iklan yang tampil di bawah ini</div></div>' +
+      '<div class="sp-f"><div class="l">Budget tinggi 🔵</div><div class="v">' + tinggi + '<small style="font-size:12px;color:var(--muted)"> / ' + d.iklan.length + '</small></div><div class="s">level budget dari TikTok (rendah/sedang/tinggi)</div></div>' +
+    '</div>' +
+    '<div class="kartu"><div class="judul-kartu"><b>Top iklan TikTok Indonesia 🟢</b><span>urut ' + esc(TT_URUT_LBL[d.urut] || d.urut) + ' · ' + d.iklan.length + ' dari ' + shpN(d.total) + '</span>' +
+      '<span class="sp-aksi" style="margin-left:auto"><button onclick="ttEkspor(\'iklan\')">＋ Ekspor CSV</button></span></div>' +
+      '<div class="sp-grid tt-grid">' + d.iklan.map(ttKartuIklan).join("") + '</div>' +
+      (d.ada_lagi ? '<div style="text-align:center;margin-top:12px"><button type="button" class="sp-kecil" onclick="ttIklan(true)"' + (TT.muat.lagi ? " disabled" : "") + '>' + (TT.muat.lagi ? "Memuat…" : "Muat 20 iklan lagi") + '</button></div>' : "") +
+      '<div id="tt-sdt">' + ttSudutHTML() + '</div>' +
+      '<div class="sp-cat">Sumber: <b>TikTok Creative Center → Top Ads</b> (Indonesia). Isinya iklan yang pemiliknya izinkan tampil di galeri TikTok, jadi tidak semua iklan ada. <b>CTR</b> di sini adalah peringkat dibanding iklan lain (Top 3% = sangat tinggi), bukan rasio klik. <b>Budget</b> hanya 3 level, angka belanja iklan tidak dibuka TikTok. Like = jumlah like di video iklannya. Diperbarui ' + esc(shpWaktu(d.jam)) + '.</div>' +
+    '</div>';
+}
+function ttPilihKat(id){ TT.ind = id; TT.sub = ""; ttIsiForm(); ttIklan(); }
+function ttSalinHook(i){ const x = TT.iklan && TT.iklan.iklan[i]; if(x) salin(x.judul); }
+/* modal video + detail (elemen di <body> → kelas sendiri, bukan gaya terlingkup view) */
+async function ttPutar(i){
+  const x = TT.iklan && TT.iklan.iklan[i]; if(!x) return;
+  ttTutupModal();
+  const ov = document.createElement("div"); ov.className = "tt-ov"; ov.id = "tt-ov";
+  const cc = "https://ads.tiktok.com/business/creativecenter/topads/" + encodeURIComponent(x.id) + "/pc/en";
+  ov.innerHTML = '<div class="tt-mod" role="dialog" aria-label="Detail iklan TikTok"><button type="button" class="tt-x" onclick="ttTutupModal()" aria-label="Tutup">✕</button>' +
+    '<div class="tt-vid">' + (x.video ? '<video controls playsinline autoplay preload="metadata"' + (ttGbr(x.cover) ? ' poster="' + esc(x.cover) + '"' : "") + ' src="' + esc(x.video) + '" onerror="ttVidGagal(this)"></video>' : '<div class="tt-vgagal">Video tidak tersedia.</div>') + '</div>' +
+    '<div class="tt-info"><div class="tt-pk">#' + x.peringkat + ' · ' + esc(x.kategori || "TikTok") + '</div><h3>' + esc(x.judul) + '</h3>' +
+      (x.merek ? '<div class="tt-mrk">' + esc(x.merek) + '</div>' : "") +
+      '<div class="tt-kotak"><div><b>♥ ' + ttK(x.like) + '</b><span>like 🟢</span></div><div><b id="tt-d-kom">…</b><span>komentar 🟢</span></div><div><b id="tt-d-sh">…</b><span>share 🟢</span></div><div><b>' + (ttCtr(x.ctr) || "—") + '</b><span>CTR 🟢</span></div></div>' +
+      '<div class="tt-chips">' + (x.budget ? '<span class="tt-bud b' + x.budget_n + '">Budget ' + esc(x.budget) + '</span>' : "") + '<span>' + esc(x.tujuan) + '</span>' + (x.durasi ? '<span>' + x.durasi + ' detik</span>' : "") + '</div>' +
+      (x.tagar.length ? '<div class="tt-tg">' + x.tagar.map(function(t){ return "#" + esc(t); }).join(" ") + '</div>' : "") +
+      '<div id="tt-d-lain" class="tt-lain"><span class="ai-muat"><i></i>Membaca detail iklan…</span></div>' +
+      '<div class="tt-aksi"><button type="button" class="tt-b" onclick="ttSalinHook(' + i + ')">Salin hook</button><a class="tt-b utama" href="' + cc + '" target="_blank" rel="noreferrer noopener">Buka di Creative Center ↗</a></div>' +
+    '</div></div>';
+  ov.addEventListener("click", function(e){ if(e.target === ov) ttTutupModal(); });
+  document.body.appendChild(ov); document.documentElement.classList.add("tt-kunci");
+  requestAnimationFrame(function(){ ov.classList.add("on"); });
+  let d = null; try{ d = await (await fetch("/api/tiktok/detail?id=" + encodeURIComponent(x.id))).json(); }catch(e){}
+  if(!document.getElementById("tt-ov")) return;
+  const $ = function(k){ return document.getElementById(k); };
+  if(!d || !d.ok){ $("tt-d-kom").textContent = "—"; $("tt-d-sh").textContent = "—"; $("tt-d-lain").innerHTML = '<span class="ai-k">Detail tambahan belum bisa dibaca dari TikTok.</span>'; return; }
+  $("tt-d-kom").textContent = ttK(d.komentar); $("tt-d-sh").textContent = ttK(d.share);
+  let h = "";
+  if(d.landing) h += '<div><i>Halaman tujuan</i><a href="' + esc(d.landing) + '" target="_blank" rel="noreferrer noopener">' + esc(d.landing.replace(/^https?:\/\//, "").slice(0, 60)) + ' ↗</a></div>';
+  if(d.tujuan && d.tujuan.length) h += '<div><i>Tujuan kampanye</i>' + esc(d.tujuan.join(", ")) + '</div>';
+  if(d.kata_kunci && d.kata_kunci.length) h += '<div><i>Kata kunci</i>' + esc(d.kata_kunci.join(", ")) + '</div>';
+  if(d.sumber) h += '<div><i>Dibuat lewat</i>' + esc(d.sumber === "Others" ? "selain TikTok Ads Manager" : d.sumber) + '</div>';
+  if(d.negara > 1) h += '<div><i>Tayang di</i>' + d.negara + ' negara</div>';
+  $("tt-d-lain").innerHTML = h || '<span class="ai-k">TikTok tidak membuka halaman tujuan &amp; kata kunci iklan ini.</span>';
+}
+function ttVidGagal(v){ const p = v.parentNode; if(p) p.innerHTML = '<div class="tt-vgagal">Video tidak bisa diputar di sini (tautan TikTok kedaluwarsa atau ditolak).<br>Pakai tombol <b>Buka di Creative Center ↗</b>.</div>'; }
+function ttTutupModal(){
+  const ov = document.getElementById("tt-ov"); if(!ov) return;
+  const v = ov.querySelector("video"); if(v){ try{ v.pause(); }catch(e){} }
+  ov.remove(); document.documentElement.classList.remove("tt-kunci");
+}
+/* bedah sudut: CTR Top 20% vs sisanya (angka = hitungan, kelompok sudut = AI / kata kunci) */
+function ttSudutHTML(){
+  let h = '<div class="sdt"><div class="sdt-h"><b>🧭 Sudut jualan iklan TikTok</b><span>cara iklan membujuk: masalah, promo, testimoni, demo…</span></div>';
+  const S = TT.sudut;
+  if(!S || S.k !== TT.kunciIklan) return h + '<button type="button" class="tombol2" onclick="ttSudutJalan()">🤖 Bedah sudut jualan</button><span class="ai-k" style="margin-left:8px">Mengelompokkan ' + Math.min(40, ((TT.iklan && TT.iklan.iklan) || []).length) + ' iklan di atas, lalu membandingkan iklan ber-CTR tinggi dengan sisanya.</span></div>';
+  if(S.muat) return h + '<div class="ai-muat"><i></i>Membedah ' + S.n + ' iklan… 5–25 detik</div></div>';
+  const d = S.d;
+  if(!d || !d.ok) return h + '<div class="ai-k">⚠️ ' + esc((d && d.error) || "Gagal.") + '</div><button type="button" class="tombol2" onclick="TT.sudut=null;ttSudutJalan()">Coba lagi</button></div>';
+  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span></div>';
+  h += d.sudut.map(function(z){
+    return '<div class="sdt-b"><div class="sdt-l"><b>' + esc(z.label) + '</b><span>' + z.jumlah + ' iklan · ' + z.persen + '%' + (z.persen_lama != null ? ' · ' + esc(d.label_a || "CTR tinggi") + ': ' + z.persen_lama + '%' : "") + '</span></div>' +
+      '<div class="sdt-bar"><i style="width:' + Math.max(3, z.persen) + '%"></i></div>' +
+      (z.contoh && z.contoh[0] ? '<div class="sdt-c">“' + esc(z.contoh[0].teks.slice(0, 110)) + (z.contoh[0].teks.length > 110 ? "…" : "") + '”' + (z.contoh[0].halaman ? ' <small>— ' + esc(z.contoh[0].halaman) + '</small>' : "") + '</div>' : "") + '</div>';
+  }).join("");
+  if(d.catatan) h += '<div class="ai-k">' + esc(d.catatan) + '</div>';
+  return h + '</div>';
+}
+async function ttSudutJalan(){
+  const lihat = {};
+  let iklan = ((TT.iklan && TT.iklan.iklan) || []).filter(function(x){
+    const k = String(x.judul || "").toLowerCase().slice(0, 80);
+    if(String(x.judul || "").replace(/[^a-zA-Z]/g, "").length < 12 || lihat[k] || x.judul === "(tanpa teks)") return false;
+    lihat[k] = 1; return true;
+  }).slice(0, 40);
+  if(iklan.length < 3){ toast("Butuh minimal 3 iklan bertulisan untuk dibedah."); return; }
+  /* pembanding: CTR Top 20% vs sisanya; bila salah satu kelompok < 3 (mis. diurut CTR) → separuh atas vs separuh bawah */
+  const ada = iklan.filter(function(x){ return x.ctr != null; }), n20 = ada.filter(function(x){ return x.ctr <= 0.2; }).length;
+  let batas = 0.2, la = "CTR Top 20%", lb = "CTR di luar Top 20%";
+  if(n20 < 3 || ada.length - n20 < 3){
+    const cs = ada.map(function(x){ return x.ctr; }).sort(function(a, b){ return a - b; });
+    batas = cs.length ? cs[Math.floor((cs.length - 1) / 2)] : 0; la = "CTR separuh teratas"; lb = "CTR separuh bawah";
+  }
+  iklan = iklan.map(function(x){ return {id: x.id, teks: x.judul.slice(0, 300), halaman: x.merek || x.kategori || "", kuat: x.ctr != null && x.ctr <= batas}; });
+  const k = TT.kunciIklan;
+  TT.sudut = {k: k, muat: true, n: iklan.length}; ttSudutGambar();
+  const d = await aiPost("/api/ai/sudut", {kata: "TikTok " + ttLabelKat(), iklan: iklan, label_kuat: la, label_lemah: lb});
+  if(!TT.sudut || TT.sudut.k !== k) return;
+  TT.sudut.muat = false; TT.sudut.d = d; ttSudutGambar();
+}
+function ttSudutGambar(){ const el = document.getElementById("tt-sdt"); if(el) el.innerHTML = ttSudutHTML(); }
+
+/* ---------- Intip akun ---------- */
+async function ttAkun(q){
+  q = String(q || "").trim(); if(!q) return;
+  TT.akunQ = q; TT.akun = null; TT.galat.akun = ""; TT.muat.akun = true; TT.akunUrut = "baru";
+  if(TT.tab !== "akun") ttTab("akun", true);
+  document.getElementById("tt-akun-q").value = q;
+  ttSimpanUrl(); ttGambarAkun();
+  const btn = document.getElementById("tt-akun-btn"); if(btn) btn.disabled = true;
+  let d = null; try{ d = await (await fetch("/api/tiktok/akun?u=" + encodeURIComponent(q))).json(); }catch(e){}
+  if(btn) btn.disabled = false;
+  if(TT.akunQ !== q) return;
+  TT.muat.akun = false;
+  if(d && d.ok){ TT.akun = d; TT.akunQ = d.akun.nama; ttRiwTambah(d.akun.nama, d.akun.tampil); document.getElementById("tt-akun-q").value = "@" + d.akun.nama; ttSimpanUrl(); }
+  else TT.galat.akun = (d && d.error) || "Server INTAI tidak terhubung.";
+  ttGambarAkun();
+}
+const TT_ASAL_LBL = {dashboard: "Dashboard", meta: "Scan Meta", shopee: "Scan Shopee", galeri: "Galeri", tren: "Tren", pesaing: "Pesaing Dipantau", pengiklan: "Profil Pengiklan", ekspor: "Ekspor CSV", cs: "CS & Bantuan", admin: "Admin"};
+function ttBalikHTML(){
+  const a = TT.akunAsal;
+  const ket = a && a.view ? "ke " + esc(TT_ASAL_LBL[a.view] || "halaman sebelumnya") : a && a.tab === "iklan" ? "ke Top Iklan TikTok" : "tutup profil akun";
+  return '<div class="sp-balik"><button type="button" class="sp-balik-b" onclick="ttAkunKembali()" aria-label="Kembali">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Kembali<span class="sp-esc">Esc</span></button>' +
+    '<span class="sp-balik-k">' + ket + '</span></div>';
+}
+function ttAkunKembali(){
+  const a = TT.akunAsal; TT.akunAsal = null;
+  if(a && a.view){ ke("/" + a.view); return; }
+  if(a && a.tab === "iklan"){ ttTab("iklan"); return; }
+  TT.akun = null; TT.akunQ = ""; TT.galat.akun = ""; TT.muat.akun = false;
+  const i = document.getElementById("tt-akun-q"); if(i) i.value = "";
+  const b = document.getElementById("tt-akun-btn"); if(b) b.disabled = false;
+  ttGambarAkun(); ttSimpanUrl(); window.scrollTo({top: 0, behavior: "smooth"});
+}
+window.addEventListener("keydown", function(e){
+  if(e.key !== "Escape" || typeof VT === "undefined" || VT.v !== "tiktok") return;
+  if(document.getElementById("tt-ov")){ e.stopImmediatePropagation(); e.preventDefault(); ttTutupModal(); return; }
+  if(TT.tab !== "akun" || !(TT.akun || TT.galat.akun || TT.muat.akun)) return;
+  const H = document.documentElement, sh = document.querySelector(".shell");
+  if(H.classList.contains("bns-buka") || (sh && (sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup"))) || document.querySelector("#area-modal .ov") || (document.getElementById("mbg") && document.getElementById("mbg").style.display === "flex")) return;
+  e.stopImmediatePropagation(); e.preventDefault(); ttAkunKembali();
+}, true);
+function ttUrutAkun(u){ TT.akunUrut = u; ttGambarAkun(); }
+function ttGambarAkun(){
+  const el = document.getElementById("tt-akun-isi"); if(!el) return;
+  const r = ttRiw();
+  document.getElementById("tt-akun-riw").innerHTML = r.akun.length ? '<span class="lbl">Pernah diintip</span>' + r.akun.map(function(t){
+    return '<button type="button" class="sp-chip" onclick="TT.akunAsal=null;ttAkun(this.dataset.u)" data-u="' + esc(t.u) + '">@' + esc(t.u) + '</button>'; }).join("") : "";
+  if(TT.muat.akun){ el.innerHTML = ttBalikHTML() + shpMuatHTML("Membaca profil @" + esc(TT.akunQ.replace(/^@/, "").replace(/^.*tiktok\.com\/@/, "").split(/[/?]/)[0]) + " dan 13 videonya… ±5–10 detik"); return; }
+  if(TT.galat.akun){
+    el.innerHTML = ttBalikHTML() + (/tidak ditemukan|Tulis nama akun/.test(TT.galat.akun)
+      ? '<div class="sp-kosong"><b>Akun tidak ditemukan</b>' + esc(TT.galat.akun) + ' Periksa ejaan nama akunnya (tanpa spasi), atau tempel link profil dari aplikasi TikTok.</div>'
+      : ttGalatHTML(TT.galat.akun, "ttAkun(TT.akunQ)"));
+    return;
+  }
+  const d = TT.akun;
+  if(!d){
+    el.innerHTML = '<div class="sp-kosong"><b>Intip satu akun TikTok pesaing</b>Ketik <code>@namaakun</code> atau tempel link profilnya. INTAI menampilkan pengikut, total like, 13 video yang ditampilkan TikTok lengkap dengan views, like, komentar, share, dan simpan, plus <b>mana yang ditandai iklan</b> (dipromosikan).<div class="sp-riw">' +
+      ["somethincofficial", "erigostore", "azarinecosmetic"].map(function(u){ return '<button type="button" class="sp-chip" onclick="ttAkun(\'' + u + '\')">@' + u + '</button>'; }).join("") + '</div></div>';
+    return;
+  }
+  const a = d.akun, rg = d.ringkas || {}, av = ttGbr(a.avatar);
+  let vid = (d.video || []).slice();
+  if(TT.akunUrut === "views") vid.sort(function(x, y){ return (y.tayang || 0) - (x.tayang || 0); });
+  else if(TT.akunUrut === "like") vid.sort(function(x, y){ return (y.like || 0) - (x.like || 0); });
+  const lencana = (a.centang ? '<span class="tt-cek" title="Akun terverifikasi">✔ terverifikasi</span>' : "") + (a.penjual ? '<span class="tt-cek">🛍 Penjual TikTok Shop</span>' : "") +
+    (a.bisnis ? '<span class="tt-cek">Akun bisnis' + (a.kategori && a.kategori !== "Lainnya" ? " · " + esc(a.kategori) : "") + '</span>' : "") + (a.privat ? '<span class="tt-cek">🔒 Privat</span>' : "");
+  el.innerHTML = ttBalikHTML() +
+    '<div class="kartu" style="margin-bottom:14px"><div class="sp-toko-kep"><div class="sp-lg tt-av">' + (av ? '<img src="' + esc(av) + '" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '</div>' +
+      '<div class="sp-tnama"><h2>' + esc(a.tampil) + '</h2><div class="sp-sb"><span>@' + esc(a.nama) + '</span>' + (a.dibuat ? '<span>akun sejak ' + esc(ttTgl(a.dibuat)) + '</span>' : "") + '</div><div class="tt-lencana">' + lencana + '</div></div>' +
+      '<span class="sp-aksi"><button onclick="ttEkspor(\'akun\')">＋ Ekspor CSV</button><a class="sp-kecil" style="text-decoration:none" href="https://www.tiktok.com/@' + encodeURIComponent(a.nama) + '" target="_blank" rel="noreferrer noopener">Buka di TikTok ↗</a></span></div>' +
+      (a.bio ? '<div class="tt-bio">' + esc(a.bio) + '</div>' : "") + '</div>' +
+    '<div class="sp-fakta">' +
+      '<div class="sp-f"><div class="l">Pengikut 🟢</div><div class="v">' + ttK(a.pengikut) + '</div><div class="s">mengikuti ' + ttK(a.mengikuti) + '</div></div>' +
+      '<div class="sp-f"><div class="l">Total like 🟢</div><div class="v">' + ttK(a.like) + '</div><div class="s">seluruh video akun</div></div>' +
+      '<div class="sp-f"><div class="l">Jumlah video 🟢</div><div class="v">' + ttK(a.video_total) + '</div><div class="s">' + (rg.per_bulan != null ? "≈ " + String(rg.per_bulan).replace(".", ",") + " video/bulan sejak akun dibuat 🔵" : "") + (rg.terbaru_hari != null ? (rg.per_bulan != null ? " · " : "") + "terbaru " + (rg.terbaru_hari === 0 ? "hari ini" : rg.terbaru_hari + " hari lalu") : "") + '</div></div>' +
+      '<div class="sp-f"><div class="l">Views tengah 🔵</div><div class="v">' + ttK(rg.median_tayang) + '</div><div class="s">median ' + rg.sampel + ' video · tertinggi ' + ttK(rg.tayang_maks) + '</div></div>' +
+      '<div class="sp-f"><div class="l">Interaksi tengah 🔵</div><div class="v">' + (rg.interaksi != null ? String(rg.interaksi).replace(".", ",") + "%" : "—") + '</div><div class="s">(like + komentar + share) ÷ views</div></div>' +
+      '<div class="sp-f"><div class="l">Dipromosikan 🟢</div><div class="v">' + (rg.dicek_iklan ? rg.dipromosikan + '<small style="font-size:12px;color:var(--muted)"> / ' + rg.dicek_iklan + '</small>' : "—") + '</div><div class="s">video yang ditandai iklan oleh TikTok</div></div>' +
+    '</div>' +
+    '<div class="kartu"><div class="judul-kartu"><b>Video akun ini 🟢</b><span>' + vid.length + ' video</span>' +
+      '<span class="tt-urut">' + [["baru", "Terbaru"], ["views", "Views"], ["like", "Like"]].map(function(u){ return '<button type="button" class="sp-chip' + (TT.akunUrut === u[0] ? " on" : "") + '" onclick="ttUrutAkun(\'' + u[0] + '\')">' + u[1] + '</button>'; }).join("") + '</span></div>' +
+      (vid.length ? '<div class="sp-grid tt-grid">' + vid.map(function(v){
+        const cv = ttGbr(v.cover);
+        return '<div class="sp-p tt-p"><a class="sp-th tt-th" href="' + esc(v.url) + '" target="_blank" rel="noreferrer noopener">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") +
+          '<span class="sp-ph">TikTok</span>' + (v.iklan ? '<span class="sp-pos tt-ikl">📢 Dipromosikan</span>' : "") + (v.durasi ? '<span class="tt-dur">' + ttDurasi(v.durasi) + '</span>' : "") + '<span class="tt-views">▶ ' + ttK(v.tayang) + '</span></a>' +
+          '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(v.caption) + '">' + esc(v.caption || "(tanpa caption)") + '</div>' +
+          '<div class="tt-angka kecil"><span title="like">♥ ' + ttK(v.like) + '</span><span title="komentar">💬 ' + ttK(v.komentar) + '</span><span title="share">↗ ' + ttK(v.share) + '</span><span title="disimpan">🔖 ' + ttK(v.simpan) + '</span></div>' +
+          '<div class="sp-mt">' + (v.unggah ? '<span>' + esc(ttTgl(v.unggah)) + '</span>' : "") + (v.tayang && v.like != null ? '<span title="like ÷ views">' + String(Math.round(1000 * v.like / v.tayang) / 10).replace(".", ",") + '% like/views</span>' : "") + '</div>' +
+          '<div class="tt-ak"><a class="sp-kecil" style="text-decoration:none" href="' + esc(v.url) + '" target="_blank" rel="noreferrer noopener">Tonton ↗</a>' + (v.caption ? '<button type="button" class="sp-kecil" onclick="salin(this.dataset.t)" data-t="' + esc(v.caption) + '">Salin caption</button>' : "") + '</div></div></div>';
+      }).join("") + '</div>' : '<div class="chart-kosong">' + (a.privat ? "Akun privat — videonya tidak bisa dibaca." : "TikTok tidak menampilkan video untuk akun ini.") + '</div>') +
+      '<div class="sp-cat">Yang tampil adalah <b>13 video yang ditampilkan TikTok di profil publik</b> (campuran video terbaru, populer, dan yang disematkan), lalu diurutkan menurut tanggal. <b>📢 Dipromosikan</b> = TikTok menandai video itu sebagai iklan. Views video iklan ikut menghitung tayangan berbayar, jadi persentase like/views-nya biasanya jauh lebih rendah. Angka 🔵 dihitung INTAI dari ' + (rg.sampel || 0) + ' video ini. Dibaca ' + esc(shpWaktu(d.jam)) + ' (disimpan 30 menit).</div>' +
+    '</div>';
+}
+/* ekspor ke penampung "Ekspor CSV" */
+function ttEkspor(jenis){
+  let kol, baris, q, filter, mode;
+  if(jenis === "akun"){
+    const d = TT.akun; if(!d) return;
+    kol = ["tanggal", "caption", "views", "like", "komentar", "share", "simpan", "durasi_detik", "dipromosikan", "link"];
+    baris = d.video.map(function(v){ return [v.unggah ? new Date(v.unggah * 1000).toISOString().slice(0, 10) : "", v.caption, ekAngka(v.tayang), ekAngka(v.like), ekAngka(v.komentar), ekAngka(v.share), ekAngka(v.simpan), ekAngka(v.durasi), v.iklan ? "ya" : "tidak", v.url]; });
+    q = "@" + d.akun.nama; filter = "13 video profil TikTok"; mode = "tiktok-akun";
+  } else {
+    const d = TT.iklan; if(!d) return;
+    kol = ["peringkat", "hook", "merek", "kategori", "like", "ctr_peringkat", "budget", "tujuan", "durasi_detik", "id_iklan", "link_creative_center"];
+    baris = d.iklan.map(function(x){ return [ekAngka(x.peringkat), x.judul, x.merek, x.kategori, ekAngka(x.like), ttCtr(x.ctr) || "", x.budget || "", x.tujuan, ekAngka(x.durasi), x.id, "https://ads.tiktok.com/business/creativecenter/topads/" + x.id + "/pc/en"]; });
+    q = "Top iklan TikTok " + ttLabelKat(); filter = d.periode + " hari · urut " + (TT_URUT_LBL[d.urut] || d.urut); mode = "tiktok-iklan";
+  }
+  if(!baris.length){ toast("Tidak ada baris untuk diekspor."); return; }
+  const entri = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sumber: "Scan TikTok", q: q, mode: mode,
+                 waktu: new Date().toISOString(), total: baris.length, filter: filter, kol: kol, baris: baris, unduh: {}};
+  const list = ekMuat(); list.unshift(entri);
+  if(!ekSimpan(list)){ ekBelumSiap(); return; }
+  ekBadge(true);
+  toast("✓ " + baris.length + " baris TikTok masuk ke <b>Ekspor CSV</b> di sidebar · <u style=\"cursor:pointer\" onclick=\"ke('/ekspor')\">buka ›</u>");
+}
+/* ---------- v1.5.8 Admin → uji jalur TikTok & Tokopedia dari server ---------- */
+async function admTTUji(btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = "Menguji… (±10–30 detik)";
+  let d = null; try{ d = await (await fetch("/api/admin/tiktok-uji")).json(); }catch(e){}
+  btn.disabled = false; btn.textContent = t;
+  const el = document.getElementById("adm-tt-hasil"); if(!el) return;
+  if(!d || !d.ok){ el.innerHTML = '<span class="buruk">Gagal: ' + esc((d && d.error) || "server tidak terhubung") + '</span>'; return; }
+  const tt = document.getElementById("adm-tt-t"); if(tt) tt.textContent = d.hasil.filter(function(h){ return h.ok; }).length + "/" + d.hasil.length + " jalur OK";
+  el.innerHTML = d.hasil.map(function(h){ return '<div style="margin-top:6px">' + (h.ok ? '<span class="ok">✓</span>' : '<span class="buruk">✗</span>') + ' <b>' + esc(h.jalur) + '</b> <small style="color:var(--faint)">' + h.ms + ' ms</small><br><small style="color:var(--faint)">' + esc(h.ket) + '</small></div>'; }).join("");
+}
+/* ---------- v1.5.7 Admin → Status sistem: AI ---------- */
+async function admAIMuat(){
+  const el = document.getElementById("adm-ai"); if(!el) return;
+  const d = await aiStatus(true);
+  const t = document.getElementById("adm-ai-t"); if(t) t.textContent = d.aktif ? "aktif" : "belum aktif";
+  if(!d.aktif){
+    el.innerHTML = '<span class="buruk">✗ Belum ada kunci AI</span><br><small style="color:var(--faint)">Isi <b>INTAI_GEMINI_KUNCI</b> (utama, gratis dari aistudio.google.com) dan opsional <b>INTAI_GROQ_KUNCI</b> (cadangan, console.groq.com) di Render → Environment. Tanpa kunci semua fitur tetap jalan dengan mesin aturan.</small>';
+    return;
+  }
+  const ht = d.hakim_terakhir;
+  el.innerHTML = '<span class="ok">✓ ' + esc((d.penyedia || []).join(" + ")) + '</span>' +
+    '<br><small style="color:var(--faint)">Model Gemini: ' + esc((d.model_gemini || []).slice(0, 2).join(", ") || "—") + '</small>' +
+    '<br>Hari ini: <b>' + (d.sistem || 0) + '</b>/' + d.batas_sistem + ' panggilan otomatis · <b>' + (d.akun_hari_ini || 0) + '</b> akun memakai naskah/sudut (jatah ' + d.jatah_akun + '×/akun)' +
+    (Object.keys(d.per_penyedia || {}).length ? '<br><small style="color:var(--faint)">' + esc(Object.entries(d.per_penyedia).map(function(e){ return e[0] + " " + e[1] + "×"; }).join(" · ")) + '</small>' : "") +
+    (d.gagal ? '<br><span class="buruk">' + d.gagal + ' gagal</span> <small style="color:var(--faint)">' + esc(d.galat || "") + '</small>' : "") +
+    '<br>Hakim relevansi: <b>' + (d.hakim_mode === "ubah" ? "mode UBAH (AI ikut menentukan label)" : d.hakim_mode === "mati" ? "mati" : "mode bayangan (pendapat kedua saja)") + '</b>' +
+    (ht ? '<br><small style="color:var(--faint)">Scan terakhir “' + esc(ht.kata) + '”: ' + ht.dinilai + ' iklan abu-abu dinilai, ' + (ht.beda || 0) + ' berbeda pendapat dengan aturan</small>' : "") +
+    '<br><button class="cs-tb" style="margin-top:8px" onclick="admAIUji(this)">Uji AI vs aturan (100 kasus emas)</button><div id="adm-ai-uji"></div>';
+}
+async function admAIUji(btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = "Menguji… (±20–60 detik)";
+  let d = null;
+  try{ d = await (await fetch("/api/admin/ai-uji")).json(); }catch(e){}
+  btn.disabled = false; btn.textContent = t;
+  const el = document.getElementById("adm-ai-uji"); if(!el) return;
+  if(!d || !d.ok){ el.innerHTML = '<span class="buruk">Gagal: ' + esc((d && d.error) || "server tidak terhubung") + '</span>'; return; }
+  el.innerHTML = '<div style="margin-top:8px">Dijawab AI: <b>' + d.dijawab + '/' + d.kasus + '</b> · ' + esc(d.penyedia || "") + ' · ' + d.detik + ' dtk' +
+    '<br>Aturan saja: <b>' + d.benar_aturan + '/' + d.kasus + '</b> benar · Aturan + AI: <b>' + d.benar_ai + '/' + d.kasus + '</b> benar' +
+    '<br>AI mengubah ' + d.diubah_ai + ' label, ' + d.diubah_benar + ' di antaranya benar' +
+    '<br>' + (d.benar_ai > d.benar_aturan ? '<span class="ok">' : '<span class="buruk">') + esc(d.saran) + '</span>' +
+    (d.contoh_salah && d.contoh_salah.length ? '<br><small style="color:var(--faint)">Contoh salah: ' + d.contoh_salah.slice(0, 5).map(function(c){ return esc(c.niche + " · " + c.iklan.slice(0, 40) + " → AI " + c.ai + " (benar " + c.benar + ")"); }).join("; ") + '</small>' : "") + '</div>';
+}
 /* ---------- Intip toko ---------- */
 /* v1.5.4b: tombol Kembali (Esc) di Intip toko — pulang ke asal (hasil cari / Flash Sale / Dashboard), atau tutup profil bila dibuka langsung */
 const SHP_ASAL_LBL = {dashboard: "Dashboard", meta: "Scan Meta", galeri: "Galeri", tren: "Tren", pesaing: "Pesaing Dipantau", pengiklan: "Profil Pengiklan", ekspor: "Ekspor CSV", tiktok: "Scan TikTok", cs: "CS & Bantuan", admin: "Admin"};
@@ -7598,6 +8405,8 @@ function ke(url){
     window.__shpOpsi = qi >= 0 ? shpDariUrl(u.slice(qi)) : {};
     tampilView("shopee");
   } else if(u.indexOf("/tiktok") === 0){
+    const qi = u.indexOf("?");
+    window.__ttOpsi = qi >= 0 ? ttDariUrl(u.slice(qi)) : {};
     tampilView("tiktok");
   } else if(u === "/" || u.indexOf("/dashboard") === 0){
     tampilView("dashboard");
@@ -7615,5 +8424,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b5567bfe88ea87',t:'MTc5MjEzNTYxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b60db69ffed8a3',t:'MTc5MjE0MzExNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

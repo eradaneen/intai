@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.5"
+VERSI = "1.5.8"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -4032,6 +4032,12 @@ def jalankan_scan(nilai, mode="cari", pemilik=None, dari_jadwal=False, segar=Fal
         konteks_halaman(pasangan_rel, nilai)   # v1.6: iklan lemah dari halaman yang jelas niche ikut naik
         for x in out:
             x["rel_nilai"] = (x.get("relevansi") or {}).get("nilai", x.get("rel_nilai"))
+    # v1.5.7 hakim AI untuk zona abu-abu: jalan PARALEL dgn gali harga, diterapkan sebelum agregat (maks ±8 dtk)
+    wadah_ai, th_ai, t_ai = {}, None, time.time()
+    if mode == "cari" and pasangan_rel and ai_aktif() and AI_HAKIM_MODE != "mati":
+        _psg = [(dict(r_), o_) for r_, o_ in pasangan_rel]   # salinan: thread tidak menyentuh rel asli
+        th_ai = threading.Thread(target=lambda: ai_hakim_relevansi(nilai, _psg, wadah=wadah_ai), daemon=True, name="ai-hakim")
+        th_ai.start()
     rows_hidup = [b for b in rows if b.get("aktif") is not False] or rows
     # v1.6: jumlah yang dicatat/ditampilkan = iklan aktif yang NYAMBUNG (Lepas = derau niche luar)
     n_nyambung = len(rows_hidup) if mode != "cari" else sum(
@@ -4148,6 +4154,23 @@ def jalankan_scan(nilai, mode="cari", pemilik=None, dari_jadwal=False, segar=Fal
             "median": urut[len(urut) // 2][0],
         }
 
+    if th_ai is not None:   # v1.5.7
+        th_ai.join(max(0.3, 9.0 - (time.time() - t_ai)))
+        put_ai = {k_: v_ for k_, v_ in list(wadah_ai.items()) if k_ != "__siap"}
+        if put_ai:
+            ubah_ai = 0
+            for rel_, o_ in pasangan_rel:
+                v_ = put_ai.get(str(o_.get("ad_archive_id") or o_.get("archive_id") or ""))
+                if v_ and AI_HAKIM_BAWAH <= (rel_.get("nilai") or 0) <= AI_HAKIM_ATAS:
+                    lab_ = rel_.get("label")
+                    _ai_hakim_terapkan(rel_, v_)
+                    ubah_ai += rel_.get("label") != lab_
+            for x in out:
+                x["rel_nilai"] = (x.get("relevansi") or {}).get("nilai", x.get("rel_nilai"))
+            n_nyambung = len(rows_hidup) if mode != "cari" else sum(
+                1 for x in out if x.get("aktif") is not False and (x.get("relevansi") or {}).get("label") != "Lepas")
+            AI_STAT["hakim_terakhir"] = {"kata": label, "dinilai": len(put_ai), "berubah": ubah_ai, "t": _iso_kini(),
+                                         "beda": sum(1 for r_, _o in pasangan_rel if (r_.get("ai") or {}).get("usul") not in (None, (r_.get("ai") or {}).get("asal")))}
     # v0.8: agregat niche (uang, pemenang, acuan, waktu) HANYA dari iklan yang masih tayang
     # + buang niche luar (Lepas) supaya uang/pemenang/acuan tidak tercemar iklan tak nyambung
     hidup = ([x for x in out if x.get("aktif") is not False
@@ -7800,9 +7823,53 @@ def _afv_urai(u, kedalaman=0):
     return d
 
 
-_RE_AFV_KREDIT = re.compile(r"^\W*(credit|cr\b|cr\s*:|video\s*by|vid\s*by|sumber|source|repost|ig\s*:|tiktok\s*:)", re.I)
+_RE_AFV_KREDIT = re.compile(r"^\W*(credit|cr\b|cr\s*:|video\s*by|vid\s*by|by\s*(tiktok|tt|ig|instagram|yt|youtube)\b|sumber|source|repost|ig\s*:|tiktok\s*:|tt\s*:|instagram\s*:|yt\s*:|youtube\s*:|fb\s*:|facebook\s*:|ig\s*@|tiktok\s*@)", re.I)
 _RE_AFV_AJAKAN = re.compile(r"^\W*(cek|beli|link|promo|klik|order|checkout|dapatkan|dapetin|ambil|grab|pesan|shop|langsung|buruan|yuk|info)\b.{0,40}"
                             r"(di ?sini|disini|👇|👉|⬇|bawah|keranjang|shopee|kak)", re.I)
+
+
+# v1.5.5b: kalimat pendek berisi ajakan/penunjuk di MANA PUN ('belinya disini👉', 'Yang di spill', 'Pembelian Klik 👉') bukan hook
+_RE_AFV_CTA_DALAM = re.compile(r"(👇|👉|☝|⬇|⤵|🔗|🛒|\bdi ?sini\b|\bdisini\b|\bspill\w*|\bklik\w*|\bclick\b|\blink\w*|\bkeranjang\b|"
+                               r"\bcheck ?out\b|\bco\b|\border\s+(sekarang|di)\b|\bbeli(nya)?\s+(sekarang|di)\b|\bbelanja\s+(sekarang|di)\b|\bpembelian\b|\bcek\b|\bcekidot\b|\bbio\b|"
+                               r"\bkomen\w*|\bcomment\b|\bdm\b|\bwa\b|\bwhatsapp\b|➡)", re.I)
+# ajakan kuat → ditolak berapa pun panjangnya
+_RE_AFV_CTA_KUAT = re.compile(r"(\bklik\w*\s+(link|keranjang|tombol|di ?sini|disini|tautan)|\bkeranjang\s+(kuning|oranye|orange|di\s+(pojok|bawah|kiri|kanan))|"
+                              r"\bpojok\s+kiri\s+bawah|\blink\s+(di|ada\s+di|produk|pembelian|dibawah|di\s?bawah|bio)\b|\bbeli(nya)?\s+(di ?sini|disini|di\s+link)|"
+                              r"\bcek\s+(keranjang|link)|\bcara\s+(pesan|order|beli)\w*)", re.I)
+
+
+_RE_AFV_EKOR_CTA = re.compile(r"\s*\b(beli(nya)?|cek|order|klik|pesan|belanja|checkout|dapatkan)\b[^.!?]{0,20}?(di ?sini|disini|di\s+link|link\w*)\W*$", re.I)
+_RE_AFV_EKOR_PANAH = re.compile(r"[\s:=>\-👇👉👆☝⬇⤵➡🫵\U0001F3FB-\U0001F3FF\uFE0F]+$")
+
+
+def _afv_bersih(b):
+    """Pangkas ekor ajakan ('Tirai Cantik Beli Disini⤵️' → 'Tirai Cantik'). Return (teks, dipangkas)."""
+    c = _RE_AFV_EKOR_CTA.sub("", b)
+    dipangkas = c != b
+    c2 = _RE_AFV_EKOR_PANAH.sub("", c).strip() if dipangkas else c.strip()
+    return (c2 or b), dipangkas
+
+
+def _afv_bukan_hook(b, min_kata=2):
+    """True bila baris lebih mirip ajakan klik / kredit / tagar / harga daripada kalimat pembuka."""
+    if "{{" in b or "}}" in b:   # placeholder katalog ({{product.name}})
+        return True
+    kata = re.findall(r"[^\W\d_]{3,}", b)
+    if len(kata) < min_kata:
+        return True
+    tok = b.split()
+    if tok and sum(1 for t in tok if t.startswith("#") or t.startswith("@")) * 2 >= len(tok):
+        return True
+    if _RE_AFV_KREDIT.search(b):
+        return True
+    if _RE_AFV_AJAKAN.search(b) and len(b) < 60:
+        return True
+    if _RE_AFV_CTA_KUAT.search(b):
+        return True
+    # kalimat pendek (≤ 6 kata bermakna) yang memuat penunjuk/ajakan di mana pun
+    if len(kata) <= 6 and len(b) < 50 and _RE_AFV_CTA_DALAM.search(b):
+        return True
+    return False
 
 
 def _afv_potong(b, n=140):
@@ -7820,14 +7887,16 @@ def _afv_potong(b, n=140):
 def _afv_hook_dari(teks, cadangan=""):
     """Baris pembuka yang layak jadi hook: bukan link, bukan ajakan klik ('Cek di sini 👇'), cukup panjang."""
     for baris in str(teks or "").replace("\\n", "\n").splitlines():
-        b = re.sub(r"https?://\S+", "", baris).strip(" -–—•*|")
-        if len(b) < 12 or len(re.sub(r"[\W\d_]+", "", b)) < 8:
+        b = re.sub(r"https?://\S+", "", baris)
+        b = re.sub(r"^\s*mall\s*inline\s*badge\s*", "", b, flags=re.I).strip(" -–—•*|")   # sisa label kartu katalog
+        b, dipangkas = _afv_bersih(b)
+        if len(b) < 10 or len(re.sub(r"[\W\d_]+", "", b)) < 8:
             continue
-        if (_RE_AFV_AJAKAN.search(b) and len(b) < 60) or _RE_AFV_KREDIT.search(b):
+        if _afv_bukan_hook(b, 3 if dipangkas else 2):
             continue
         return _afv_potong(b)
     c = re.sub(r"https?://\S+", "", str(cadangan or "")).strip()
-    return _afv_potong(c) if len(c) >= 12 and not _RE_AFV_AJAKAN.search(c) else ""
+    return _afv_potong(c) if len(c) >= 12 and not _afv_bukan_hook(c) else ""
 
 
 def _afv_peta():
@@ -7878,6 +7947,13 @@ def afv_analisis(q):
     """Tab Affiliator & Video: produk yang diiklankan affiliator di Meta (A1), kepadatan affiliator (A2), bank hook (V1)."""
     q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
     ok, rows = _afv_baris()
+    try:   # v1.5.6: + iklan dari Scan Affiliator (disimpan terpisah); arsip menang bila archive_id sama
+        sc = _afvs_muat()["rows"]
+        if sc:
+            ada = {str(r.get("archive_id")) for r in rows}
+            rows = list(rows) + [r for a_, r in sc.items() if a_ not in ada]
+    except Exception:
+        pass
     tok = [t for t in re.split(r"\s+", _norm(q)) if len(t) >= 2] if q else []
 
     def cocok(r):
@@ -7913,6 +7989,8 @@ def afv_analisis(q):
             threading.Thread(target=_afv_simpan_peta, daemon=True, name="afv-peta").start()
     hitung = {"aff": 0, "penjual": 0, "langsung": 0, "belum": 0}
     produk, hook = {}, {}
+    peran_ai = _ai_cache("ai_peran") if ai_aktif() else {}   # v1.5.7 putusan AI: link langsung dari affiliator?
+    calon_ai, ai_aff, ai_jual = [], 0, 0
     for r, ur in per:
         jenis, tgt = None, {}
         for d in ur:
@@ -7936,13 +8014,28 @@ def afv_analisis(q):
                      "aid": r.get("archive_id"), "jenis": jenis}
             if not lama or (aktif, umur) > (lama["aktif"], lama["umur"]):
                 hook[kh] = calon
-        if jenis != "aff" or not tgt.get("itemid"):
+        dugaan = False
+        if jenis == "langsung" and r.get("archive_id"):   # v1.5.7
+            pa = peran_ai.get(str(r.get("archive_id")))
+            if pa is None:
+                if len(calon_ai) < 60:
+                    calon_ai.append((str(r.get("archive_id")), " | ".join(x for x in [
+                        "Halaman: " + str(r.get("halaman") or ""), "Teks: " + re.sub(r"\s+", " ", str(r.get("teks") or r.get("hook") or ""))[:260],
+                        "Link: " + (_afv_urls(r)[0][:90] if _afv_urls(r) else "")] if x)))
+            elif pa.get("p") == "affiliator" and (pa.get("y") or 0) >= 80:
+                ai_aff += 1
+                dugaan = True
+            elif pa.get("p") == "penjual" and (pa.get("y") or 0) >= 70:
+                ai_jual += 1
+        if not (jenis == "aff" or dugaan) or not tgt.get("itemid"):
             continue
         k = f"{tgt.get('shopid')}.{tgt.get('itemid')}"
         p = produk.setdefault(k, {"shopid": tgt.get("shopid"), "itemid": tgt.get("itemid"), "_aff": set(), "_hal": {},
                                   "iklan": 0, "aktif": 0, "umur_maks": 0, "_niche": set(), "_hook": [], "_sub": set(),
-                                  "aid": [], "thumb": None, "_teks": ""})
+                                  "aid": [], "thumb": None, "_teks": "", "_scan": 0, "_ai": 0})
         p["iklan"] += 1
+        p["_ai"] += 1 if dugaan else 0
+        p["_scan"] += 1 if r.get("_scan") else 0
         p["aktif"] += 1 if aktif else 0
         p["umur_maks"] = max(p["umur_maks"], umur)
         p["_aff"].add(tgt.get("aff") or ("hal:" + str(r.get("page_id") or r.get("halaman") or "")))
@@ -7971,13 +8064,1296 @@ def afv_analisis(q):
             "halaman": [h for h, _ in sorted(p["_hal"].items(), key=lambda x: -x[1])][:5],
             "niche": sorted(p["_niche"])[:4], "hook": p["_hook"][:4], "tag": sorted(p["_sub"])[:4],
             "aid": p["aid"], "thumb": p["thumb"], "teks": p["_teks"],
+            "dari_scan": p["_scan"], "dari_ai": p["_ai"],
         })
     daftar.sort(key=lambda x: (-x["affiliator"], -x["aktif"], -x["umur_maks"], -x["iklan"]))
+    AFV_AI_CALON[q] = calon_ai
+    while len(AFV_AI_CALON) > 100:
+        AFV_AI_CALON.pop(next(iter(AFV_AI_CALON)))
     hooks = sorted(hook.values(), key=lambda x: (not x["aktif"], -x["umur"]))[:14]
     sisa = len([1 for _, ur in per for d in ur if d.get("jenis") == "pendek" and d["kode"] not in peta])
     return {"ok": True, "arsip_ok": bool(ok), "q": q, "produk": daftar[:40], "jumlah_produk": len(daftar),
             "hook": hooks, "hitung": hitung, "iklan_shopee": len(per), "arsip_shopee": len(rows),
-            "dibuka": dibuka, "belum_dibuka": sisa, "jam": _iso_kini()}
+            "dibuka": dibuka, "belum_dibuka": sisa, "jam": _iso_kini(),
+            "iklan_scan": sum(1 for r, _ in per if r.get("_scan")), "scan_kw": afvs_status(q) if q else None,
+            "ai_aktif": ai_aktif(), "ai_peran": {"affiliator": ai_aff, "penjual": ai_jual, "belum": len(calon_ai)}}
+
+
+# ===== v1.5.6 SCAN AFFILIATOR (Meta) — hasil DISIMPAN TERPISAH dari arsip Scan Meta =====
+# Kenapa terpisah: Scan Meta dirancang untuk penjual (iklan "Lepas" dibuang, kata kunci polos). Iklan affiliator
+# (halaman "Pusat Promo", "Rekomendasi Belanja") sering berlabel Lepas → tidak masuk arsip. Scan ini memakai mesin
+# pengambil yang SAMA (kumpul_iklan_v2: jatah Meta, rehat, antrean, batas per jam tetap berlaku), tapi:
+#   · kata kunci bergaya affiliator ("<kw> shopee", "racun shopee <kw>", "spill <kw>") + kata polos,
+#   · satu-satunya saringan = menyebut Shopee (link/teks/kartu) + memuat kata kunci,
+#   · disimpan di intai_setelan["afvscan"] (terkompres) → TIDAK mengotori Top 10 / Tren / Pesaing niche penjual.
+AFVS = {"data": None, "t_simpan": 0.0}
+kunci_afvs = threading.Lock()
+AFVS_MAKS_BARIS = 2500        # total iklan affiliator yang disimpan (kata kunci terlama dibuang dulu)
+AFVS_SEGAR_DTK = 6 * 3600     # kata yang sama discan ulang paling cepat 6 jam (kecuali admin)
+
+
+def _afvs_muat():
+    with kunci_afvs:
+        if AFVS["data"] is None:
+            try:
+                ok, v = setelan_baca("afvscan")
+                d = _tk_buka(v) if (ok and v) else {}
+            except Exception:
+                d = {}
+            AFVS["data"] = {"kw": dict(d.get("kw") or {}), "rows": dict(d.get("rows") or {})}
+        return AFVS["data"]
+
+
+def _afvs_simpan():
+    try:
+        with kunci_afvs:
+            d = AFVS["data"] or {"kw": {}, "rows": {}}
+            if len(d["rows"]) > AFVS_MAKS_BARIS:   # buang kata kunci terlama sampai muat
+                for kw, _ in sorted(d["kw"].items(), key=lambda kv: kv[1].get("t") or ""):
+                    if len(d["rows"]) <= AFVS_MAKS_BARIS:
+                        break
+                    for aid in d["kw"][kw].get("aid") or []:
+                        r = d["rows"].get(aid)
+                        if r and r.get("niche") == kw:
+                            d["rows"].pop(aid, None)
+                    d["kw"].pop(kw, None)
+            salinan = {"kw": dict(d["kw"]), "rows": dict(d["rows"])}
+        setelan_tulis("afvscan", _tk_bungkus(salinan))
+        AFVS["t_simpan"] = time.time()
+    except Exception:
+        pass
+
+
+def _afvs_kunci(q):
+    return re.sub(r"\s+", " ", _norm(q)).strip()[:60]
+
+
+def _afvs_baris_dari_mentah(o, kw, tok):
+    """Iklan mentah Meta → baris berformat arsip (kolom AFV_KOLOM). None bila tidak menyebut Shopee / kata kunci."""
+    snap = o.get("snapshot") or {}
+    bag, links = [], []
+    for k in ("title", "body", "caption", "link_description"):
+        t = mesin._teks(snap, k)
+        if t and t not in bag:
+            bag.append(t)
+    if snap.get("link_url"):
+        links.append(str(snap.get("link_url")))
+    for c in (snap.get("cards") or [])[:10]:
+        if not isinstance(c, dict):
+            continue
+        if c.get("link_url") and str(c["link_url"]) not in links:
+            links.append(str(c["link_url"]))
+        for k in ("title", "body"):
+            t = c.get(k)
+            t = t.get("text") if isinstance(t, dict) else t
+            if t and str(t) not in bag and len(bag) < 8:
+                bag.append(str(t))
+    teks = "\n".join(bag)
+    link = " ".join(links)
+    if not re.search(r"shope", link + " " + teks, re.I):
+        return None
+    hay = _norm(teks + " " + str(o.get("page_name") or "") + " " + link)
+    if tok and not all(t in hay for t in tok):
+        return None
+    aid = str(o.get("ad_archive_id") or "")
+    if not aid:
+        return None
+    umur, mulai = 0, None
+    try:
+        st = int(o.get("start_date") or 0)
+        if st:
+            mulai = datetime.fromtimestamp(st, tz=timezone.utc).strftime("%Y-%m-%d")
+            umur = max(0, (datetime.now(timezone.utc) - datetime.fromtimestamp(st, tz=timezone.utc)).days)
+    except Exception:
+        pass
+    return {"archive_id": aid, "page_id": str(o.get("page_id") or ""), "halaman": o.get("page_name") or "",
+            "niche": kw, "aktif": bool(o.get("is_active")), "mulai": mulai, "umur": umur,
+            "hook": _hook(teks), "teks": teks[:700], "link": link[:600], "thumb": None,
+            "terakhir_terlihat": _iso_kini(), "_scan": True}
+
+
+def afvs_status(q):
+    kw = _afvs_kunci(q)
+    if not kw:
+        return None
+    d = _afvs_muat()
+    m = d["kw"].get(kw)
+    return {"kw": kw, "t": m.get("t"), "iklan_meta": m.get("meta"), "shopee": len(m.get("aid") or [])} if m else None
+
+
+def afv_scan(q, email):
+    """Scan iklan affiliator untuk 1 kata kunci (dipanggil di bawah antrean scan)."""
+    kw = _afvs_kunci(q)
+    if len(kw) < 2:
+        return {"ok": False, "error": "Ketik kata kunci produk minimal 2 huruf."}
+    d = _afvs_muat()
+    lama = d["kw"].get(kw)
+    if lama and not is_admin(email) and time.time() - _tk_epoch(lama.get("t")) < AFVS_SEGAR_DTK:
+        r = afv_analisis(q)
+        r["scan"] = {"cache": True, "t": lama.get("t"), "iklan_meta": lama.get("meta"), "shopee": len(lama.get("aid") or []),
+                     "baru": 0, "pesan": "Kata ini sudah discan dalam 6 jam terakhir — hasilnya dipakai ulang supaya Meta tidak memblokir INTAI."}
+        return r
+    tok = [t for t in kw.split() if len(t) >= 2]
+    utama = kw + " shopee"
+    senada = [kw, "racun shopee " + kw, "spill " + kw, kw + " link"]
+    t0 = time.time()
+    try:
+        mentah, info = mesin.kumpul_iklan_v2(utama, "ID", senada, batas_waktu=40)
+    except mesin.MetaMenahan:
+        menit = max(1, round(mesin.rem_status()["rehat_detik"] / 60))
+        jejak_mesin("ditahan", "afv:" + kw, ket=f"rehat {menit} mnt")
+        return {"ok": False, "ditahan": True,
+                "error": f"Meta sedang membatasi pencarian dari server INTAI (bukan kesalahan kamu). Coba lagi sekitar {menit} menit lagi."}
+    except Exception as e:
+        return {"ok": False, "error": "Scan affiliator gagal: " + str(e)[:100]}
+    rows = []
+    for o in mentah or []:
+        b = _afvs_baris_dari_mentah(o, kw, tok)
+        if b:
+            rows.append(b)
+    jejak_mesin("afv", kw, len(mentah or []), round(time.time() - t0, 1), f"{len(rows)} berlink Shopee")
+    _, arsip = _afv_baris()
+    di_arsip = {str(r.get("archive_id")) for r in arsip}
+    baru = sum(1 for b in rows if b["archive_id"] not in di_arsip)
+    with kunci_afvs:
+        for b in rows:
+            d["rows"][b["archive_id"]] = b
+        d["kw"][kw] = {"t": _iso_kini(), "meta": len(mentah or []), "aid": [b["archive_id"] for b in rows][:400]}
+    threading.Thread(target=_afvs_simpan, daemon=True, name="afvs-simpan").start()
+    r = afv_analisis(q)
+    r["scan"] = {"cache": bool((info or {}).get("cache")), "t": d["kw"][kw]["t"], "iklan_meta": len(mentah or []),
+                 "shopee": len(rows), "baru": baru, "detik": round(time.time() - t0, 1)}
+    return r
+
+
+def afv_scan_antre(q, email):
+    """Sama seperti scan_dengan_antre: 1 scan per akun, ikut batas scan per jam, antre di kunci_scan."""
+    admin = is_admin(email)
+    with _kunci_scan_jalan:
+        if email in SCAN_JALAN:
+            return {"ok": False, "error": "Scan kamu sebelumnya masih berjalan. Tunggu sampai selesai, lalu coba lagi."}
+        if not admin and not _boleh_lupa("scan:" + email, SCAN_PER_JAM, 3600):
+            return {"ok": False, "error": f"Batas {SCAN_PER_JAM} scan per jam tercapai. Coba lagi nanti supaya Meta tidak memblokir INTAI."}
+        SCAN_JALAN.add(email)
+    try:
+        if not kunci_scan.acquire(timeout=SCAN_ANTRE_DTK):
+            return {"ok": False, "error": "Antrean scan sedang penuh (scan otomatis/pengguna lain). Coba lagi beberapa menit lagi."}
+        try:
+            return afv_scan(q, email)
+        except Exception as e:
+            return {"ok": False, "error": "Scan affiliator gagal: " + str(e)[:200]}
+        finally:
+            kunci_scan.release()
+    finally:
+        with _kunci_scan_jalan:
+            SCAN_JALAN.discard(email)
+
+
+# ===== v1.5.6 SHOPEE VIDEO (tagar) — halaman SEO publik sv.shopee.co.id/web/hashtag/<nama>, tanpa login =====
+# Isi per tagar: statistik tagar (total tayangan & jumlah video) + ±30 video (terbaru utk tagar biasa) lengkap dengan
+# penonton/suka/komentar, kreator, caption, dan PRODUK YANG DITAG (nama, harga, terjual). Tidak resmi → gagal = tenang.
+SV_BASIS = "https://sv.shopee.co.id"
+SV_CACHE = OrderedDict()
+kunci_sv = threading.Lock()
+SV_CACHE_DTK = 30 * 60
+SV_UA = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+_RE_SV_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
+
+
+def _sv_tag_nama(s):
+    return re.sub(r"[^0-9a-z]", "", _norm(s))[:40]
+
+
+def _sv_gbr(img):
+    img = str(img or "").strip()
+    if not img:
+        return ""
+    if img.startswith("http"):
+        return img
+    return "https://down-id.img.susercontent.com/file/" + re.sub(r"_tn$", "", img)
+
+
+def _sv_ambil_tagar(nama):
+    """1 halaman tagar → dict ringkas, atau {'galat': ...}. Cache 30 menit per tagar."""
+    nama = _sv_tag_nama(nama)
+    if len(nama) < 2:
+        return {"galat": "nama tagar kosong"}
+    with kunci_sv:
+        c = SV_CACHE.get(nama)
+        if c and time.time() - c[0] < SV_CACHE_DTK:
+            return c[1]
+    try:
+        r = requests.get(f"{SV_BASIS}/web/hashtag/{quote(nama)}", timeout=12,
+                         headers={"User-Agent": SV_UA, "Accept-Language": "id-ID,id;q=0.9", "Accept": "text/html"})
+        if r.status_code != 200:
+            return {"galat": f"HTTP {r.status_code}"}
+        m = _RE_SV_DATA.search(r.text)
+        if not m:
+            return {"galat": "halaman tanpa data (mungkin diblokir)"}
+        pp = (json.loads(m.group(1)).get("props") or {}).get("pageProps") or {}
+        hs = pp.get("hashtag") or {}
+        det = ((hs.get("detail") or {}).get("hashtag")) or {}
+        lst = ((hs.get("hashtagVideos") or {}).get("list")) or []
+    except Exception as e:
+        return {"galat": str(e)[:80]}
+    video = []
+    for x in lst[:40]:
+        me, co = x.get("meta") or {}, x.get("content") or {}
+        ci = me.get("countInfo") or {}
+        pr = co.get("products") or {}
+        produk = []
+        anc = pr.get("anchorProduct") if isinstance(pr, dict) else None
+        lst_p = (pr.get("itemList") if isinstance(pr, dict) else None) or []
+        for p in ([anc] if anc else []) + list(lst_p):
+            if not isinstance(p, dict) or not p.get("itemId"):
+                continue
+            if any(str(q_["itemid"]) == str(p.get("itemId")) for q_ in produk):
+                continue
+            dp = p.get("itemCardDisplayPrice") or {}
+            harga = dp.get("price") or p.get("price")
+            coret = dp.get("strikethroughPrice") or p.get("priceBeforeDiscount")
+            produk.append({"shopid": p.get("shopId"), "itemid": p.get("itemId"), "nama": p.get("name") or "",
+                           "harga": int(harga / 100000) if harga else None,
+                           "harga_coret": int(coret / 100000) if coret and coret > 0 else None,
+                           "diskon": dp.get("discount") or None, "terjual": p.get("sold"),
+                           "gambar": _sv_gbr(p.get("image"))})
+        cap = str(co.get("caption") or "")
+        vd = co.get("video") or {}
+        video.append({"id": me.get("postId"), "kreator": me.get("userName") or "", "nama": me.get("shopeeNickName") or "",
+                      "centang": bool(me.get("isVerified")), "tayang": _int(ci.get("views"), 0) or 0,
+                      "suka": _int(ci.get("likes"), 0) or 0, "komen": _int(ci.get("comments"), 0) or 0,
+                      "unggah": int((me.get("ctime") or 0) / 1000) or None, "caption": cap[:400],
+                      "durasi": round((vd.get("duration") or 0) / 1000) or None, "cover": vd.get("cover") or "",
+                      "url": f"{SV_BASIS}/share-video/{quote(str(me.get('postId') or ''), safe='')}",
+                      "produk": produk[:6], "jml_produk": (pr.get("count") if isinstance(pr, dict) else None) or len(produk),
+                      "tagar": [t.lower() for t in re.findall(r"#([0-9A-Za-z_]{2,40})", cap)][:15]})
+    hasil = {"nama": det.get("content") or nama, "id": det.get("hashtagId"), "resmi": bool(det.get("isOfficial")),
+             "tayang": _int(det.get("viewCount"), 0) or 0, "video_total": _int(det.get("postCount"), 0) or 0,
+             "video": video, "jam": _iso_kini()}
+    with kunci_sv:
+        SV_CACHE[nama] = (time.time(), hasil)
+        while len(SV_CACHE) > 200:
+            SV_CACHE.popitem(last=False)
+    return hasil
+
+
+def sv_tagar(q):
+    """Shopee Video untuk 1 kata kunci: tagar utama + 2 tagar terkait yang paling sering muncul di caption video."""
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:60]
+    utama = _sv_tag_nama(q)
+    if len(utama) < 2:
+        return {"ok": False, "error": "Ketik kata kunci produk minimal 2 huruf."}
+    t0 = time.time()
+    tg = [_sv_ambil_tagar(utama)]
+    if tg[0].get("galat"):
+        return {"ok": False, "q": q, "error": "Shopee Video tidak bisa dibaca saat ini (" + tg[0]["galat"] + "). Coba lagi nanti."}
+    tok = [t for t in _norm(q).split() if len(t) >= 3] or [utama[:4]]
+    hit = {}
+    for v in tg[0]["video"]:
+        for t in set(v["tagar"]):
+            if t != utama and any(k in t for k in tok):
+                hit[t] = hit.get(t, 0) + 1
+    terkait = [t for t, n in sorted(hit.items(), key=lambda kv: -kv[1]) if n >= 2][:6]
+    if terkait:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            for h in ex.map(_sv_ambil_tagar, terkait[:2]):
+                if not h.get("galat") and h.get("video"):
+                    tg.append(h)
+    video, lihat = [], set()
+    for h in tg:
+        for v in h["video"]:
+            if v["id"] and v["id"] not in lihat:
+                lihat.add(v["id"])
+                video.append(dict(v, dari=h["nama"]))
+    produk = {}
+    for v in video:
+        for p in v["produk"]:
+            k = f"{p['shopid']}.{p['itemid']}"
+            a = produk.setdefault(k, dict(p, video=0, kreator=set(), tayang=0, suka=0,
+                                          url=f"{SHP_BASIS}/product/{p['shopid']}/{p['itemid']}"))
+            if not a.get("nama") and p.get("nama"):   # produk tambahan hanya ber-ID → isi dari video yg menjadikannya produk utama
+                a.update({k_: p.get(k_) for k_ in ("nama", "harga", "harga_coret", "diskon", "terjual", "gambar")})
+            a["video"] += 1
+            a["kreator"].add(v["kreator"])
+            a["tayang"] += v["tayang"]
+            a["suka"] += v["suka"]
+    pr = []
+    for a in produk.values():
+        a = dict(a, kreator=len(a["kreator"]))
+        pr.append(a)
+    pr.sort(key=lambda a: (-a["kreator"], not a.get("nama"), -a["tayang"], -(a.get("terjual") or 0)))
+    wkt = [v["unggah"] for v in video if v["unggah"]]
+
+    def laju(h):   # video per jam di sampel tagar (tagar biasa = unggahan terbaru) → ukuran kepadatan kreator
+        w = sorted(v["unggah"] for v in h["video"] if v["unggah"])
+        if len(w) < 5 or h["resmi"]:
+            return None
+        jam = (w[-1] - w[0]) / 3600
+        return round(len(w) / jam, 1) if jam >= 0.05 else None
+    return {"ok": True, "q": q,
+            "tagar": [{"nama": h["nama"], "resmi": h["resmi"], "tayang": h["tayang"], "video_total": h["video_total"],
+                       "rata": round(h["tayang"] / h["video_total"]) if h["video_total"] else None,
+                       "sampel": len(h["video"]), "per_jam": laju(h)} for h in tg],
+            "terkait": terkait, "video": sorted(video, key=lambda v: -v["tayang"])[:60], "jumlah_video": len(video),
+            "produk": pr[:40], "jumlah_produk": len(pr),
+            "video_berproduk": sum(1 for v in video if v["produk"]),
+            "rentang": [min(wkt), max(wkt)] if wkt else None, "detik": round(time.time() - t0, 1), "jam": _iso_kini()}
+
+
+# ===== v1.5.7 AI (OPSIONAL) — asisten, BUKAN sumber angka =====
+# Prinsip: angka (tayangan, terjual, umur iklan, jumlah affiliator) tetap 100% dari Meta/Shopee.
+# AI hanya MENILAI (relevansi abu-abu, peran pengiklan, sudut jualan) & MENULIS (naskah). Tanpa kunci / kuota
+# habis / galat → semua fitur kembali ke mesin aturan (tidak ada yang gagal, scan tidak melambat).
+# Kunci disimpan di Environment Render: INTAI_GEMINI_KUNCI (utama), INTAI_GROQ_KUNCI (cadangan).
+AI_GEMINI = (os.environ.get("INTAI_GEMINI_KUNCI") or os.environ.get("GEMINI_API_KEY") or "").strip()
+AI_GROQ = (os.environ.get("INTAI_GROQ_KUNCI") or os.environ.get("GROQ_API_KEY") or "").strip()
+AI_POLL = os.environ.get("INTAI_AI_POLLINATIONS") == "1"   # HANYA untuk uji lokal (tanpa kunci, tidak andal)
+AI_MODEL_GEMINI = [m for m in dict.fromkeys([os.environ.get("INTAI_GEMINI_MODEL") or "", "gemini-flash-lite-latest",
+                                             "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"]) if m]
+AI_MODEL_GROQ = [m for m in dict.fromkeys([os.environ.get("INTAI_GROQ_MODEL") or "", "llama-3.3-70b-versatile",
+                                           "llama-3.1-8b-instant"]) if m]
+AI_RPM = {"gemini": int(os.environ.get("INTAI_AI_RPM") or 10), "groq": 25, "poll": 2}
+AI_HARIAN_SISTEM = int(os.environ.get("INTAI_AI_HARIAN") or 700)    # hakim relevansi + peran (otomatis) per hari
+AI_PER_AKUN = int(os.environ.get("INTAI_AI_PER_AKUN") or 30)        # naskah + sudut (diminta user) per akun per hari
+kunci_ai = threading.Lock()
+AI_STAT = {"hari": "", "sistem": 0, "akun": {}, "n": {}, "gagal": 0, "galat": None, "galat_t": None,
+           "terakhir": None, "terakhir_t": None}
+_AI_JENDELA = {"gemini": [], "groq": [], "poll": []}
+_AI_MODEL_MATI = set()
+_AI_REHAT = {}   # penyedia → epoch boleh dicoba lagi (429 / kuota habis)
+
+
+def ai_aktif():
+    return bool(AI_GEMINI or AI_GROQ or AI_POLL)
+
+
+def _ai_hari():
+    h = datetime.now(WIB).strftime("%Y-%m-%d")
+    if AI_STAT["hari"] != h:
+        AI_STAT.update(hari=h, sistem=0, akun={}, n={}, gagal=0)
+    return h
+
+
+def ai_jatah(email, tugas):
+    """(boleh, pesan). Tugas user (naskah/sudut) dibatasi per akun; tugas sistem dibatasi global."""
+    with kunci_ai:
+        _ai_hari()
+        if tugas in ("hakim", "peran"):
+            return (AI_STAT["sistem"] < AI_HARIAN_SISTEM), "Jatah AI otomatis hari ini habis."
+        if email and is_admin(email):
+            return True, ""
+        n = AI_STAT["akun"].get(email or "", 0)
+        return (n < AI_PER_AKUN), f"Jatah AI kamu hari ini ({AI_PER_AKUN}×) sudah habis — besok terisi lagi. Versi tanpa AI tetap bisa dipakai."
+
+
+def _ai_hitung(email, tugas, penyedia):
+    with kunci_ai:
+        _ai_hari()
+        if tugas in ("hakim", "peran"):
+            AI_STAT["sistem"] += 1
+        else:
+            AI_STAT["akun"][email or ""] = AI_STAT["akun"].get(email or "", 0) + 1
+        AI_STAT["n"][penyedia] = AI_STAT["n"].get(penyedia, 0) + 1
+        AI_STAT["terakhir"], AI_STAT["terakhir_t"] = penyedia, _iso_kini()
+
+
+def _ai_slot(p, tunggu_maks=3.0):
+    """Batas permintaan/menit per penyedia (free tier). Penuh → tunggu sebentar, lalu menyerah."""
+    akhir = time.time() + tunggu_maks
+    while True:
+        with kunci_ai:
+            kini = time.time()
+            if _AI_REHAT.get(p, 0) > kini:
+                return False
+            j = _AI_JENDELA[p] = [t for t in _AI_JENDELA[p] if kini - t < 60]
+            if len(j) < AI_RPM.get(p, 10):
+                j.append(kini)
+                return True
+        if time.time() >= akhir:
+            return False
+        time.sleep(0.4)
+
+
+def _ai_json(teks):
+    t = str(teks or "").strip()
+    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.I).strip()
+    for a, b in (("{", "}"), ("[", "]")):
+        i, j = t.find(a), t.rfind(b)
+        if i >= 0 and j > i:
+            try:
+                return json.loads(t[i:j + 1])
+            except Exception:
+                continue
+    return None
+
+
+def _ai_gemini(sistem, prompt, maks, suhu, batas):
+    galat = None
+    for m in AI_MODEL_GEMINI:
+        if m in _AI_MODEL_MATI:
+            continue
+        gc = {"temperature": suhu, "maxOutputTokens": maks, "responseMimeType": "application/json",
+              "thinkingConfig": {"thinkingBudget": 0}}
+        body = {"systemInstruction": {"parts": [{"text": sistem}]},
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": gc}
+        r = None
+        for _ in range(2):
+            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
+                              headers={"x-goog-api-key": AI_GEMINI, "Content-Type": "application/json"},
+                              json=body, timeout=batas)
+            if r.status_code == 400 and "think" in r.text.lower() and "thinkingConfig" in gc:
+                gc.pop("thinkingConfig", None)   # model baru menolak thinkingBudget → kirim ulang tanpa itu
+                continue
+            break
+        if r.status_code == 404:
+            _AI_MODEL_MATI.add(m)
+            continue
+        if r.status_code == 429:
+            _AI_REHAT["gemini"] = time.time() + 60
+            return None, "Gemini: kuota/menit habis (429)"
+        if r.status_code in (401, 403):
+            return None, f"Gemini: kunci ditolak ({r.status_code})"
+        if r.status_code != 200:
+            galat = f"Gemini {m}: HTTP {r.status_code}"
+            continue
+        try:
+            d = r.json()
+            teks = "".join(p.get("text", "") for p in d["candidates"][0]["content"]["parts"])
+            return teks, "gemini:" + m
+        except Exception:
+            galat = f"Gemini {m}: jawaban kosong"
+            continue
+    return None, galat or "Gemini: tidak ada model yang tersedia"
+
+
+def _ai_openai(url, kunci, models, sistem, prompt, maks, suhu, batas, nama, json_mode=True):
+    galat = None
+    for m in models:
+        if (nama + m) in _AI_MODEL_MATI:
+            continue
+        body = {"model": m, "temperature": suhu, "max_tokens": maks,
+                "messages": [{"role": "system", "content": sistem}, {"role": "user", "content": prompt}]}
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
+        if nama == "poll":   # uji lokal: model penalar, batas 1.500 token
+            body.update(reasoning_effort="low", max_tokens=min(maks, 1500), seed=secrets.randbelow(10 ** 6))   # seed: lewati cache jawaban
+        hd = {"Content-Type": "application/json"}
+        if kunci:
+            hd["Authorization"] = "Bearer " + kunci
+        r = requests.post(url, headers=hd, json=body, timeout=batas)
+        if r.status_code == 404 or (r.status_code == 400 and "model" in r.text.lower() and "decommission" in r.text.lower()):
+            _AI_MODEL_MATI.add(nama + m)
+            continue
+        if r.status_code == 429:
+            _AI_REHAT[nama] = time.time() + 60
+            return None, f"{nama}: kuota/menit habis (429)"
+        if r.status_code in (401, 403):
+            return None, f"{nama}: kunci ditolak ({r.status_code})"
+        if r.status_code != 200:
+            galat = f"{nama} {m}: HTTP {r.status_code}"
+            continue
+        try:
+            return r.json()["choices"][0]["message"]["content"], f"{nama}:{m}"
+        except Exception:
+            galat = f"{nama} {m}: jawaban kosong"
+    return None, galat or f"{nama}: tidak ada model"
+
+
+def ai_panggil(sistem, prompt, tugas="umum", email=None, maks=1500, suhu=0.3, batas=20, tunggu_slot=3.0):
+    """→ (objek_json | None, info). Urutan: Gemini → Groq → (Pollinations bila diizinkan untuk uji)."""
+    if not ai_aktif():
+        return None, {"penyedia": None, "error": "AI belum diaktifkan (kunci belum diisi admin)."}
+    boleh, pesan = ai_jatah(email, tugas)
+    if not boleh:
+        return None, {"penyedia": None, "error": pesan, "jatah": True}
+    calon = []
+    if AI_GEMINI:
+        calon.append(("gemini", lambda: _ai_gemini(sistem, prompt, maks, suhu, batas)))
+    if AI_GROQ:
+        calon.append(("groq", lambda: _ai_openai("https://api.groq.com/openai/v1/chat/completions", AI_GROQ,
+                                                 AI_MODEL_GROQ, sistem, prompt, maks, suhu, batas, "groq")))
+    if AI_POLL:
+        calon.append(("poll", lambda: _ai_openai("https://text.pollinations.ai/openai", "", ["openai"],
+                                                 sistem, prompt + "\n\nBalas HANYA JSON valid.", maks, suhu,
+                                                 max(batas, 90), "poll", json_mode=False)))
+    galat = []
+    for nama, f in calon:
+        if not _ai_slot(nama, tunggu_slot):
+            galat.append(nama + ": sedang penuh")
+            continue
+        try:
+            teks, info = f()
+        except Exception as e:
+            teks, info = None, f"{nama}: {str(e)[:80]}"
+        if teks:
+            obj = _ai_json(teks)
+            if obj is not None:
+                _ai_hitung(email, tugas, info)
+                return obj, {"penyedia": info}
+            info = f"{nama}: jawaban bukan JSON"
+        galat.append(info)
+    with kunci_ai:
+        AI_STAT["gagal"] += 1
+        AI_STAT["galat"], AI_STAT["galat_t"] = " · ".join(str(g) for g in galat)[:300], _iso_kini()
+    return None, {"penyedia": None, "error": "AI sedang tidak bisa dipakai (" + (galat[-1] if galat else "?") + ")."}
+
+
+def ai_status(email=None):
+    with kunci_ai:
+        _ai_hari()
+        d = {"ok": True, "aktif": ai_aktif(), "jatah_akun": AI_PER_AKUN,
+             "terpakai_akun": AI_STAT["akun"].get(email or "", 0)}
+        if email and is_admin(email):
+            d.update(penyedia=[p for p, ada in (("Gemini", AI_GEMINI), ("Groq", AI_GROQ), ("Pollinations (uji)", AI_POLL)) if ada],
+                     model_gemini=[m for m in AI_MODEL_GEMINI if m not in _AI_MODEL_MATI],
+                     hari=AI_STAT["hari"], sistem=AI_STAT["sistem"], batas_sistem=AI_HARIAN_SISTEM,
+                     per_penyedia=dict(AI_STAT["n"]), gagal=AI_STAT["gagal"], galat=AI_STAT["galat"],
+                     galat_t=AI_STAT["galat_t"], terakhir=AI_STAT["terakhir"], terakhir_t=AI_STAT["terakhir_t"],
+                     akun_hari_ini=len(AI_STAT["akun"]), hakim_terakhir=AI_STAT.get("hakim_terakhir"),
+                     hakim_mode=AI_HAKIM_MODE)
+        return d
+
+
+# --- cache penilaian AI (disimpan terkompres di intai_setelan; tanpa SQL baru) ---
+AI_CACHE = {"ai_relevan": None, "ai_peran": None}
+_AI_CACHE_KOTOR = set()
+kunci_ai_cache = threading.Lock()
+AI_CACHE_MAKS = 5000
+
+
+def _ai_cache(nama):
+    with kunci_ai_cache:
+        if AI_CACHE[nama] is None:
+            try:
+                ok, v = setelan_baca(nama)
+                AI_CACHE[nama] = OrderedDict(_tk_buka(v) if (ok and v) else {})
+            except Exception:
+                AI_CACHE[nama] = OrderedDict()
+        return AI_CACHE[nama]
+
+
+def _ai_cache_isi(nama, isi):
+    c = _ai_cache(nama)
+    with kunci_ai_cache:
+        for k, v in isi.items():
+            c[k] = v
+            c.move_to_end(k)
+        while len(c) > AI_CACHE_MAKS:
+            c.popitem(last=False)
+        _AI_CACHE_KOTOR.add(nama)
+    threading.Thread(target=_ai_cache_simpan, daemon=True, name="ai-cache").start()
+
+
+def _ai_cache_simpan():
+    time.sleep(2)   # gabungkan beberapa penulisan beruntun
+    with kunci_ai_cache:
+        kotor = list(_AI_CACHE_KOTOR)
+        _AI_CACHE_KOTOR.clear()
+        salinan = {n: dict(AI_CACHE[n] or {}) for n in kotor}
+    for n, v in salinan.items():
+        try:
+            setelan_tulis(n, _tk_bungkus(v))
+        except Exception:
+            pass
+
+
+def _ai_ringkas_iklan(snap, o, n=320):
+    snap = snap or {}
+    judul = re.sub(r"\s+", " ", bersih_tpl(_t(snap, "title"))).strip()
+    body = re.sub(r"\s+", " ", bersih_tpl(_t(snap, "body"))).strip()
+    ld = re.sub(r"\s+", " ", bersih_tpl(_t(snap, "link_description"))).strip()
+    kartu = " / ".join(re.sub(r"\s+", " ", str(c.get("title") or "")).strip()
+                       for c in (snap.get("cards") or [])[:3] if isinstance(c, dict) and c.get("title"))
+    hal = o.get("page_name") or snap.get("page_name") or ""
+    kat = ", ".join(str(x) for x in (snap.get("page_categories") or o.get("categories") or [])[:2])
+    dom = urlparse(str(snap.get("link_url") or "")).netloc.replace("www.", "")
+    bag = [f"Halaman: {hal}" + (f" ({kat})" if kat else "")]
+    if judul:
+        bag.append("Judul: " + judul[:100])
+    if kartu:
+        bag.append("Kartu: " + kartu[:140])
+    if body:
+        bag.append("Teks: " + body[:n])
+    if ld:
+        bag.append("Deskripsi link: " + ld[:100])
+    if dom:
+        bag.append("Link: " + dom)
+    return " | ".join(bag)
+
+
+# --- (1) HAKIM RELEVANSI untuk zona abu-abu (skor aturan 15–59) ---
+AI_HAKIM_BAWAH, AI_HAKIM_ATAS, AI_HAKIM_MAKS = 15, 59, 36
+# "bayangan" (bawaan): putusan AI hanya DITAMPILKAN sebagai pendapat kedua — label/angka tetap dari aturan.
+# Alasan: uji 100 kasus emas zona abu-abu (16 Okt, model uji gpt-oss-20b) → aturan 98/100, aturan+AI 77/100.
+# Admin boleh menyetel INTAI_AI_HAKIM=ubah HANYA bila /api/admin/ai-uji membuktikan AI (Gemini) ≥ aturan.
+AI_HAKIM_MODE = (os.environ.get("INTAI_AI_HAKIM") or "bayangan").strip().lower()
+if AI_HAKIM_MODE not in ("bayangan", "ubah", "mati"):
+    AI_HAKIM_MODE = "bayangan"
+# 100 kasus emas zona abu-abu (dari riset/mesin/uji_kasus.py): [kata, judul, teks, halaman, kategori, link, deskripsi, label_benar]
+AI_EMAS = json.loads(r'''[["hijab","Helm Hijab Full Visor","helm nyaman","Toko X",null,"",null,"Longgar"],["kopi","Meja Teras Coffee Table","kayu jati","Toko X",null,"",null,"Longgar"],["kopi","Mesin Kopi Espresso","Rp2jt","Toko X",null,"",null,"Longgar"],["kopi","Pemanis untuk teh, kopi, matcha","0 kalori Rp50rb","Toko X",null,"",null,"Longgar"],["sepatu","Rak Sepatu 5 Susun","Rp99rb","Toko X",null,"",null,"Longgar"],["tas","Bukan tas biasa","ini dompet Rp59rb","Toko X",null,"",null,"Longgar"],["tas","Bikin tas makin gemes","promo Rp35rb","Toko X",["Burgers"],"",null,"Longgar"],["lampu tidur","Lampu Tidur Aesthetic","Rp80rb","Toko X",["Bank"],"",null,"Longgar"],["kecantikan","Perawatan kecantikan kendaraan kamu","coating Rp500rb","Toko X",["Servis Otomotif"],"",null,"Longgar"],["skincare","Skincare Glowing BPOM","Rp99rb","Toko X",["Servis Otomotif"],"",null,"Longgar"],["kaos","Jersey custom 4 jam","BONUS KAOS KAKI untuk timmu Rp99rb","Toko X",null,"",null,"Longgar"],["kaos","Bali Tee Shop","Original Bali t-shirt, cotton, made in Bali. Visit our shop in Kuta","Toko X",null,"",null,"Relevan"],["kaos","Pemutih Kaos Putih","bikin kaos putih kinclong lagi, Rp15rb","Toko Y",null,"",null,"Longgar"],["madu","","jom madu asli dari habib, whatsapp kami","Toko X",null,"",null,"Longgar"],["rak sepatu","Portable Dehumidifier Ravelle","Lemari lembap? Rak sepatu mulai bau apek? Pakai dehumidifier ini Rp300rb. Cocok di lemari, rak sepatu, kabinet","Toko X",null,"",null,"Longgar"],["rak sepatu","","Rak dinding minimalis #raksepatu Rp99rb","Toko X",null,"",null,"Relevan"],["helm","","Toko helm balap di Jepang dekat Haneda","ヘルメット 東京",null,"",null,"Longgar"],["helm","","Kadang yang bikin capek itu bukan karena aktivitasnya padat. Tapi karena di sela-sela aktivitas selalu ada momen benerin hijab, mulai dari habis pakai helm, kena angin","Toko X",["Clothing (Brand)"],"",null,"Longgar"],["kosmetik","Foundation Matte 24 Jam","Coverage tinggi, shade cocok kulit sawo matang Rp89rb","Toko X",null,"",null,"Relevan"],["kosmetik","inspirasi kamar aesthethic","Rak Laci Serbaguna Lemari Plastik – Kotak Penyimpanan Pakaian, Kosmetik & Aksesoris Rp89rb","Toko X",null,"",null,"Longgar"],["kemeja","Hem Batik Pria","Hem lengan panjang katun Rp120rb","Toko X",null,"",null,"Relevan"],["hp","","{COD} HP Mainan Musik Anak Lampu 45 Tombol Rp35rb","Toko X",null,"",null,"Longgar"],["hp","","Pakai maps di mobil jadi lebih nyaman tanpa harus pegang HP terus Rp35rb","Toko X",null,"",null,"Longgar"],["hp","","Numpuk foto di galeri? Cetak jadi album, sekarang HP lega Rp50rb","Idphotobook",null,"",null,"Longgar"],["laptop","","BAGSMART Mini Backpack Laptop 9.7Inch ransel mini Rp199rb","Toko X",null,"",null,"Longgar"],["laptop","Feel Like Yourself Again","I came to on the floor of a HyVee in Topeka, Kansas. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it. I opened my laptop and read about it.  checkout now","Toko X",null,"",null,"Longgar"],["popok","Efektif Cegah & Redakan Ruam Popok","Ruam bikin si Kecil rewel? Expert Care Diaper Rash Cream Zinc Oxide Rp45rb","Toko X",null,"",null,"Longgar"],["popok","","Ruam popok iritasi vs jamur. Lindungi kulit bayi dengan Kinderen Diaper Rash Cream","Toko X",null,"",null,"Longgar"],["kasur","","Air kotor jadi bukti, kasur yang kelihatan bersih bisa menipu! Untung ada Heloklin","Heloklin Indonesia",["Perawatan di Rumah"],"",null,"Longgar"],["kasur","Hydro Vacuum","Hydro Vacuum membersihkan debu tungau di kasur, gorden, bantal","Toko Y",["Household supplies"],"",null,"Longgar"],["kursi","","Ready sarung kursi Futura ketat putih 100pcs Wa 0895","Sahrul konveksi",null,"",null,"Longgar"],["meja","","EDON Air Cooler Mini viral! Cocok buat: ✔️ Kamar kecil / kos ✔️ Meja kerja / meja belajar. Udah banyak yang pakai di kamar & meja kerja! Rp99rb #aircooler","Toko X",null,"",null,"Longgar"],["meja","","Open Order Taplak Meja Bulat bahan lotto tebal Rp35rb","Sahrul konveksi",null,"",null,"Longgar"],["meja","Dracaena Fragrans Aesthetic","Tanaman Hias Meja Aesthetic Bambu Hoki Rp45rb","Toko X",null,"",null,"Longgar"],["meja","","Siap-siap kenalan sama warna baru yang bakal bikin meja kerja kamu makin aesthetic #laptoplifestyle","Axioo Indonesia",["Phone/Tablet"],"",null,"Longgar"],["sambal","","Crispy Fried Duck. Golden crunch, sambal kick. #tanahresto","TANAH Restaurant",["Restaurant"],"",null,"Longgar"],["sambal","","Tumpeng Tampah untuk 10 orang. Isiannya nasi kuning, ayam goreng, telur balado, perkedel dan sambal","Tumpeng25rb",null,"",null,"Longgar"],["sambal","","Pilihan menunya hari ini: Ikan Gurame Panggang, Udang Sambal Lado, Cumi Goreng","Lemburkuringjakarta",["Diner"],"",null,"Longgar"],["sambal","","Crispy Fried Duck. Golden crunch, sambal kick. #tanahresto #restolombok","TANAH Restaurant",["Restaurant"],"",null,"Longgar"],["teh","","Alhamdulillah, bahagia dapet tanggapan positif dari Teh Vira & A Aldi, kasur sudah sampai Rp2jt","Supermarket Mebel",null,"",null,"Longgar"],["teh","Solusi untuk Bau Mulut yang Sering Kambuh","Permen teh hijau penyegar napas, praktis dibawa ke mana saja. Order sekarang gratis ongkir!","Permen Nafas Segar Teh Hijau",["Health/Beauty"],"",null,"Longgar"],["jam tangan","Smart Watch Pria","Watch AMOLED 1ATM strap logam Rp299rb","Toko X",null,"",null,"Relevan"],["panci","","Cairan Ajaib Pembersih Kerak Panci & Wajan Rp25rb","Toko X",null,"",null,"Longgar"],["celana","","Bunda, waktunya cek stok popok si kecil! Sweety Silver Pants – Popok Bayi Celana Jumbo Pack. Lagi cari popok celana bayi? Model celana praktis #popokcelana","Toko X",null,"",null,"Longgar"],["celana","Quick Dry & Breathable Running Pants","Dengan bahan anti sobek dan jahitan kuat, Running Pants ini memang dibuat untuk pria aktif yang jogging rutin & suka outdoor.","Elfs Active",["Outdoor & Sporting Goods Company"],"",null,"Relevan"],["obat lambung","Lambung Tenang, Hidup Lebih Nyaman!","Sudah coba banyak cara tapi masih nyeri ulu hati, asam lambung naik. Asam lambung kambuh lagi? Coba ramuan alami ini","JSR Store",["Herbal Medicine Store"],"",null,"Relevan"],["obat lambung","Diskusi bareng yuk","Sop Subarashi dapat membantu perkembangan anak autis. Pemesanan produk dan Konsultasi, DM kami. #sopsubarashi #autisme #anakautis #autis #autoimun #gerd #maag #asamlambung #ginjal #diabetes #hati #nyerisendi #otak #tulang #hipertensi","Konnichiwa.AFCAllstars",["Food & Drink"],"",null,"Longgar"],["obat batuk","","Batuk berdahak tak kunjung reda? Sirup herbal pereda batuk untuk keluarga, batuk kering juga bisa","Herbal Nusantara",null,"",null,"Relevan"],["sunscreen","Serum Brightening Glow","Serum niacinamide untuk mencerahkan, toner pH balance, paket skincare lengkap","Glow Beauty",null,"",null,"Longgar"],["sunscreen","Set Pemutih Tabir Surya Vitamin C","SPF 50+ PA+++ perlindungan maksimal dari sinar UV, Rp89rb","Vibrant Glamour Indonesia",null,"",null,"Relevan"],["sprei","Seprai Katun Jepang Anti Luntur","Bed cover dan seprai ukuran 160x200 lembut adem","Rumah Tidur",null,"",null,"Relevan"],["rice cooker","Magic Com 3in1 Hemat Listrik","Penanak nasi serbaguna, bisa kukus dan masak","Dapur Hemat",null,"",null,"Relevan"],["rice cooker","Paket Bali 3D2N","Liburan hemat ke Bali, hotel + rice cooker di kamar","Bali Trip",["Tour Agency"],"",null,"Longgar"],["rice cooker","Connector sesuai standar global","Holland Plug untuk rice cooker, setrika, dispenser. Diproduksi lokal, standar SNI","PT Kabel X",["Telecommunication company"],"",null,"Longgar"],["kaos kaki","Kaus Kaki Anti Bau","Socks katun premium isi 6 pasang","Sock Store",null,"",null,"Relevan"],["kopi diet","","Kapok minuman diet yang rasanya kayak obat? Coba yang ini, enak dan bikin kenyang","Curvie Coffee",["Grocery Store"],"",null,"Longgar"],["kopi diet","","Lakukan diet intermitten fasting dengan minum kopi ini, badan tidak lemes","Herbal Life",["Health/beauty"],"",null,"Relevan"],["kopi diet","Promo Spesial Pagi","Menu sarapan lengkap, kopi susu gula aren, roti bakar, nasi goreng. Buat yang lagi diet juga ada salad","Warung Pagi",["Café"],"",null,"Longgar"],["serum wajah","Glowing nggak putus","Scarlett Body Serum si wangi tahan lama bikin kulit badan cerah","Scarlett",null,"",null,"Longgar"],["serum wajah","Brightening Cream Wajah","Krim untuk kulit wajah kusam, moisturizer ringan","Skin Lab",null,"",null,"Longgar"],["serum wajah","Serum Emas Anti Flek Hitam","Serum untuk flek dan noda hitam","dr. Shindy",null,"",null,"Relevan"],["serum wajah","Checkout Sekarang!","SERUM AZARINE CUMA 30 RIBU AN","AzarineOfficial",["Health/beauty"],"",null,"Relevan"],["cokelat","","Emang boleh softlens coklat senatural ini? Yes, tipe Muted Choco emang natural banget! Perfect buat kamu yang mau pake softlens ke sekolah #softlenscoklat #softlensnatural","Lens by Seoul",["Health/Beauty"],"",null,"Longgar"],["cokelat","Vitamin Lengkap, Tulang Kuat","Tablet kunyah yang mengandung Kalsium dan Vitamin D dengan rasa coklat favorit anak-anak! #Fitkom","Fitkom Ranger Indonesia",null,"",null,"Longgar"],["cokelat","","Cobain MAIJI Roti Mentega 60Gr! Tersedia 4 varian favorit: Coklat, Cheese, Strawberry & Blueberry. #roti #coklat","Rekomendasi Belanja",null,"",null,"Longgar"],["dompet","Shopee Indonesia | Belanja Online Terlengkap & Terpercaya","Padahal ada solusi namanya tas..  Tapi bukan cewek namanya kalau gak gini. Bawa kunci mobil, earphone, card holder, jepitan, kacamata.. #Hanasui #HanasuiPowerSerum","Skincare Hanasui",["Health & Beauty"],"",null,"Longgar"],["casing hp","","Glow up HP kamu dengan case ungu glitter nan mewah ini! Tampilannya super aesthetic, bahan tebal, order sekarang","Calista case is here",["Shopping & Retail"],"",null,"Relevan"],["casing hp","","Softcase. Stylish. Support MagSafe. Paika Case ngasih perlindungan maksimal buat iPhone kamu","Wandercase Official Indonesia",["Accessories"],"",null,"Relevan"],["casing hp","","Tangan kamu bakal lebih rileks dengan adanya sandaran bintang magnetik di casing pink polkadot ini. Ready stock! #CasingHP #CaseLucu https://s.shopee.co.id/6L4h75Vmws","Badranaya Web Studio",null,"",null,"Relevan"],["casing hp","","iPhone 13 128gb all operator 5jutaan aja. Free adaptor ugreen softcase antigores dan iCloud. Stok terbatas!","AsA Store Kisaran",null,"",null,"Longgar"],["sepeda","","GA SEMUA BAHAN ALAM AMPUH Kalau diolah dengan Benar, awet mudanya sampe cucu cicit #Flekhitam #pencerah #cycling #running #cyclist #sepeda #jalankaki #lari #runner","Puji Sopandi - Natural Product Development",["Kesehatan & Kecantikan"],"",null,"Longgar"],["sepeda","1 HARI TELAH BERLALU!!!","Viona by Bonita bikin heboh di PRJ Surabaya! Promonya pecah: Buy 1 Get 1. Menangkan kulkas, mesin cuci, kompor, sepeda listrik, dispenser, dan puluhan hadiah menarik","Viona by Bonita",["Product/service"],"",null,"Longgar"],["sepeda","BISA BAYAR DI TEMPAT (COD)","Sering merasa pegal saat bersepeda jarak jauh? Ganti sadel sepeda Anda. Busa foam empuk dan desain ergonomis","Toko Serbaguna Plus",["Business"],"",null,"Longgar"],["minyak kayu putih","Jual Jompo Keychain by Habibie Craft Gantungan kunci freshcare fresh care kayu putih lucu kekinian viral imut sakura pink bag Charm tas hiasan | Shopee Indonesia","Rekomendasi bag charm edisi lucu","Promo Tertawa Saja",["Product/service"],"",null,"Longgar"],["baju anak","","Review skincare anak viral udah pake ini aja bund Body Lotion: https://s.shopee.co.id/x Body Wash: https://s.shopee.co.id/y Detergen Baju Anak: https://s.shopee.co.id/z","Info Produk Diskon Setiap Hari",["Business"],"",null,"Longgar"],["masker wajah","Beli ZALA Gummy, GRATIS Masker Wajah! (Stok Terbatas)","Pusing atasi FLEK HITAM membandel? ZALA Gummy Collagen hadir dengan formula premium 2400mg Collagen.","Gerai Beauty",["Topic"],"",null,"Longgar"],["masker wajah","","Penggunaan face shield bisa lebih membantu pencegahan Covid-19. Gunakanlah face shield bersama dengan masker, pastikan pas dengan wajah. #ProtokolKesehatan","Gugus Tugas Covid-19 Provinsi NTT",["Public Service"],"",null,"Longgar"],["kerudung","Promo Modal Viscose Polos Hanya 14.000-an!","STOP SCROLLING! Cari supplier bahan hijab & pashmina premium yang ramah budget produksi? Modal Viscose jawabannya!","V-TEX",["Business"],"",null,"Longgar"],["kerudung","Bros Korea Premium Motif Bunga Mewah Elegan Kebaya Hijab Jilbab Jas - GEUM GE01B022","Dibuat dengan detail rapi, cocok untuk acara formal.","geum.jewelry",["Jewelry/watches"],"",null,"Longgar"],["kerudung","","Bros Korea Premium Motif Bunga Mewah Elegan Kebaya Hijab Jilbab Jas - GEUM GE01B022\n\nDibuat dengan bahan premium secara handmade dan dilapisi Emas 18K.\n\n#aksesoriswanita #broshijab #brosjilbab #brospremium","geum.jewelry",["Profile"],"",null,"Longgar"],["stroller","Diaper bag favorit modern parents","Stroller hook terpisah bisa ketinggalan atau hilang. Dengan diaper bag Papamama Clio yang punya built-in stroller hook, nggak perlu khawatir.","Papamama",["Baby goods/kids goods"],"",null,"Longgar"],["stroller","Bayi Anti Gerah di Stroller","Quokka Stroller Pad bahan cooling, bayi adem di stroller seharian. Diskon 25%.","Quokka Baby Indonesia",["Baby goods/kids goods"],"",null,"Longgar"],["bantal","","Quick Clean Hydro Vacuum membersihkan rumah mulai dari (kasur, lantai, gorden, furniture, bantal) jadi bebas tungau. Order sekarang gratis ongkir.","Quick Clean Indonesia",["Home goods store"],"",null,"Longgar"],["alat pancing","Pancing Set Lengkap","Pancing set lengkap joran + reel + senar, siap mancing. COD.","Toko Mancing",["Sporting goods store"],"",null,"Relevan"],["alat pancing","","Beli di sini: https://s.shopee.co.id/4Vd8n3eL9s #setpancing #alatpancing #mancingmania #hobimancing #pemancingindonesia #perlengkapanmancing #mancingikan #hobioutdoor #racunbelanja #barangunik","Cuan Harian",["Shopping & retail"],"",null,"Relevan"],["kamera","","Harga Ambyar https://s.shopee.co.id/x Mini Action Camera Portable 4K anti air, cocok buat vlog.","Sinta Herlina",["Personal blog"],"",null,"Relevan"],["mukena","Udah Gak Perlu Buang Mukenah yang Berjamur Lagi","Mukenah udah bertahun-tahun dipakai dan gak bisa dihilangkan jamurnya? tenang ada penghilang noda kain dari Klinbos. Yuk checkout sekarang!","Klinbos Indonesia",["Household supplies"],"",null,"Longgar"],["mukena","DIDIK ANAK DENGAN BAIK SEKARANG","CARA MENDIDIK ANAK ALA NABI Dapatkan promo terbatas Pembayaran COD Gratis Ongkir","Artra Branding",["Business"],"https://mahajemen.orderonline.id/page/buku-parenting","Mukenah Lipat Viral. Dapatkan promo terbatas","Longgar"],["jaket","UNIQLO Indonesia","Yuk, eksplor pilihan Jaket yang sesuai dengan gayamu di aplikasi UNIQLO. Klik di sini.","Uniqlo Indonesia",["Retail company"],"http://itunes.apple.com/app/id867569998",null,"Longgar"],["sandal","Sweat-Absorbing Sandals","Hot days, sweaty feet? These sweat-absorbing sandals help keep every step feeling dry, fresh, and comfortable.","VIVAIA",["Website"],"https://www.vivaia.com/campaign/Comfortable-Walking-Platform-Sandals",null,"Longgar"],["vitamin anak","","Belanja di sini: https://s.shopee.co.id/9zx26IWKx6\n#VitaminAnak #ProdukAnak #IbuDanAnak #KidsDaily #ShopeeFinds #RacunShopee #FYP","Spill Murce",["Brand"],"",null,"Relevan"],["earphone","","GG EZ Dance GG YE-Z\n#Trend #itzy #ggez #idols #dancechallenge #fyp #earphone #viral","Asha",["Artist"],"",null,"Longgar"],["parfum","Parfum Mobil Aroma Kopi","pengharum kabin tahan 30 hari Rp25rb","Toko Y",null,"",null,"Longgar"],["pupuk","","Third FJD installation in Lampung featuring the FJD AT2 Auto Steer System for more precise fertilizer application. #FJDynamics #SmartFarming","FJDynamics AgTech",["Business"],"",null,"Longgar"],["makanan kucing","","Anabul susah makan? Saatnya kasih Mix 30PCS Chiyo Creamy Cat Strip yang bikin si meong lahap! 100% daging asli","Rekomendasi Belanja",null,"",null,"Relevan"],["obat jerawat","IPL Acne 199rb","JERAWAT BANDEL? IPL ACNE SOLUSINYA! Capek sama jerawat? Saatnya coba IPL ACNE di SOZO Clinic! Hanya 199RB","Sozo Skin Clinic",["Health/beauty"],"",null,"Longgar"],["lipstik","","Bibir item tapi cari lipen yg bisa cover? Susah cari liptint yang pas, pake lipmatte malah kering. Untungnya ketemu Cleviant Serum Tint, 1x swipe langsung nutup","Cléviant",null,"",null,"Relevan"],["lipstik","Fix Lipstick Sultan","Baru tau kalo ada lipstick harganya bisa tembus segini, pantesan jadi idaman banyak orang","Spill By Mowii",["Software"],"https://s.shopee.co.id/113dF7ymDk",null,"Relevan"],["s","n","e","a","k","r","s","e"],["s","n","e","a","k","r","s","e"]]''')
+AI_HAKIM_SISTEM = (
+    "Kamu penilai iklan untuk alat riset jualan di Indonesia. Untuk setiap iklan, tentukan hubungannya dengan "
+    "NICHE yang dicari pengguna. Ikuti definisi ini dengan ketat:\n"
+    "- \"inti\": produk UTAMA yang dijual iklan ini jelas adalah niche itu sendiri (nama produknya = niche atau jenis "
+    "dari niche). Contoh niche 'madu': 'Madu Hutan Asli 1kg'.\n"
+    "- \"sebut\": kata niche merujuk ke benda niche yang sebenarnya, tetapi yang dijual produk LAIN yang berkaitan "
+    "(aksesori, perawatan, wadah, pelengkap, bonus, dipakai bersama), ATAU iklan terlalu umum untuk dipastikan. "
+    "Contoh niche 'kasur': 'vacuum pembersih kasur'; niche 'hp': 'holder hp di mobil'. JIKA RAGU, PILIH 'sebut'.\n"
+    "- \"lepas\": kata niche TIDAK merujuk ke benda niche sama sekali: idiom/kiasan ('bikin dompet jebol'), nama "
+    "orang/merek/tempat, rasa/warna (niche 'cokelat' pada 'softlens coklat'), cerita/novel, donasi, berita, "
+    "lowongan, atau properti.\n"
+    "Nilai 'yakin' 0-100. Balas JSON: "
+    "{\"hasil\":[{\"id\":<nomor>,\"kelas\":\"inti|sebut|lepas\",\"yakin\":<0-100>,\"alasan\":\"<maks 8 kata>\"}]}")
+
+
+def _ai_hakim_label(lab0, kelas, yakin):
+    """Label yang AKAN dipakai bila putusan AI diterapkan (zona abu-abu saja)."""
+    if kelas == "inti" and yakin >= 70 and lab0 == "Longgar":
+        return "Relevan"
+    if kelas == "lepas" and yakin >= 80 and lab0 in ("Longgar", "Relevan"):
+        return "Lepas"
+    if kelas == "sebut" and yakin >= 80 and lab0 == "Relevan":
+        return "Longgar"
+    return lab0
+
+
+def _ai_hakim_terapkan(rel, v, mode=None):
+    """mode 'bayangan': hanya catat pendapat AI (rel['ai']); 'ubah': label ikut berubah & tercatat di 'cocok'."""
+    mode = mode or AI_HAKIM_MODE
+    kelas, yakin = v.get("k"), _int(v.get("y"), 0) or 0
+    n0, lab0 = rel.get("nilai", 0), rel.get("label")
+    usul = _ai_hakim_label(lab0, kelas, yakin)
+    rel["ai"] = {"kelas": kelas, "yakin": yakin, "alasan": v.get("a") or "", "asal": lab0, "usul": usul, "mode": mode}
+    if mode != "ubah":
+        return
+    if kelas == "inti" and yakin >= 70 and lab0 == "Longgar":
+        rel.update(nilai=max(n0, 45), label="Relevan")
+    elif kelas == "lepas" and yakin >= 80 and lab0 in ("Longgar", "Relevan"):
+        rel.update(nilai=min(n0, 10), label="Lepas")
+    elif kelas == "sebut" and yakin >= 80 and lab0 == "Relevan":
+        rel.update(nilai=min(n0, 35), label="Longgar")
+    if rel.get("label") != lab0:
+        rel.setdefault("cocok", []).append(f"🤖 AI: {kelas} ({yakin}%) — {lab0}→{rel['label']}")
+
+
+def ai_hakim_relevansi(kata, pasangan, batas=8.0, wadah=None):
+    """pasangan: [(rel, o)] semua iklan scan. Return {aid: putusan} (dipakai di thread terpisah, TIDAK mengubah rel).
+    wadah (dict) diisi bertahap: putusan dari cache LANGSUNG, putusan baru menyusul → pemanggil yg berhenti menunggu
+    tetap mendapat putusan cache walau panggilan AI baru lambat."""
+    kata = _norm(kata).strip()
+    putusan = wadah if wadah is not None else {}
+    if not kata or not ai_aktif():
+        return putusan
+    c = _ai_cache("ai_relevan")
+    calon = []
+    for rel, o in pasangan:
+        aid = str(o.get("ad_archive_id") or o.get("archive_id") or "")
+        if not aid or not (AI_HAKIM_BAWAH <= (rel.get("nilai") or 0) <= AI_HAKIM_ATAS):
+            continue
+        k = kata + "|" + aid
+        if k in c:
+            putusan[aid] = c[k]
+        elif len(calon) < AI_HAKIM_MAKS:
+            calon.append((aid, _ai_ringkas_iklan(o.get("snapshot") or {}, o, 260)))
+    putusan["__siap"] = True   # cache sudah masuk
+    if calon:
+        daftar = "\n".join(f"{i + 1}. {t}" for i, (_, t) in enumerate(calon))
+        obj, _info = ai_panggil(AI_HAKIM_SISTEM, f"NICHE: \"{kata}\"\n\nIKLAN:\n{daftar}", tugas="hakim",
+                                maks=60 * len(calon) + 200, suhu=0.0, batas=batas, tunggu_slot=1.0)
+        baru = {}
+        for h in ((obj or {}).get("hasil") or []) if isinstance(obj, dict) else []:
+            try:
+                i = int(h.get("id")) - 1
+            except Exception:
+                continue
+            if 0 <= i < len(calon) and h.get("kelas") in ("inti", "sebut", "lepas"):
+                v = {"k": h["kelas"], "y": max(0, min(100, _int(h.get("yakin"), 0) or 0)),
+                     "a": str(h.get("alasan") or "")[:60]}
+                putusan[calon[i][0]] = v
+                baru[kata + "|" + calon[i][0]] = v
+        if baru:
+            _ai_cache_isi("ai_relevan", baru)
+    return putusan
+
+
+def ai_uji_emas(email):
+    """Admin: jalankan 100 kasus emas zona abu-abu ke AI yang terpasang → bandingkan aturan vs aturan+AI."""
+    if not ai_aktif():
+        return {"ok": False, "error": "AI belum diaktifkan (isi INTAI_GEMINI_KUNCI di Environment Render)."}
+    sis = AI_HAKIM_SISTEM.replace("NICHE yang dicari pengguna", "NICHE yang tertulis di tiap iklan")
+    kasus = []
+    for k, ti, bo, pg, kat, lk, ld, exp in AI_EMAS:
+        sn = {"title": ti, "body": {"text": bo}, "page_name": pg, "link_url": lk, "link_description": ld}
+        if kat:
+            sn["page_categories"] = kat
+        rel = hitung_relevansi(k, sn, {"page_name": pg}, {})
+        kasus.append({"k": k, "sn": sn, "pg": pg, "exp": exp, "rule": rel["label"]})
+    t0, dijawab, penyedia, galat = time.time(), 0, None, None
+    for b in range(0, len(kasus), 25):
+        part = kasus[b:b + 25]
+        daftar = "\n".join(f"{i + 1}. NICHE \"{c['k']}\" → {_ai_ringkas_iklan(c['sn'], {'page_name': c['pg']}, 260)}" for i, c in enumerate(part))
+        obj, info = ai_panggil(sis, "IKLAN:\n" + daftar, tugas="hakim", maks=2200, suhu=0.0, batas=40, tunggu_slot=8)
+        penyedia = info.get("penyedia") or penyedia
+        galat = info.get("error") or galat
+        for h in ((obj or {}).get("hasil") or []) if isinstance(obj, dict) else []:
+            try:
+                i = int(h.get("id")) - 1
+            except Exception:
+                continue
+            if 0 <= i < len(part) and h.get("kelas") in ("inti", "sebut", "lepas"):
+                part[i]["ai"] = _ai_hakim_label(part[i]["rule"], h["kelas"], _int(h.get("yakin"), 0) or 0)
+                dijawab += 1
+    benar_aturan = sum(c["rule"] == c["exp"] for c in kasus)
+    benar_ai = sum(c.get("ai", c["rule"]) == c["exp"] for c in kasus)
+    ubah = [c for c in kasus if c.get("ai", c["rule"]) != c["rule"]]
+    return {"ok": True, "kasus": len(kasus), "dijawab": dijawab, "benar_aturan": benar_aturan, "benar_ai": benar_ai,
+            "diubah_ai": len(ubah), "diubah_benar": sum(c["ai"] == c["exp"] for c in ubah), "penyedia": penyedia,
+            "galat": galat if dijawab < len(kasus) else None, "detik": round(time.time() - t0, 1), "mode": AI_HAKIM_MODE,
+            "saran": ("AI lebih baik dari aturan — boleh setel INTAI_AI_HAKIM=ubah." if benar_ai > benar_aturan and dijawab >= 90
+                      else "Biarkan mode bayangan: AI belum terbukti lebih baik dari aturan."),
+            "contoh_salah": [{"niche": c["k"], "iklan": (c["sn"]["title"] or c["sn"]["body"]["text"])[:70],
+                              "aturan": c["rule"], "ai": c["ai"], "benar": c["exp"]} for c in ubah if c["ai"] != c["exp"]][:12]}
+
+
+# --- (4) PERAN PENGIKLAN: iklan link-langsung-ke-toko → dari affiliator atau penjual? ---
+AI_PERAN_SISTEM = (
+    "Kamu menilai iklan Facebook/Instagram yang menautkan produk Shopee. Tentukan siapa pengiklannya:\n"
+    "- \"affiliator\": halaman konten/review/racun/rekomendasi, kreator, akun 'spill', 'racun shopee', 'review jujur', "
+    "atau menawarkan banyak produk dari toko berbeda — tujuannya komisi, bukan pemilik barang.\n"
+    "- \"penjual\": toko/merek pemilik barang (nama halaman = nama toko/merek, menyebut 'toko kami', 'official', "
+    "'produksi sendiri', 'reseller dicari', garansi dari toko).\n"
+    "- \"ragu\": tidak bisa dipastikan dari teks.\n"
+    "Balas JSON: {\"hasil\":[{\"id\":<nomor>,\"peran\":\"affiliator|penjual|ragu\",\"yakin\":<0-100>,\"alasan\":\"<maks 8 kata>\"}]}")
+AFV_AI_CALON = {}
+
+
+def ai_peran(q, email):
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
+    if not ai_aktif():
+        return {"ok": False, "error": "AI belum diaktifkan."}
+    if q not in AFV_AI_CALON:
+        afv_analisis(q)
+    calon = [x for x in AFV_AI_CALON.get(q, []) if x[0] not in _ai_cache("ai_peran")][:30]
+    if not calon:
+        return {"ok": True, "dinilai": 0, "sisa": 0}
+    daftar = "\n".join(f"{i + 1}. {t}" for i, (_, t) in enumerate(calon))
+    obj, info = ai_panggil(AI_PERAN_SISTEM, f"IKLAN:\n{daftar}", tugas="peran", email=email,
+                           maks=60 * len(calon) + 200, suhu=0.0, batas=20)
+    if obj is None:
+        return {"ok": False, "error": info.get("error")}
+    baru = {}
+    for h in (obj.get("hasil") or []) if isinstance(obj, dict) else []:
+        try:
+            i = int(h.get("id")) - 1
+        except Exception:
+            continue
+        if 0 <= i < len(calon) and h.get("peran") in ("affiliator", "penjual", "ragu"):
+            baru[calon[i][0]] = {"p": h["peran"], "y": max(0, min(100, _int(h.get("yakin"), 0) or 0)),
+                                 "a": str(h.get("alasan") or "")[:60]}
+    for aid, _ in calon:   # yang tidak dijawab ditandai ragu agar tidak ditanya berulang-ulang
+        baru.setdefault(aid, {"p": "ragu", "y": 0, "a": ""})
+    _ai_cache_isi("ai_peran", baru)
+    return {"ok": True, "dinilai": len(baru), "affiliator": sum(1 for v in baru.values() if v["p"] == "affiliator"),
+            "penjual": sum(1 for v in baru.values() if v["p"] == "penjual"), "penyedia": info.get("penyedia")}
+
+
+# --- (3) SUDUT JUALAN iklan pesaing ---
+AI_SUDUT = OrderedDict([
+    ("masalah", "Masalah → solusi"), ("promo", "Promo / harga"), ("testimoni", "Testimoni / bukti"),
+    ("demo", "Demo / cara pakai"), ("urgensi", "Urgensi / stok terbatas"), ("edukasi", "Edukasi / fakta"),
+    ("gaya", "Gaya hidup / emosi"), ("lain", "Lainnya")])
+_SUDUT_ATURAN = [
+    ("urgensi", r"\b(terbatas|hari ini saja|hanya hari ini|sisa \d+|stok (tinggal|menipis|terbatas)|buruan|segera|last call|flash sale|jam terakhir|kesempatan terakhir)\b"),
+    ("promo", r"\b(diskon|promo|gratis ongkir|free ongkir|cashback|potongan|beli \d+ gratis|bonus|murah|hemat|harga spesial|cuma rp|hanya rp|voucher|\d+\s?%)"),
+    ("testimoni", r"\b(testi|testimoni|review|ulasan|kata mereka|pelanggan kami|sudah terbukti|terjual \d|rating|bintang 5|pengalaman (saya|aku|gue))\b"),
+    ("masalah", r"(\?|\b(capek|susah|ribet|bingung|masalah|kesel|kesal|takut|khawatir|bau|gerah|jerawat|kusam|rontok|sakit|pegal|boros|lelah|stres)\b)"),
+    ("demo", r"\b(cara pakai|cara menggunakan|tutorial|lihat (hasilnya|video)|tonton|demo|begini caranya|langkah)\b"),
+    ("edukasi", r"\b(tahukah|fakta|manfaat|kandungan|tips|ternyata|penelitian|dokter|ahli|bpom|halal)\b"),
+]
+
+
+def _sudut_aturan(teks):
+    t = _norm(teks)
+    for k, rx in _SUDUT_ATURAN:
+        if re.search(rx, t):
+            return k
+    return "lain"
+
+
+AI_SUDUT_SISTEM = (
+    "Kamu analis iklan. Untuk setiap iklan, pilih SATU sudut jualan utama (cara iklan membujuk), dari daftar: "
+    + ", ".join(f"\"{k}\" ({v})" for k, v in AI_SUDUT.items()) +
+    ". Lalu tulis 'pola' = ringkasan gaya pembuka iklan itu, maks 8 kata, bahasa Indonesia, tanpa angka. "
+    "Balas JSON: {\"hasil\":[{\"id\":<nomor>,\"sudut\":\"<kode>\",\"pola\":\"...\"}]}")
+AI_SUDUT_CACHE = OrderedDict()
+
+
+def ai_sudut(email, d):
+    kata = re.sub(r"\s+", " ", str(d.get("kata") or "")).strip()[:80]
+    iklan = [x for x in (d.get("iklan") or []) if isinstance(x, dict) and str(x.get("teks") or "").strip()][:40]
+    if len(iklan) < 3:
+        return {"ok": False, "error": "Butuh minimal 3 iklan bertulisan untuk dibedah."}
+    rows = [{"id": str(x.get("id") or i)[:40], "teks": re.sub(r"\s+", " ", str(x.get("teks")))[:300],
+             "umur": max(0, _int(x.get("umur"), 0) or 0), "halaman": str(x.get("halaman") or "")[:60]} for i, x in enumerate(iklan)]
+    # v1.5.8: mode banding bebas (mis. TikTok: CTR tinggi vs lainnya) → 'kuat' dipetakan ke umur 30/0 agar logika sama
+    lbl_a, lbl_b = "Iklan awet (≥30 hari", "iklan baru (<30 hari"
+    if any("kuat" in x for x in iklan):
+        for r, x in zip(rows, iklan):
+            r["umur"] = 30 if x.get("kuat") else 0
+        lbl_a = str(d.get("label_kuat") or "Iklan kuat")[:40] + " ("
+        lbl_b = str(d.get("label_lemah") or "lainnya")[:40] + " ("
+        lbl_a, lbl_b = lbl_a.rstrip(" ("), lbl_b.rstrip(" (")
+        lbl_a, lbl_b = lbl_a + " (", lbl_b + " ("
+    kunci = hashlib.sha1((kata + lbl_a + "|" + "|".join(r["id"] + r["teks"][:40] for r in rows)).encode()).hexdigest()
+    if kunci in AI_SUDUT_CACHE:
+        return dict(AI_SUDUT_CACHE[kunci], cache=True)
+    hasil, sumber, info = {}, "aturan", {}
+    if ai_aktif():
+        daftar = "\n".join(f"{i + 1}. [{r['halaman']}] {r['teks']}" for i, r in enumerate(rows))
+        obj, info = ai_panggil(AI_SUDUT_SISTEM, f"Niche: {kata or '-'}\n\nIKLAN:\n{daftar}", tugas="sudut",
+                               email=email, maks=50 * len(rows) + 200, suhu=0.1, batas=25)
+        for h in ((obj or {}).get("hasil") or []) if isinstance(obj, dict) else []:
+            try:
+                i = int(h.get("id")) - 1
+            except Exception:
+                continue
+            if 0 <= i < len(rows) and h.get("sudut") in AI_SUDUT:
+                hasil[i] = (h["sudut"], re.sub(r"\s+", " ", re.sub(r"\d", "", str(h.get("pola") or ""))).strip(" ,")[:70])
+        if hasil:
+            sumber = "ai"
+    for i, r in enumerate(rows):   # tak dijawab AI / AI mati → aturan kata kunci
+        if i not in hasil:
+            hasil[i] = (_sudut_aturan(r["teks"]), "")
+    per = [{"id": r["id"], "sudut": hasil[i][0], "pola": hasil[i][1], "umur": r["umur"], "halaman": r["halaman"],
+            "teks": r["teks"][:140], "ai": sumber == "ai"} for i, r in enumerate(rows)]
+    n = len(per)
+    lama = [p for p in per if p["umur"] >= 30]
+    dist = []
+    for k, lbl in AI_SUDUT.items():
+        a = [p for p in per if p["sudut"] == k]
+        if not a:
+            continue
+        b = [p for p in lama if p["sudut"] == k]
+        dist.append({"kode": k, "label": lbl, "jumlah": len(a), "persen": round(100 * len(a) / n),
+                     "lama": len(b), "persen_lama": round(100 * len(b) / len(lama)) if lama else None,
+                     "contoh": [{"teks": p["teks"], "halaman": p["halaman"], "umur": p["umur"], "pola": p["pola"]}
+                                for p in sorted(a, key=lambda z: -z["umur"])[:3]]})
+    dist.sort(key=lambda z: (-z["jumlah"], -(z["lama"] or 0)))
+    # ringkasan dihitung INTAI dari hitungan (bukan karangan AI): iklan awet (≥30 hari) vs iklan baru (<30 hari)
+    baru_ = [p for p in per if p["umur"] < 30]
+    for z in dist:
+        b_ = sum(1 for p in baru_ if p["sudut"] == z["kode"])
+        z["baru"], z["persen_baru"] = b_, (round(100 * b_ / len(baru_)) if baru_ else None)
+    ring = f"Dari {n} iklan, sudut terbanyak: {dist[0]['label']} ({dist[0]['persen']}%)."
+    if len(lama) >= 3 and len(baru_) >= 3:
+        tl = max(dist, key=lambda z: (z["lama"], z["jumlah"]))
+        tb = max(dist, key=lambda z: (z["baru"], z["jumlah"]))
+        sep = ", " if lbl_a.endswith("hari") else ""
+        ring += (f" {lbl_a}{sep}{len(lama)}): paling banyak {tl['label']} ({tl['persen_lama']}%)"
+                 f" · {lbl_b}{', ' if lbl_b.endswith('hari') else ''}{len(baru_)}): {tb['label']} ({tb['persen_baru']}%).")
+        if tl["kode"] != tb["kode"]:
+            ring += (f" Sudut “{tl['label']}” lebih sering bertahan lama — layak dicoba duluan." if lbl_a.startswith("Iklan awet")
+                     else f" Sudut “{tl['label']}” lebih sering muncul di kelompok {lbl_a.rstrip(' (')} — layak dicoba duluan.")
+    else:
+        ring += (" Iklan awet & iklan baru belum cukup (<3 masing-masing) untuk dibandingkan." if lbl_a.startswith("Iklan awet")
+                 else " Kelompok pembanding belum cukup (<3 masing-masing) untuk dibandingkan.")
+    out = {"ok": True, "kata": kata, "jumlah": n, "jumlah_lama": len(lama), "sudut": dist, "ringkas": ring,
+           "label_a": lbl_a.rstrip(" (") + (")" if "hari" in lbl_a else ""), "label_b": lbl_b.rstrip(" (") + (")" if "hari" in lbl_b else ""),
+           "sumber": sumber, "penyedia": info.get("penyedia"),
+           "catatan": None if sumber == "ai" else (info.get("error") or "AI belum aktif") + " — dipakai pengelompokan kata kunci 🔵."}
+    if sumber == "ai":
+        AI_SUDUT_CACHE[kunci] = out
+        while len(AI_SUDUT_CACHE) > 200:
+            AI_SUDUT_CACHE.popitem(last=False)
+    return out
+
+
+# --- (2) NASKAH VIDEO AI ---
+AI_NASKAH_SISTEM = (
+    "Kamu penulis naskah video pendek (Shopee Video / Reels / TikTok, 15-30 detik) untuk affiliator & penjual "
+    "Indonesia. Gaya bahasa santai, natural, seperti kreator sungguhan.\n"
+    "ATURAN KERAS:\n"
+    "1. JANGAN mengarang angka, harga, diskon, jumlah terjual, rating, klaim kesehatan/medis, atau sertifikasi yang "
+    "tidak ada di FAKTA. Boleh menyebut angka HANYA yang tertulis di FAKTA.\n"
+    "2. 'hook' = kalimat pembuka 3 detik pertama yang membuat orang berhenti scroll: pertanyaan, situasi, masalah, "
+    "atau kejutan. Hook BUKAN ajakan (jangan 'cek sekarang', 'klik link', 'checkout', 'beli', 'yuk', 'buruan').\n"
+    "3. Tiap varian memakai sudut BERBEDA (mis. masalah→solusi, demo, testimoni pribadi, perbandingan, gaya hidup).\n"
+    "4. Ajakan (CTA) hanya di 'penutup'.\n"
+    "Balas JSON: {\"varian\":[{\"sudut\":\"...\",\"hook\":\"...\",\"adegan\":[{\"detik\":\"0-3\",\"visual\":\"...\","
+    "\"ucapan\":\"...\"}],\"penutup\":\"...\",\"caption\":\"...\"}]} — 3 varian, masing-masing 3-5 adegan, caption "
+    "maks 150 karakter tanpa tagar.")
+
+
+def _ai_angka_boleh(fakta_teks):
+    return set(re.sub(r"[.,]", "", m) for m in re.findall(r"\d[\d.,]*", fakta_teks))
+
+
+def _ai_saring_angka(teks, boleh):
+    """Kalimat yang memuat ANGKA apa pun (harga, %, watt, mAh, jam, level, terjual…) yang TIDAK ada di fakta produk /
+    hook nyata dibuang — AI tidak boleh mengarang spesifikasi atau klaim."""
+    out = []
+    for k in re.split(r"(?<=[.!?])\s+|\n+", str(teks or "")):
+        angka = [re.sub(r"[.,]", "", m) for m in re.findall(r"\d[\d.,]*", k)]
+        if all(a in boleh for a in angka):
+            out.append(k)
+    return " ".join(x.strip() for x in out if x.strip()).strip()
+
+
+def ai_naskah(email, d):
+    nama = re.sub(r"\s+", " ", str(d.get("nama") or "")).strip()[:160]
+    if not nama:
+        return {"ok": False, "error": "Nama produk kosong."}
+    fakta = [f"Produk: {nama}"]
+    if d.get("harga"):
+        fakta.append(f"Harga: Rp{_int(d.get('harga'), 0):,}".replace(",", "."))
+    if d.get("diskon"):
+        fakta.append(f"Diskon: {re.sub(r'[^0-9]', '', str(d.get('diskon')))}%")
+    if d.get("terjual"):
+        fakta.append(f"Terjual: {str(d.get('terjual'))[:30]}")
+    if d.get("rating"):
+        fakta.append(f"Rating: {str(d.get('rating'))[:6]}")
+    if d.get("niche"):
+        fakta.append(f"Niche: {str(d.get('niche'))[:60]}")
+    hooks = [re.sub(r"\s+", " ", str(h))[:140] for h in (d.get("hooks") or []) if str(h).strip()][:6]
+    fakta_teks = "\n".join(fakta)
+    prompt = "FAKTA (hanya ini yang boleh disebut):\n" + fakta_teks
+    if hooks:
+        prompt += "\n\nHOOK NYATA dari iklan/video yang sudah tayang di niche ini (jadikan inspirasi gaya, jangan disalin mentah):\n" + \
+                  "\n".join("- " + h for h in hooks)
+    prompt += f"\n\nPlatform: {str(d.get('platform') or 'Shopee Video')[:30]}. Tulis 3 varian."
+    obj, info = ai_panggil(AI_NASKAH_SISTEM, prompt, tugas="naskah", email=email, maks=2200, suhu=0.8, batas=30)
+    if obj is None:
+        return {"ok": False, "error": info.get("error"), "jatah": info.get("jatah", False)}
+    boleh = _ai_angka_boleh(fakta_teks + "\n" + "\n".join(hooks))   # angka dari fakta produk + hook nyata saja
+    varian, dibuang = [], 0
+    for v in (obj.get("varian") or [])[:4] if isinstance(obj, dict) else []:
+        if not isinstance(v, dict):
+            continue
+        hook = _ai_saring_angka(re.sub(r"\s+", " ", str(v.get("hook") or "")).strip(), boleh)[:160]
+        if len(hook) < 10 or _afv_bukan_hook(hook):
+            dibuang += 1
+            continue
+        adegan = []
+        for a in (v.get("adegan") or [])[:6]:
+            if not isinstance(a, dict):
+                continue
+            uc = _ai_saring_angka(str(a.get("ucapan") or ""), boleh)[:240]
+            vi = _ai_saring_angka(str(a.get("visual") or ""), boleh)[:200]
+            if uc or vi:
+                adegan.append({"detik": str(a.get("detik") or "")[:10], "visual": vi, "ucapan": uc})
+        varian.append({"sudut": str(v.get("sudut") or "")[:40], "hook": hook, "adegan": adegan,
+                       "penutup": _ai_saring_angka(str(v.get("penutup") or ""), boleh)[:200],
+                       "caption": _ai_saring_angka(str(v.get("caption") or ""), boleh)[:200]})
+    if not varian:
+        return {"ok": False, "error": "Jawaban AI tidak lolos penyaring (hook berupa ajakan / angka karangan). Coba lagi."}
+    st = ai_status(email)
+    return {"ok": True, "varian": varian, "dibuang": dibuang, "penyedia": info.get("penyedia"),
+            "sisa": None if is_admin(email) else max(0, AI_PER_AKUN - st["terpakai_akun"])}
+
+
+# ===== v1.5.8 SCAN TIKTOK (jalur publik, tanpa login) =====
+# T1 Creative Center Top Ads (tanda tangan anonim seperti situs resminya) · T7 profil · T8 embed (13 video) · T9 detail video.
+# Semua di-cache supaya IP Render tidak dibanjiri; endpoint tidak resmi → gagal dengan tenang (pesan jelas, tanpa data palsu).
+TT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+TT_CC = "https://ads.tiktok.com/creative_radar_api/v1/"
+TT_SESI = {"web": None, "web_t": 0.0, "uid": secrets.token_hex(16)}
+TT_CACHE = OrderedDict()
+kunci_tt = threading.Lock()
+TT_INDUK_ID = {
+    10000000000: "Pendidikan", 11000000000: "Kendaraan & Transportasi", 12000000000: "Bayi, Anak & Ibu",
+    13000000000: "Keuangan", 14000000000: "Kecantikan & Perawatan Diri", 15000000000: "Teknologi & Elektronik",
+    16000000000: "Peralatan Rumah (Elektronik)", 17000000000: "Travel", 18000000000: "Produk Rumah Tangga",
+    19000000000: "Hewan Peliharaan", 20000000000: "Aplikasi", 21000000000: "Perkakas & Perbaikan Rumah",
+    22000000000: "Fashion & Aksesori", 23000000000: "Berita & Hiburan", 24000000000: "Layanan Bisnis",
+    25000000000: "Game", 26000000000: "Layanan & Jasa", 27000000000: "Makanan & Minuman", 28000000000: "Olahraga & Outdoor",
+    29000000000: "Kesehatan", 30000000000: "E-Commerce (non-aplikasi)"}
+TT_TUJUAN = {"product_sales": "Penjualan produk", "conversion": "Konversi", "traffic": "Traffic ke situs",
+             "app_install": "Instal aplikasi", "reach": "Jangkauan", "video_view": "Tayangan video",
+             "lead_generation": "Kumpulkan prospek", "community_interaction": "Interaksi komunitas",
+             "app_promotion": "Promosi aplikasi", "web_conversions": "Konversi situs", "catalog_sales": "Penjualan katalog"}
+TT_BUDGET = {0: "rendah", 1: "sedang", 2: "tinggi"}
+TT_URUT = {"for_you": "for_you", "like": "like", "ctr": "ctr", "impression": "impression"}
+
+
+def _tt_cache(kunci, ttl, fungsi):
+    kini = time.time()
+    with kunci_tt:
+        c = TT_CACHE.get(kunci)
+        if c and kini - c[0] < ttl:
+            return c[1]
+    v = fungsi()
+    with kunci_tt:
+        TT_CACHE[kunci] = (kini, v)
+        TT_CACHE.move_to_end(kunci)
+        while len(TT_CACHE) > 400:
+            TT_CACHE.popitem(last=False)
+    return v
+
+
+def _tt_webid(segar=False):
+    if not segar and TT_SESI["web"] and time.time() - TT_SESI["web_t"] < 6 * 3600:
+        return TT_SESI["web"]
+    r = requests.post("https://mcs-sg.tiktokv.com/v1/user/webid", timeout=10, json={
+        "app_id": 345918, "url": "https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/en",
+        "user_agent": TT_UA, "referer": "", "user_unique_id": ""})
+    TT_SESI["web"], TT_SESI["web_t"] = str(r.json()["web_id"]), time.time()
+    return TT_SESI["web"]
+
+
+def _tt_tanda(uid, web):
+    ts = int(time.time())
+    h = hashlib.md5(f"A7B&9z#1G6$2K@8M!3-{web or uid}-{ts}".encode()).hexdigest()
+    s = "".join(format(int(h[i], 16) ^ int(h[i + 16], 16), "x") for i in range(16))
+    return {"anonymous-user-id": uid, "timestamp": str(ts), "user-sign": s, "web-id": str(web)}
+
+
+def tt_cc(jalur, ttl=1800):
+    """GET Creative Center bertanda tangan → data (dict). Galat sementara (50000) dicoba ulang sekali dgn web_id baru."""
+    def ambil():
+        galat = None
+        for coba in range(2):
+            web = _tt_webid(segar=coba > 0)
+            r = requests.get(TT_CC + jalur, timeout=15,
+                             headers={"User-Agent": TT_UA, "lang": "en", **_tt_tanda(TT_SESI["uid"], web)})
+            try:
+                j = r.json()
+            except Exception:
+                galat = f"HTTP {r.status_code}"
+                continue
+            if j.get("code") == 0:
+                return j.get("data") or {}
+            galat = f"{j.get('code')} {j.get('msg')}"
+            time.sleep(0.8)
+        raise RuntimeError("TikTok Creative Center menolak (" + str(galat) + ")")
+    return _tt_cache("cc:" + jalur, ttl, ambil)
+
+
+def tt_filter():
+    d = tt_cc("top_ads/v2/filters?country_code=ID", ttl=24 * 3600)
+    sub = {}
+    for x in d.get("industry") or []:
+        if x.get("parent_id"):
+            sub.setdefault(x["parent_id"], []).append({"id": str(x["id"]), "nama": x.get("value") or ""})
+    induk = [{"id": str(i), "nama": n, "sub": sorted(sub.get(i, []), key=lambda z: z["nama"])}
+             for i, n in sorted(TT_INDUK_ID.items(), key=lambda kv: kv[1])]
+    return {"ok": True, "induk": induk}
+
+
+def _tt_label_industri(kunci):
+    try:
+        i = int(str(kunci or "").replace("label_", ""))
+    except Exception:
+        return ""
+    ind = int(str(i)[:2] + "0" * 9) if len(str(i)) == 11 else 0
+    nama_sub = ""
+    try:
+        for x in (tt_cc("top_ads/v2/filters?country_code=ID", ttl=24 * 3600).get("industry") or []):
+            if x.get("id") == i:
+                nama_sub = x.get("value") or ""
+                break
+    except Exception:
+        pass
+    return (TT_INDUK_ID.get(ind, "") + (" · " + nama_sub if nama_sub and i != ind else "")).strip(" ·")
+
+
+def _tt_tujuan(k):
+    k = str(k or "").replace("campaign_objective_", "")
+    return TT_TUJUAN.get(k, k.replace("_", " ").capitalize())
+
+
+def _tt_judul(t):
+    t = re.sub(r"\s+", " ", str(t or "")).strip()
+    tagar = re.findall(r"#([^\s#]+)", t)
+    bersih = re.sub(r"#[^\s#]+", "", t)
+    bersih = re.sub(r"@[\w.]+", lambda m: m.group(0), bersih)
+    return re.sub(r"\s+", " ", bersih).strip(" .·-"), [x.lower() for x in tagar][:8]
+
+
+def tt_iklan(ind="", per="30", urut="for_you", bhs="id", hal="1"):
+    per = per if str(per) in ("7", "30", "180") else "30"
+    urut = TT_URUT.get(str(urut), "for_you")
+    hal = max(1, min(25, _int(hal, 1) or 1))
+    q = f"period={per}&page={hal}&limit=20&order_by={urut}&country_code=ID"
+    ind = re.sub(r"[^0-9]", "", str(ind or ""))[:12]
+    if ind:
+        q += "&industry=" + ind
+    if bhs in ("id", "en", "ms"):
+        q += "&ad_language=" + bhs
+    d = tt_cc("top_ads/v2/list?" + q)
+    out = []
+    for i, m in enumerate(d.get("materials") or []):
+        vi = m.get("video_info") or {}
+        judul, tagar = _tt_judul(m.get("ad_title"))
+        out.append({"id": str(m.get("id") or ""), "judul": judul or "(tanpa teks)", "tagar": tagar,
+                    "merek": m.get("brand_name") or "", "like": _int(m.get("like"), 0) or 0,
+                    "ctr": m.get("ctr"), "budget": TT_BUDGET.get(m.get("cost")), "budget_n": m.get("cost"),
+                    "tujuan": _tt_tujuan(m.get("objective_key")), "kategori": _tt_label_industri(m.get("industry_key")),
+                    "cover": vi.get("cover") or "", "video": (vi.get("video_url") or {}).get("720p") or "",
+                    "durasi": round(float(vi.get("duration") or 0)), "cari": bool(m.get("is_search")),
+                    "peringkat": (hal - 1) * 20 + i + 1})
+    pg = d.get("pagination") or {}
+    return {"ok": True, "iklan": out, "total": pg.get("total_count"), "ada_lagi": bool(pg.get("has_more")),
+            "halaman": hal, "periode": per, "urut": urut, "bahasa": bhs, "industri": ind,
+            "industri_label": TT_INDUK_ID.get(int(ind), "") if ind and int(ind) in TT_INDUK_ID else (_tt_label_industri(ind) if ind else ""),
+            "jam": _iso_kini()}
+
+
+def tt_iklan_detail(mid):
+    mid = re.sub(r"[^0-9]", "", str(mid or ""))[:25]
+    if not mid:
+        return {"ok": False, "error": "ID iklan kosong"}
+    d = tt_cc("top_ads/v2/detail?material_id=" + mid, ttl=6 * 3600)
+    vi = d.get("video_info") or {}
+    kk = d.get("keyword_list") or []
+    return {"ok": True, "id": mid, "komentar": d.get("comment"), "share": d.get("share"), "like": d.get("like"),
+            "landing": d.get("landing_page") or "", "kata_kunci": [str(k) for k in kk][:12] if isinstance(kk, list) else [],
+            "sumber": d.get("source") or "", "suara": bool(d.get("voice_over")), "sorotan": d.get("highlight_text") or "",
+            "tujuan": [_tt_tujuan(o.get("label")) for o in (d.get("objectives") or []) if isinstance(o, dict)][:4],
+            "negara": len(d.get("country_code") or []), "video": (vi.get("video_url") or {}).get("720p") or "",
+            "durasi": round(float(vi.get("duration") or 0))}
+
+
+def _tt_rehidrasi(html):
+    m = re.search(r'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)</script>', html, re.S)
+    return (json.loads(m.group(1)).get("__DEFAULT_SCOPE__") or {}) if m else {}
+
+
+def _tt_nama(u):
+    u = str(u or "").strip()
+    m = re.search(r"tiktok\.com/@([\w.]+)", u)
+    u = m.group(1) if m else u.lstrip("@").split("/")[0].split("?")[0]
+    return u.lower() if re.fullmatch(r"[\w.]{2,30}", u or "") else ""
+
+
+def _tt_video_detail(nama, vid):
+    try:
+        r = requests.get(f"https://www.tiktok.com/@{nama}/video/{vid}", timeout=10,
+                         headers={"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"})
+        d = _tt_rehidrasi(r.text).get("webapp.video-detail") or {}
+        it = (d.get("itemInfo") or {}).get("itemStruct") or {}
+        st = it.get("stats") or {}
+        if not it:
+            return None
+        return {"like": _int(st.get("diggCount"), None), "komentar": _int(st.get("commentCount"), None),
+                "share": _int(st.get("shareCount"), None), "simpan": _int(st.get("collectCount"), None),
+                "tayang": _int(st.get("playCount"), None), "unggah": _int(it.get("createTime"), None),
+                "durasi": _int((it.get("video") or {}).get("duration"), None), "iklan": bool(it.get("isAd")),
+                "musik": ((it.get("music") or {}).get("title") or "")[:60],
+                "toko": bool(it.get("anchors")) or "shop" in json.dumps(it.get("anchors") or "").lower()}
+    except Exception:
+        return None
+
+
+def tt_akun(u):
+    nama = _tt_nama(u)
+    if not nama:
+        return {"ok": False, "error": "Tulis nama akun TikTok (mis. @somethincofficial) atau tempel link profilnya."}
+
+    def ambil():
+        hd = {"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_prof = ex.submit(lambda: requests.get(f"https://www.tiktok.com/@{nama}", headers=hd, timeout=12).text)
+            f_emb = ex.submit(lambda: requests.get(f"https://www.tiktok.com/embed/@{nama}", headers={"User-Agent": TT_UA}, timeout=12).text)
+            try:
+                prof = (_tt_rehidrasi(f_prof.result()).get("webapp.user-detail") or {})
+            except Exception:
+                prof = {}
+            try:
+                m = re.search(r'id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', f_emb.result(), re.S)
+                emb = (json.loads(m.group(1)).get("source") or {}).get("data", {}).get(f"/embed/@{nama}", {}) if m else {}
+            except Exception:
+                emb = {}
+        if prof.get("statusCode") == 10221 or (not prof.get("userInfo") and not emb.get("userInfo")):
+            if prof.get("statusCode") == 10221:
+                return {"ok": False, "error": f"Akun @{nama} tidak ditemukan di TikTok."}
+            return {"ok": False, "error": "TikTok tidak memberikan data akun saat ini (mungkin dibatasi). Coba lagi nanti."}
+        ui = (prof.get("userInfo") or {})
+        us, st, eu = ui.get("user") or {}, ui.get("stats") or {}, emb.get("userInfo") or {}
+        cu = us.get("commerceUserInfo") or {}
+        akun = {"nama": us.get("uniqueId") or eu.get("uniqueId") or nama, "tampil": us.get("nickname") or eu.get("nickname") or nama,
+                "centang": bool(us.get("verified") if us else eu.get("verified")),
+                "bio": (us.get("signature") or eu.get("signature") or "")[:300],
+                "link_bio": ((us.get("bioLink") or {}).get("link") or "")[:120],
+                "avatar": us.get("avatarThumb") or eu.get("avatarThumbUrl") or "",
+                "pengikut": _int(st.get("followerCount") or eu.get("followerCount"), None),
+                "mengikuti": _int(st.get("followingCount") or eu.get("followingCount"), None),
+                "like": _int(st.get("heartCount") or eu.get("heartCount"), None),
+                "video_total": _int(st.get("videoCount"), None),
+                "penjual": bool(us.get("ttSeller")), "bisnis": bool(cu.get("commerceUser")),
+                "kategori": cu.get("category") or "", "organisasi": bool(us.get("isOrganization")),
+                "dibuat": _int(us.get("createTime"), None), "privat": bool(us.get("privateAccount") or eu.get("privateAccount"))}
+        vl = [v for v in (emb.get("videoList") or []) if isinstance(v, dict) and v.get("id")][:13]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+            det = list(ex.map(lambda v: _tt_video_detail(akun["nama"], v["id"]), vl))
+        video = []
+        for v, dd in zip(vl, det):
+            dd = dd or {}
+            judul, tagar = _tt_judul(v.get("desc"))
+            video.append({"id": str(v["id"]), "caption": judul, "tagar": tagar, "cover": v.get("coverUrl") or "",
+                          "tayang": dd.get("tayang") if dd.get("tayang") is not None else _int(v.get("playCount"), None),
+                          "like": dd.get("like"), "komentar": dd.get("komentar"), "share": dd.get("share"),
+                          "simpan": dd.get("simpan"), "unggah": dd.get("unggah"), "durasi": dd.get("durasi"),
+                          "iklan": dd.get("iklan"), "musik": dd.get("musik") or "", "detail": bool(dd),
+                          "url": f"https://www.tiktok.com/@{akun['nama']}/video/{v['id']}"})
+        video.sort(key=lambda x: -(x["unggah"] or 0))   # embed = campuran disematkan/populer/baru → urut tanggal
+        # angka turunan (🔵 dihitung INTAI dari video sampel)
+        ty = sorted(x["tayang"] for x in video if x["tayang"] is not None)
+        er = [(x["like"] + (x["komentar"] or 0) + (x["share"] or 0)) / x["tayang"] for x in video
+              if x["like"] is not None and x["tayang"]]
+        ung = sorted(x["unggah"] for x in video if x["unggah"])
+        ring = {"sampel": len(video), "median_tayang": ty[len(ty) // 2] if ty else None,
+                "tayang_maks": ty[-1] if ty else None,
+                "interaksi": round(100 * sorted(er)[len(er) // 2], 2) if er else None,
+                "dipromosikan": sum(1 for x in video if x["iklan"]), "dicek_iklan": sum(1 for x in video if x["detail"]),
+                "terbaru_hari": int((time.time() - ung[-1]) // 86400) if ung else None,
+                "per_bulan": round(akun["video_total"] / max((time.time() - akun["dibuat"]) / 2629800, 1), 1)
+                if akun.get("video_total") and akun.get("dibuat") else None}
+        return {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini()}
+    hasil = _tt_cache("akun:" + nama, 1800, ambil)
+    if not hasil.get("ok"):   # galat jangan di-cache lama
+        with kunci_tt:
+            TT_CACHE.pop("akun:" + nama, None)
+    return hasil
+
+
+def tt_uji():
+    """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini."""
+    hasil = []
+
+    def uji(nama, f):
+        t0 = time.time()
+        try:
+            ket = f()
+            hasil.append({"jalur": nama, "ok": True, "ket": ket, "ms": int((time.time() - t0) * 1000)})
+        except Exception as e:
+            hasil.append({"jalur": nama, "ok": False, "ket": str(e)[:120], "ms": int((time.time() - t0) * 1000)})
+    with kunci_tt:
+        for k in [k for k in TT_CACHE if k.startswith(("cc:top_ads/v2/list?period=7&page=1&limit=20&order_by=like", "akun:somethincofficial"))]:
+            TT_CACHE.pop(k, None)
+    uji("Creative Center: Top Ads", lambda: f"{len(tt_iklan(per='7', urut='like', bhs='id')['iklan'])} iklan")
+
+    def akun():
+        a = tt_akun("somethincofficial")
+        if not a.get("ok"):
+            raise RuntimeError(a.get("error"))
+        return f"{a['akun']['pengikut']} pengikut · {len(a['video'])} video · {a['ringkas']['dicek_iklan']} detail video"
+    uji("Profil + video akun", akun)
+
+    def tokped_web():
+        r = requests.get("https://www.tokopedia.com/search?q=madu%20anak", timeout=12,
+                         headers={"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"})
+        return f"HTTP {r.status_code} · {len(r.text) // 1024} KB · kata 'terjual' {'ada' if 'terjual' in r.text.lower() else 'tidak ada'}"
+    uji("Tokopedia (halaman cari)", tokped_web)
+
+    def tokped_gql():
+        q = {"operationName": "SearchProductV5Query", "variables": {"params": "device=desktop&q=madu%20anak&rows=5&page=1&source=search"},
+             "query": "query SearchProductV5Query($params:String!){searchProductV5(params:$params){data{products{name}}}}"}
+        r = requests.post("https://gql.tokopedia.com/graphql/SearchProductV5Query", json=[q], timeout=12,
+                          headers={"User-Agent": TT_UA, "X-Source": "tokopedia-lite", "Origin": "https://www.tokopedia.com",
+                                   "Referer": "https://www.tokopedia.com/"})
+        return f"HTTP {r.status_code} · {r.text[:80]}"
+    uji("Tokopedia (GraphQL)", tokped_gql)
+    return {"ok": True, "hasil": hasil}
 
 
 def shopee_uji():
@@ -8197,11 +9573,54 @@ class Handler(BaseHTTPRequestHandler):
             self.json_ok(shp_dasbor(self.email) if self.email else {"ok": False, "error": "Silakan masuk dulu"})
         elif u.path == "/api/shopee/flash":
             self.json_ok(shopee_flash())
+        elif u.path == "/api/shopee/afv/scan":   # v1.5.6 Scan Affiliator (Meta, disimpan terpisah)
+            try:
+                self.json_ok(afv_scan_antre(parse_qs(u.query).get("q", [""])[0], self.email))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "Scan affiliator gagal: " + str(e_)[:120]})
+        elif u.path == "/api/shopee/video":   # v1.5.6 Shopee Video per tagar (halaman SEO publik)
+            try:
+                self.json_ok(sv_tagar(parse_qs(u.query).get("q", [""])[0]))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "Shopee Video gagal dibaca: " + str(e_)[:120]})
+        elif u.path.startswith("/api/tiktok/"):   # v1.5.8 Scan TikTok
+            qs = parse_qs(u.query)
+            g = lambda k, d="": qs.get(k, [d])[0]
+            try:
+                if u.path == "/api/tiktok/filter":
+                    self.json_ok(tt_filter())
+                elif u.path == "/api/tiktok/iklan":
+                    self.json_ok(tt_iklan(g("ind"), g("per", "30"), g("urut", "for_you"), g("bhs", "id"), g("hal", "1")))
+                elif u.path == "/api/tiktok/detail":
+                    self.json_ok(tt_iklan_detail(g("id")))
+                elif u.path == "/api/tiktok/akun":
+                    self.json_ok(tt_akun(g("u")))
+                else:
+                    self.tulis(404, json.dumps({"ok": False, "error": "Tidak ditemukan"}), "application/json")
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "TikTok tidak bisa dibaca saat ini: " + str(e_)[:140]})
+        elif u.path == "/api/admin/tiktok-uji":   # v1.5.8
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            else:
+                self.json_ok(tt_uji())
+        elif u.path == "/api/ai/status":   # v1.5.7
+            self.json_ok(ai_status(self.email))
+        elif u.path == "/api/ai/peran":   # v1.5.7 tebak peran pengiklan link-langsung (affiliator/penjual)
+            try:
+                self.json_ok(ai_peran(parse_qs(u.query).get("q", [""])[0], self.email))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "AI peran gagal: " + str(e_)[:120]})
         elif u.path == "/api/shopee/afv":   # v1.5.5 Affiliator & Video
             try:
                 self.json_ok(afv_analisis(parse_qs(u.query).get("q", [""])[0]))
             except Exception as e_:
                 self.json_ok({"ok": False, "error": "Analisis affiliator gagal: " + str(e_)[:120]})
+        elif u.path == "/api/admin/ai-uji":   # v1.5.7
+            if not is_admin(self.email):
+                self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
+            else:
+                self.json_ok(ai_uji_emas(self.email))
         elif u.path == "/api/admin/shopee-uji":
             if not is_admin(self.email):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
@@ -8399,6 +9818,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
             else:
                 self.json_ok(admin_ubah(self.email, self.baca_json(), basis_url(self)))
+        elif u.path in ("/api/ai/naskah", "/api/ai/sudut"):   # v1.5.7
+            try:
+                d_ = self.baca_json()
+                self.json_ok(ai_naskah(self.email, d_) if u.path.endswith("naskah") else ai_sudut(self.email, d_))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "AI gagal: " + str(e_)[:120]})
         elif u.path == "/api/logout":
             self.tulis(200, json.dumps({"ok": True}), "application/json", [self.cookie_sesi("", 0)])
         else:
