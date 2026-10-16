@@ -224,8 +224,13 @@
 .dsh-alih button.on{background:#163832;color:#DAF1DE;box-shadow:0 6px 14px -6px rgba(5,31,32,.5)}
 .dsh-alih button:not(.on):hover{background:#DAF1DE}
 #dash-shopee{animation:muncul .35s var(--ease) both}
+#dash-shopee .dash-grid{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}   /* v1.5.4b: nama produk panjang tidak boleh melebarkan kolom */
+#dash-shopee .kol,#dash-shopee .kol>*,#dash-shopee .kpi-row>*{min-width:0}
+@media (max-width:1024px){#dash-shopee .dash-grid{grid-template-columns:minmax(0,1fr)}}
 .dsh-info{font-size:11px;line-height:1.6;color:var(--muted);background:#EEF7F0;border-radius:12px;padding:9px 12px;margin:-4px 0 12px}
-.dsh-kw{border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:12px;background:#FBFDFB}
+.dsh-kw{border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:12px;background:#FBFDFB;container-type:inline-size;min-width:0}
+.dsh-angka b{white-space:nowrap}
+@container (max-width:520px){.dsh-kw .dsh-angka-baris{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-kw .dsh-spark{grid-column:1/-1;width:160px;max-width:100%}}
 .dsh-kw:last-child{margin-bottom:0}
 .dsh-kw-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .dsh-kw-h b{font-size:15px;letter-spacing:-.3px;color:#051F20}
@@ -240,7 +245,8 @@
 .dsh-prod{display:flex;gap:8px;overflow-x:auto;padding:7px 0 2px;scrollbar-width:thin}
 .dsh-prod a{flex:0 0 132px;display:flex;gap:7px;align-items:flex-start;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:11px;padding:6px}
 .dsh-prod img,.dsh-prod .ph{width:38px;height:38px;border-radius:8px;object-fit:cover;background:#DAF1DE;flex:none}
-.dsh-prod span{font-size:10px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dsh-prod span{font-size:10px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0;overflow-wrap:anywhere}
+.dsh-prod a{overflow:hidden}
 .dsh-prod em{display:block;font-style:normal;font-weight:800;color:#235347;font-size:10px}
 .dsh-dom{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6}
 .dsh-aksi{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
@@ -251,9 +257,10 @@
 .dsh-row:last-child{border-bottom:0}
 .dsh-row img,.dsh-row .ph{width:40px;height:40px;border-radius:10px;object-fit:cover;background:#DAF1DE;flex:none}
 .dsh-row .nm{flex:1;min-width:0}
-.dsh-row .nm b{display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsh-row .nm b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:11.5px;line-height:1.4;overflow:hidden;overflow-wrap:anywhere}
 .dsh-row .nm small{display:block;font-size:10px;color:var(--muted);margin-top:2px;line-height:1.45}
 .dsh-row .kn{text-align:right;font-size:10.5px;font-weight:800;white-space:nowrap;line-height:1.5}
+.dsh-row .nm b .dsh-live{display:inline-block}
 .dsh-live{background:#B5443A;color:#fff;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:800;margin-left:5px;vertical-align:1px}
 .dsh-chip{display:inline-block;border:0;background:#E6F2E9;color:#163832;border-radius:999px;padding:6px 12px;margin:0 6px 7px 0;font:700 11px/1.2 inherit;font-family:inherit;cursor:pointer}
 .dsh-chip:hover{background:#8EB69B;color:#051F20}
@@ -363,7 +370,7 @@
   .sb-scan-item .c{font-size:9px;font-weight:800;color:var(--emas);background:rgba(142,182,155,.18);padding:2.5px 8px;border-radius:999px;flex:0 0 auto}
   .sb-kosong{font-size:10px;color:#8EB69B;font-weight:650;padding:4px 12px;line-height:1.7}
   .sb-foot{margin-top:auto;padding:14px 10px 2px;font-size:9px;color:#8EB69B;font-weight:700;letter-spacing:.3px;line-height:1.8}
-  .isi-utama{flex:1;min-width:0;padding:2px 30px 50px;max-width:1180px}
+  .isi-utama{flex:1;min-width:0;padding:2px 30px 50px;max-width:1180px;overflow-x:clip}   /* v1.5.4b: iOS Safari mengecilkan halaman bila ada isi menjorok; clip ≠ hidden → sticky tetap jalan */
 
   /* ===== ANIMASI ===== */
   @keyframes pop{from{opacity:0;transform:translateX(-50%) scale(.72)}to{opacity:1;transform:translateX(-50%) scale(1)}}
@@ -1432,6 +1439,7 @@
   .arsip-grid{grid-template-columns:1fr}
   /* hero scan: tab platform 3 kolom rata, ikon di atas label → tak melebar keluar layar */
   .hero-scan{padding:22px 16px 20px;border-radius:24px;margin:14px 0}
+  .hero-scan .hs-hias{right:-36px;width:190px}   /* v1.5.4b: dulu menjorok ±90px+bayangan → iOS zoom-out */
   .hero-scan h1{font-size:25px}
   .hs-tabs{display:flex;width:100%;box-sizing:border-box;border-radius:18px}
   .hs-ind{border-radius:14px}
@@ -2796,6 +2804,28 @@ function initPilNavigasi(){
   setTimeout(cek, 300); setTimeout(cek, 1500);
   if(window.MutationObserver) new MutationObserver(cek).observe(sb, {childList:true, subtree:true});
 })();
+/* v1.5.4b: alat cek HP — buka alamat dengan ?cekhp → panel daftar elemen yang lebih lebar dari layar (diukur di perangkat itu sendiri) */
+function cekHP(){
+  const W = document.documentElement.clientWidth, out = [];
+  document.querySelectorAll("body *").forEach(function(e){
+    if(e.closest && e.closest("#cekhp")) return;
+    const r = e.getBoundingClientRect(); if(!r.width) return;
+    if(r.right > W + 1){
+      let p = e.parentElement, pot = "";
+      while(p && p !== document.body){ const o = getComputedStyle(p); if(o.overflowX !== "visible"){ pot = " ✂"; break; } p = p.parentElement; }
+      out.push([Math.round(r.right) + (pot ? 0 : 1e5), e.tagName.toLowerCase() + (e.id ? "#" + e.id : "") + (typeof e.className === "string" && e.className ? "." + e.className.trim().split(/\s+/).slice(0, 2).join(".") : "") + pot + " " + getComputedStyle(e).position]);
+    }
+  });
+  out.sort(function(a, b){ return b[0] - a[0]; });
+  let el = document.getElementById("cekhp");
+  if(!el){ el = document.createElement("div"); el.id = "cekhp"; document.body.appendChild(el); }
+  el.style.cssText = "position:fixed;left:6px;right:6px;top:6px;z-index:99999;background:#051F20;color:#DAF1DE;font:11px/1.45 ui-monospace,monospace;padding:10px;border-radius:12px;max-height:55vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.4)";
+  const vv = window.visualViewport;
+  el.innerHTML = "<b>Cek HP INTAI</b> · layar " + W + "px · lebar halaman " + document.documentElement.scrollWidth + "px · zoom " + (vv ? vv.scale.toFixed(2) : "?") + " · " + esc((navigator.userAgent.match(/OS [\d_]+|Android [\d.]+/) || [""])[0]) +
+    "<br>" + (out.filter(function(x){ return x[0] >= 1e5; }).length ? "⚠ penyebab (tidak terpotong):" : "✂ semua di bawah terpotong rapi (aman)") + "<br>" + (out.length ? out.slice(0, 12).map(function(x){ return (x[0] % 1e5) + "px " + esc(x[1]); }).join("<br>") : "✅ tidak ada elemen yang melebihi layar") +
+    '<br><button onclick="cekHP()" style="margin-top:6px;border:0;border-radius:999px;padding:5px 12px;background:#8EB69B;color:#051F20;font-weight:800">Ukur lagi</button> <button onclick="this.parentNode.remove()" style="border:0;border-radius:999px;padding:5px 12px;background:#235347;color:#DAF1DE;font-weight:800">Tutup</button>';
+}
+if(/[?&]cekhp\b/.test(location.search)) setTimeout(cekHP, 3500);
 /* ===== v1.5.4: DASHBOARD SHOPEE ===== */
 const DSH = {mode: LS.get("intai_dash") === "shopee" ? "shopee" : "meta", data: null, t: 0, tok: null, muat: false};
 function dashAlih(p, dariHero){
@@ -6974,5 +7004,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b1aeb90edd0fad',t:'MTc5MjA5NzI4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
