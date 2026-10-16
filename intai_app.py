@@ -40,7 +40,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.4c"
+VERSI = "1.6.5"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9425,12 +9425,77 @@ def jina_status():
 
 _TT_JINA_SEL = "script#__UNIVERSAL_DATA_FOR_REHYDRATION__, script#__FRONTITY_CONNECT_STATE__"
 
+# ---------- v1.6.5 perantara TikTok lewat Cloudflare Worker milik INTAI (gratis, kuota harian; Jina jadi cadangan) ----------
+CFW_MATI = [0.0]     # galat tingkat skrip (kuota/akses/jaringan) → lewati sampai waktu ini
+CFW_GAGAL = [0]      # berapa kali beruntun TikTok tidak memberi data lewat Worker
+CFW_KET = [""]
 
-def _tt_jina_html(jalan, timeout=40):
+
+def _cfw_env():
+    return (os.environ.get("INTAI_CF_URL") or "").strip(), (os.environ.get("INTAI_CF_KUNCI") or "").strip()
+
+
+def cfw_siap():
+    u, k = _cfw_env()
+    return bool(u.startswith("https://") and k) and time.time() >= CFW_MATI[0]
+
+
+def cfw_status():
+    u, k = _cfw_env()
+    if not u or not k:
+        return "Worker belum dipasang"
+    if time.time() < CFW_MATI[0]:
+        return ("Worker istirahat (" + (CFW_KET[0] or "-")[:60] + ") s.d. "
+                + datetime.fromtimestamp(CFW_MATI[0], WIB).strftime("%H:%M") + " WIB")
+    return "Worker aktif" + (f" ({CFW_KET[0][:60]})" if CFW_KET[0] else "")
+
+
+def _cfw_ambil(jalan, timeout=30):
+    """(html, diag) — html berisi hanya <script id=...> data, cocok dgn pengurai yang sudah ada."""
+    u, k = _cfw_env()
+    try:
+        r = requests.get(u, params={"p": jalan}, headers={"X-Intai-Kunci": k}, timeout=timeout)
+        try:
+            j = r.json()
+        except Exception:
+            CFW_KET[0] = f"HTTP {r.status_code}, bukan JSON — cek alamat Worker / kuota harian Cloudflare"
+            CFW_MATI[0] = time.time() + 1800
+            return "", "Worker: " + CFW_KET[0]
+        if not j.get("ok"):
+            CFW_KET[0] = str(j.get("error") or "galat")[:120]
+            CFW_MATI[0] = time.time() + (3 * 3600 if CFW_KET[0].startswith("kuota") else 1800)
+            return "", "Worker: " + CFW_KET[0]
+        h = (j.get("hasil") or [{}])[0]
+        if h.get("data") and h.get("id"):
+            CFW_GAGAL[0] = 0
+            CFW_KET[0] = ""
+            return (f'<script id="{h["id"]}" type="application/json">{h["data"]}</script>',
+                    f"Worker: HTTP {h.get('status')} · {len(h['data']) // 1024} KB data")
+        CFW_GAGAL[0] += 1
+        if CFW_GAGAL[0] >= 4:   # TikTok berulang kali tak memberi data ke server Google → istirahat 1 jam (Jina dipakai)
+            CFW_KET[0] = f"TikTok tidak memberi data (HTTP {h.get('status')})"
+            CFW_MATI[0] = time.time() + 3600
+            CFW_GAGAL[0] = 0
+        return "", f"Worker: TikTok HTTP {h.get('status')}, {int(h.get('ukuran') or 0) // 1024} KB, tanpa data"
+    except Exception as e:
+        CFW_KET[0] = "tidak menjawab: " + str(e)[:60]
+        CFW_MATI[0] = time.time() + 900
+        return "", "Worker: " + CFW_KET[0]
+
+
+def _tt_jina_html(jalan, timeout=40, hanya_gas=False):
     """jalan = '/@nama' dsb. Mengembalikan (html, diag).
+    v1.6.5: Cloudflare Worker milik INTAI dicoba dulu (gratis); gagal → Jina (kecuali hanya_gas).
     v1.6.4b hemat token: minta Jina hanya mengirim <script> data (X-Target-Selector), bukan seluruh halaman
     (halaman TikTok ±300 KB ≈ puluhan ribu token per baca). Kalau skrip data tidak ikut → baca halaman penuh."""
     diag = []
+    if cfw_siap():
+        html, dg = _cfw_ambil(jalan, timeout=min(timeout, 30))
+        if html:
+            return html, dg
+        diag.append(dg)
+    if hanya_gas:
+        return "", " | ".join(diag) or "Worker tidak aktif"
     for dom in ("https://tiktok.com", "https://www.tiktok.com"):
       for hemat in (True, False):
         hd = {"X-Timeout": "25", "X-Return-Format": "html"}
@@ -9469,7 +9534,12 @@ def _tt_jina_html(jalan, timeout=40):
 
 def _tt_video_detail_jina(nama, vid):
     """v1.6.4b: lewat halaman EMBED video (data ±15 KB) — dulu halaman video penuh (±250 KB/baca, boros token Jina).
-    Embed memuat views, like, komentar, share, tanggal, durasi, tanda iklan (isAd), musik + statistik akun; TIDAK memuat 'simpan'."""
+    Embed memuat views, like, komentar, share, tanggal, durasi, tanda iklan (isAd), musik + statistik akun; TIDAK memuat 'simpan'.
+    v1.6.5: bila Worker aktif → halaman video penuh lewat Worker dulu (gratis, termasuk 'simpan')."""
+    if cfw_siap():
+        d = _tt_video_detail_jina_penuh(nama, vid, hanya_gas=True)
+        if d:
+            return d
     try:
         html, _ = _tt_jina_html(f"/embed/v2/{vid}", timeout=25)
         m = re.search(r'id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', html or "", re.S)
@@ -9489,9 +9559,9 @@ def _tt_video_detail_jina(nama, vid):
         return None
 
 
-def _tt_video_detail_jina_penuh(nama, vid):   # cadangan lama (halaman video penuh) — tidak dipakai otomatis
+def _tt_video_detail_jina_penuh(nama, vid, hanya_gas=False):   # halaman video penuh — v1.6.5 dipakai lewat Worker saja
     try:
-        html, _ = _tt_jina_html(f"/@{nama}/video/{vid}", timeout=25)
+        html, _ = _tt_jina_html(f"/@{nama}/video/{vid}", timeout=25, hanya_gas=hanya_gas)
         d = _tt_rehidrasi(html).get("webapp.video-detail") or {}
         it = (d.get("itemInfo") or {}).get("itemStruct") or {}
         st = it.get("stats") or {}
@@ -9502,7 +9572,9 @@ def _tt_video_detail_jina_penuh(nama, vid):   # cadangan lama (halaman video pen
                 "tayang": _int(st.get("playCount"), None), "unggah": _int(it.get("createTime"), None),
                 "durasi": _int((it.get("video") or {}).get("duration"), None), "iklan": bool(it.get("isAd")),
                 "musik": ((it.get("music") or {}).get("title") or "")[:60],
-                "toko": bool(it.get("anchors")) or "shop" in json.dumps(it.get("anchors") or "").lower()}
+                "toko": bool(it.get("anchors")) or "shop" in json.dumps(it.get("anchors") or "").lower(),
+                "_vt": _int((it.get("authorStats") or {}).get("videoCount"), None),
+                "_mengikuti": _int((it.get("authorStats") or {}).get("followingCount"), None)}
     except Exception:
         return None
 
@@ -9538,12 +9610,13 @@ def tt_akun(u, ringan=False):
             prof, emb, diag = {}, {}, {"langsung": "dilewati — diblokir TikTok < 6 jam lalu"}
         else:
             prof, emb, diag = _tt_profil_embed(nama, cepat=True)
-        jalur = "langsung"
+        jalur, perantara = "langsung", ""
         if not prof.get("userInfo") and not emb.get("userInfo") and prof.get("statusCode") != 10221:
             p2, e2, d2 = _tt_profil_jina(nama, ringan=ringan)
             diag.update(d2)
             if p2.get("userInfo") or e2.get("userInfo") or p2.get("statusCode") == 10221:
                 prof, emb, jalur = p2, e2, "jina"
+                perantara = "cf" if "Worker: HTTP" in " ".join(str(v) for v in d2.values()) else "jina"
                 TT_LANGSUNG_MATI[0] = time.time() + 6 * 3600
         if prof.get("statusCode") == 10221 or (not prof.get("userInfo") and not emb.get("userInfo")):
             if prof.get("statusCode") == 10221:
@@ -9571,7 +9644,7 @@ def tt_akun(u, ringan=False):
             vl_det = vl[:1] if jalur == "jina" and akun.get("video_total") is None else []
         else:
             vl_det = vl
-        with concurrent.futures.ThreadPoolExecutor(max_workers=13 if (jalur == "jina" and berkunci) else 4) as ex:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=13 if (jalur == "jina" and (berkunci or perantara == "cf")) else 4) as ex:
             fdet = _tt_video_detail_jina if jalur == "jina" else _tt_video_detail
             det = list(ex.map(lambda v: fdet(akun["nama"], v["id"]), vl_det)) + [None] * (len(vl) - len(vl_det))
         if akun.get("video_total") is None:   # jalur ringan/embed: jumlah video & mengikuti dari statistik akun di embed video
@@ -9601,7 +9674,7 @@ def tt_akun(u, ringan=False):
                 "terbaru_hari": int((time.time() - ung[-1]) // 86400) if ung else None,
                 "per_bulan": round(akun["video_total"] / max((time.time() - akun["dibuat"]) / 2629800, 1), 1)
                 if akun.get("video_total") and akun.get("dibuat") else None}
-        h_ = {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini(), "jalur": jalur}
+        h_ = {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini(), "jalur": jalur, "perantara": perantara}
         if not ringan:   # v1.6.4b potret ringan tidak punya data profil lengkap → jangan menimpa arsip akun
             threading.Thread(target=tta_serap_akun, args=(h_,), daemon=True).start()   # v1.5.12 arsip akun
         return h_
@@ -9968,7 +10041,8 @@ def tt_uji():
         if not a.get("ok"):
             raise RuntimeError(str(a.get("error")) + " | " + " · ".join(f"{k}: {v}" for k, v in (a.get("diag") or {}).items()))
         return (f"{a['akun']['pengikut']} pengikut · {len(a['video'])} video · {a['ringkas']['dicek_iklan']} detail video · jalur "
-                + ("Jina Reader (cadangan)" if a.get("jalur") == "jina" else "langsung"))
+                + (("Cloudflare Worker" if a.get("perantara") == "cf" else "Jina Reader (cadangan)") if a.get("jalur") == "jina" else "langsung")
+                + " · " + cfw_status())
     uji("Profil + video akun", akun)
 
     # v1.5.11: baris oEmbed dihapus — tak dipakai fitur mana pun & selalu timeout dari IP Render (www.tiktok.com memblokir server)
@@ -10008,6 +10082,28 @@ def tt_uji():
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
     uji("Tokopedia lewat Jina Reader", tokped_jina)
+
+    def tiktok_cfw():   # v1.6.5
+        u, k = _cfw_env()
+        if not u or not k:
+            raise RuntimeError("belum dipasang — isi INTAI_CF_URL & INTAI_CF_KUNCI di Render → Environment (lihat panduan)")
+        CFW_MATI[0], CFW_GAGAL[0] = 0.0, 0
+        hasil = []
+        for jl in ("/@somethincofficial", "/embed/@somethincofficial"):
+            html, dg = _cfw_ambil(jl)
+            if jl.startswith("/embed"):
+                emb = _tt_embed_parse(html, "somethincofficial") if html else {}
+                vl = emb.get("videoList") or []
+                hasil.append(f"embed: {dg.replace('Worker: ', '')}" + (f", {len(vl)} video" if vl else ""))
+            else:
+                ui = (_tt_rehidrasi(html).get("webapp.user-detail") or {}).get("userInfo") or {} if html else {}
+                hasil.append(f"profil: {dg.replace('Worker: ', '')}" + ((", pengikut " + f"{_int((ui.get('stats') or {}).get('followerCount'), 0):,}".replace(",", ".")) if ui else ""))
+        dd = _tt_video_detail_jina_penuh("somethincofficial", vl[0]["id"], hanya_gas=True) if vl else None
+        hasil.append("detail video: " + (f"like {dd['like']}, simpan {dd['simpan']}" if dd else "gagal"))
+        if "pengikut" not in " ".join(hasil) and "video" not in hasil[1]:
+            raise RuntimeError(" · ".join(hasil))
+        return " · ".join(hasil) + " · tanpa token Jina"
+    uji("TikTok lewat Cloudflare Worker", tiktok_cfw)
 
     def akun_jina():
         prof, emb, diag = _tt_profil_jina("somethincofficial")
