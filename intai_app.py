@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.8"
+VERSI = "1.5.8b"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -8410,8 +8410,8 @@ AI_GROQ = (os.environ.get("INTAI_GROQ_KUNCI") or os.environ.get("GROQ_API_KEY") 
 AI_POLL = os.environ.get("INTAI_AI_POLLINATIONS") == "1"   # HANYA untuk uji lokal (tanpa kunci, tidak andal)
 AI_MODEL_GEMINI = [m for m in dict.fromkeys([os.environ.get("INTAI_GEMINI_MODEL") or "", "gemini-flash-lite-latest",
                                              "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"]) if m]
-AI_MODEL_GROQ = [m for m in dict.fromkeys([os.environ.get("INTAI_GROQ_MODEL") or "", "llama-3.3-70b-versatile",
-                                           "llama-3.1-8b-instant"]) if m]
+AI_MODEL_GROQ = [m for m in dict.fromkeys([os.environ.get("INTAI_GROQ_MODEL") or "", "openai/gpt-oss-120b",
+                                           "openai/gpt-oss-20b"]) if m]   # v1.5.8b: llama-3.x dimatikan Groq 16 Agu 2026
 AI_RPM = {"gemini": int(os.environ.get("INTAI_AI_RPM") or 10), "groq": 25, "poll": 2}
 AI_HARIAN_SISTEM = int(os.environ.get("INTAI_AI_HARIAN") or 700)    # hakim relevansi + peran (otomatis) per hari
 AI_PER_AKUN = int(os.environ.get("INTAI_AI_PER_AKUN") or 30)        # naskah + sudut (diminta user) per akun per hari
@@ -8421,6 +8421,48 @@ AI_STAT = {"hari": "", "sistem": 0, "akun": {}, "n": {}, "gagal": 0, "galat": No
 _AI_JENDELA = {"gemini": [], "groq": [], "poll": []}
 _AI_MODEL_MATI = set()
 _AI_REHAT = {}   # penyedia → epoch boleh dicoba lagi (429 / kuota habis)
+
+
+_AI_DAFTAR = {}   # v1.5.8b: penyedia → (epoch, [model aktif di akun ini]) — model dipensiunkan tak lagi mematikan AI
+
+
+def _ai_daftar_model(nama):
+    c = _AI_DAFTAR.get(nama)
+    if c and time.time() - c[0] < 6 * 3600:
+        return c[1]
+    hasil = None
+    try:
+        if nama == "gemini" and AI_GEMINI:
+            r = requests.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+                             headers={"x-goog-api-key": AI_GEMINI}, timeout=10)
+            if r.status_code == 200:
+                ms = [m["name"].split("/", 1)[-1] for m in r.json().get("models", [])
+                      if "generateContent" in (m.get("supportedGenerationMethods") or [])]
+                ms = [m for m in ms if "flash" in m and not re.search(r"image|tts|audio|live|embed|thinking|exp|computer|robot", m)]
+
+                def skor(m):   # flash-lite dulu (jatah harian terbesar), lalu flash; yang stabil sebelum preview
+                    return (0 if "lite" in m else 1, 1 if "preview" in m else 0, 0 if "latest" in m else 1,
+                            -float((re.search(r"(\d+(?:\.\d+)?)", m) or [0, "0"])[1]))
+                hasil = sorted(ms, key=skor)[:6]
+        elif nama == "groq" and AI_GROQ:
+            r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": "Bearer " + AI_GROQ}, timeout=10)
+            if r.status_code == 200:
+                ids = [m.get("id", "") for m in r.json().get("data", []) if m.get("active", True)]
+                ids = [i for i in ids if not re.search(r"whisper|guard|tts|orpheus|playai|distil|compound|embed|vision|prompt", i, re.I)]
+                pilih = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+                hasil = [i for i in pilih if i in ids] + sorted(i for i in ids if i not in pilih)[:4]
+    except Exception:
+        hasil = None
+    _AI_DAFTAR[nama] = (time.time() if hasil else time.time() - 6 * 3600 + 600, hasil or [])   # gagal → coba lagi 10 mnt
+    return hasil or []
+
+
+def _ai_urutan(nama, bawaan):
+    env = os.environ.get("INTAI_GEMINI_MODEL" if nama == "gemini" else "INTAI_GROQ_MODEL") or ""
+    daftar = _ai_daftar_model(nama)
+    if daftar:   # model bawaan yang masih aktif tetap didahulukan, lalu sisa daftar resmi
+        return [m for m in dict.fromkeys([env] + [m for m in bawaan if m in daftar] + daftar) if m]
+    return bawaan
 
 
 def ai_aktif():
@@ -8489,20 +8531,24 @@ def _ai_json(teks):
 
 def _ai_gemini(sistem, prompt, maks, suhu, batas):
     galat = None
-    for m in AI_MODEL_GEMINI:
+    for m in _ai_urutan("gemini", AI_MODEL_GEMINI):
         if m in _AI_MODEL_MATI:
             continue
         gc = {"temperature": suhu, "maxOutputTokens": maks, "responseMimeType": "application/json",
               "thinkingConfig": {"thinkingBudget": 0}}
         body = {"systemInstruction": {"parts": [{"text": sistem}]},
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": gc}
-        r = None
-        for _ in range(2):
+        r, sibuk = None, 0
+        for _ in range(3):
             r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
                               headers={"x-goog-api-key": AI_GEMINI, "Content-Type": "application/json"},
                               json=body, timeout=batas)
             if r.status_code == 400 and "think" in r.text.lower() and "thinkingConfig" in gc:
                 gc.pop("thinkingConfig", None)   # model baru menolak thinkingBudget → kirim ulang tanpa itu
+                continue
+            if r.status_code in (500, 503) and not sibuk:   # v1.5.8b: server Google penuh (sementara) → tunggu, ulang sekali
+                sibuk = 1
+                time.sleep(1.5)
                 continue
             break
         if r.status_code == 404:
@@ -8513,8 +8559,10 @@ def _ai_gemini(sistem, prompt, maks, suhu, batas):
             return None, "Gemini: kuota/menit habis (429)"
         if r.status_code in (401, 403):
             return None, f"Gemini: kunci ditolak ({r.status_code})"
+        if r.status_code == 400 and "api key" in r.text.lower():
+            return None, "Gemini: kunci tidak valid (400)"
         if r.status_code != 200:
-            galat = f"Gemini {m}: HTTP {r.status_code}"
+            galat = f"Gemini {m}: HTTP {r.status_code} {r.text[:80]}"
             continue
         try:
             d = r.json()
@@ -8535,13 +8583,20 @@ def _ai_openai(url, kunci, models, sistem, prompt, maks, suhu, batas, nama, json
                 "messages": [{"role": "system", "content": sistem}, {"role": "user", "content": prompt}]}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
+        if nama == "groq" and "gpt-oss" in m:   # v1.5.8b: model penalar → nalar singkat, token nalar ikut dihitung
+            body.update(reasoning_effort="low", max_tokens=maks + 600)
         if nama == "poll":   # uji lokal: model penalar, batas 1.500 token
             body.update(reasoning_effort="low", max_tokens=min(maks, 1500), seed=secrets.randbelow(10 ** 6))   # seed: lewati cache jawaban
         hd = {"Content-Type": "application/json"}
         if kunci:
             hd["Authorization"] = "Bearer " + kunci
         r = requests.post(url, headers=hd, json=body, timeout=batas)
-        if r.status_code == 404 or (r.status_code == 400 and "model" in r.text.lower() and "decommission" in r.text.lower()):
+        if r.status_code == 400 and "response_format" in body and re.search(r"response_format|json", r.text, re.I) \
+                and not re.search(r"decommission|not found|does not exist", r.text, re.I):
+            body.pop("response_format", None)   # model tak mendukung mode JSON → minta JSON lewat prompt
+            body["messages"][-1]["content"] += "\n\nBalas HANYA JSON valid."
+            r = requests.post(url, headers=hd, json=body, timeout=batas)
+        if r.status_code == 404 or (r.status_code == 400 and re.search(r"decommission|model_not_found|does not exist|not supported", r.text, re.I)):
             _AI_MODEL_MATI.add(nama + m)
             continue
         if r.status_code == 429:
@@ -8550,7 +8605,7 @@ def _ai_openai(url, kunci, models, sistem, prompt, maks, suhu, batas, nama, json
         if r.status_code in (401, 403):
             return None, f"{nama}: kunci ditolak ({r.status_code})"
         if r.status_code != 200:
-            galat = f"{nama} {m}: HTTP {r.status_code}"
+            galat = f"{nama} {m}: HTTP {r.status_code} {r.text[:80]}"
             continue
         try:
             return r.json()["choices"][0]["message"]["content"], f"{nama}:{m}"
@@ -8571,7 +8626,7 @@ def ai_panggil(sistem, prompt, tugas="umum", email=None, maks=1500, suhu=0.3, ba
         calon.append(("gemini", lambda: _ai_gemini(sistem, prompt, maks, suhu, batas)))
     if AI_GROQ:
         calon.append(("groq", lambda: _ai_openai("https://api.groq.com/openai/v1/chat/completions", AI_GROQ,
-                                                 AI_MODEL_GROQ, sistem, prompt, maks, suhu, batas, "groq")))
+                                                 _ai_urutan("groq", AI_MODEL_GROQ), sistem, prompt, maks, suhu, batas, "groq")))
     if AI_POLL:
         calon.append(("poll", lambda: _ai_openai("https://text.pollinations.ai/openai", "", ["openai"],
                                                  sistem, prompt + "\n\nBalas HANYA JSON valid.", maks, suhu,
@@ -8595,7 +8650,7 @@ def ai_panggil(sistem, prompt, tugas="umum", email=None, maks=1500, suhu=0.3, ba
     with kunci_ai:
         AI_STAT["gagal"] += 1
         AI_STAT["galat"], AI_STAT["galat_t"] = " · ".join(str(g) for g in galat)[:300], _iso_kini()
-    return None, {"penyedia": None, "error": "AI sedang tidak bisa dipakai (" + (galat[-1] if galat else "?") + ")."}
+    return None, {"penyedia": None, "error": "AI sedang tidak bisa dipakai (" + (" · ".join(str(g) for g in galat)[:240] if galat else "?") + ")."}
 
 
 def ai_status(email=None):
@@ -8605,7 +8660,8 @@ def ai_status(email=None):
              "terpakai_akun": AI_STAT["akun"].get(email or "", 0)}
         if email and is_admin(email):
             d.update(penyedia=[p for p, ada in (("Gemini", AI_GEMINI), ("Groq", AI_GROQ), ("Pollinations (uji)", AI_POLL)) if ada],
-                     model_gemini=[m for m in AI_MODEL_GEMINI if m not in _AI_MODEL_MATI],
+                     model_gemini=[m for m in _ai_urutan("gemini", AI_MODEL_GEMINI) if m not in _AI_MODEL_MATI] if AI_GEMINI else [],
+                     model_groq=[m for m in _ai_urutan("groq", AI_MODEL_GROQ) if "groq" + m not in _AI_MODEL_MATI] if AI_GROQ else [],
                      hari=AI_STAT["hari"], sistem=AI_STAT["sistem"], batas_sistem=AI_HARIAN_SISTEM,
                      per_penyedia=dict(AI_STAT["n"]), gagal=AI_STAT["gagal"], galat=AI_STAT["galat"],
                      galat_t=AI_STAT["galat_t"], terakhir=AI_STAT["terakhir"], terakhir_t=AI_STAT["terakhir_t"],
@@ -9244,29 +9300,75 @@ def _tt_video_detail(nama, vid):
         return None
 
 
+def _tt_diag(r, isi=""):
+    try:
+        return f"HTTP {r.status_code} · {len(r.text) // 1024} KB · {r.url.split('?')[0][-45:]}" + (f" · {isi}" if isi else "")
+    except Exception:
+        return "?"
+
+
+def _tt_embed_parse(html, nama):
+    m = re.search(r'id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', html or "", re.S)
+    if not m:
+        return {}
+    data = ((json.loads(m.group(1)).get("source") or {}).get("data") or {})
+    if f"/embed/@{nama}" in data:
+        return data[f"/embed/@{nama}"] or {}
+    for k, v in data.items():   # kunci beda huruf besar/kecil → ambil yang berisi userInfo
+        if isinstance(v, dict) and v.get("userInfo"):
+            return v
+    return {}
+
+
+def _tt_profil_embed(nama):
+    """v1.5.8b: profil + embed dgn sesi ber-cookie; bila kosong → pemanasan beranda (ttwid) lalu ulang sekali.
+    Mengembalikan (profil, embed, diag) — diag dipakai tombol uji admin untuk melihat apa yang diterima server."""
+    diag = {}
+    s = requests.Session()
+    s.headers.update({"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+                      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
+    prof, emb = {}, {}
+    for coba in range(2):
+        if coba:
+            try:
+                r0 = s.get("https://www.tiktok.com/", timeout=10)
+                diag["beranda"] = _tt_diag(r0, "cookie: " + (",".join(sorted(s.cookies.keys()))[:60] or "-"))
+            except Exception as e:
+                diag["beranda"] = "galat " + str(e)[:60]
+        if not prof.get("userInfo") and prof.get("statusCode") != 10221:
+            try:
+                r = s.get(f"https://www.tiktok.com/@{nama}" + ("?lang=id-ID" if coba else ""), timeout=12)
+                sc = _tt_rehidrasi(r.text)
+                prof = sc.get("webapp.user-detail") or {}
+                diag["profil" + str(coba + 1)] = _tt_diag(r, ("statusCode " + str(prof.get("statusCode")) if prof else
+                                                             "tanpa user-detail; scope: " + ",".join(list(sc)[:4]) if sc else
+                                                             "tanpa data rehidrasi" + (" (captcha/verifikasi)" if re.search(r"captcha|verify|wafchallenge", r.text[:30000], re.I) else "")))
+            except Exception as e:
+                diag["profil" + str(coba + 1)] = "galat " + str(e)[:80]
+        if not emb.get("userInfo"):
+            try:
+                r = s.get(f"https://www.tiktok.com/embed/@{nama}", timeout=12)
+                emb = _tt_embed_parse(r.text, nama)
+                diag["embed" + str(coba + 1)] = _tt_diag(r, f"{len(emb.get('videoList') or [])} video" if emb.get("userInfo") else
+                                                         ("ada FRONTITY tapi tanpa userInfo" if "__FRONTITY_CONNECT_STATE__" in r.text else "tanpa FRONTITY"))
+            except Exception as e:
+                diag["embed" + str(coba + 1)] = "galat " + str(e)[:80]
+        if (prof.get("userInfo") or prof.get("statusCode") == 10221) and emb.get("userInfo"):
+            break
+    return prof, emb, diag
+
+
 def tt_akun(u):
     nama = _tt_nama(u)
     if not nama:
         return {"ok": False, "error": "Tulis nama akun TikTok (mis. @somethincofficial) atau tempel link profilnya."}
 
     def ambil():
-        hd = {"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-            f_prof = ex.submit(lambda: requests.get(f"https://www.tiktok.com/@{nama}", headers=hd, timeout=12).text)
-            f_emb = ex.submit(lambda: requests.get(f"https://www.tiktok.com/embed/@{nama}", headers={"User-Agent": TT_UA}, timeout=12).text)
-            try:
-                prof = (_tt_rehidrasi(f_prof.result()).get("webapp.user-detail") or {})
-            except Exception:
-                prof = {}
-            try:
-                m = re.search(r'id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', f_emb.result(), re.S)
-                emb = (json.loads(m.group(1)).get("source") or {}).get("data", {}).get(f"/embed/@{nama}", {}) if m else {}
-            except Exception:
-                emb = {}
+        prof, emb, diag = _tt_profil_embed(nama)
         if prof.get("statusCode") == 10221 or (not prof.get("userInfo") and not emb.get("userInfo")):
             if prof.get("statusCode") == 10221:
                 return {"ok": False, "error": f"Akun @{nama} tidak ditemukan di TikTok."}
-            return {"ok": False, "error": "TikTok tidak memberikan data akun saat ini (mungkin dibatasi). Coba lagi nanti."}
+            return {"ok": False, "error": "TikTok tidak memberikan data akun saat ini (mungkin dibatasi). Coba lagi nanti.", "diag": diag}
         ui = (prof.get("userInfo") or {})
         us, st, eu = ui.get("user") or {}, ui.get("stats") or {}, emb.get("userInfo") or {}
         cu = us.get("commerceUserInfo") or {}
@@ -9326,7 +9428,7 @@ def tt_uji():
             ket = f()
             hasil.append({"jalur": nama, "ok": True, "ket": ket, "ms": int((time.time() - t0) * 1000)})
         except Exception as e:
-            hasil.append({"jalur": nama, "ok": False, "ket": str(e)[:120], "ms": int((time.time() - t0) * 1000)})
+            hasil.append({"jalur": nama, "ok": False, "ket": str(e)[:700], "ms": int((time.time() - t0) * 1000)})
     with kunci_tt:
         for k in [k for k in TT_CACHE if k.startswith(("cc:top_ads/v2/list?period=7&page=1&limit=20&order_by=like", "akun:somethincofficial"))]:
             TT_CACHE.pop(k, None)
@@ -9335,9 +9437,14 @@ def tt_uji():
     def akun():
         a = tt_akun("somethincofficial")
         if not a.get("ok"):
-            raise RuntimeError(a.get("error"))
+            raise RuntimeError(str(a.get("error")) + " | " + " · ".join(f"{k}: {v}" for k, v in (a.get("diag") or {}).items()))
         return f"{a['akun']['pengikut']} pengikut · {len(a['video'])} video · {a['ringkas']['dicek_iklan']} detail video"
     uji("Profil + video akun", akun)
+
+    def oembed():
+        r = requests.get("https://www.tiktok.com/oembed?url=https://www.tiktok.com/@somethincofficial", timeout=10, headers={"User-Agent": TT_UA})
+        return _tt_diag(r, "author: " + str((r.json() if r.status_code == 200 else {}).get("author_name")))
+    uji("TikTok oEmbed (resmi)", oembed)
 
     def tokped_web():
         r = requests.get("https://www.tokopedia.com/search?q=madu%20anak", timeout=12,
