@@ -464,6 +464,16 @@
 #view-shopee .sp-form input::placeholder{color:#8DA39A;font-weight:500}
 #view-shopee .sp-form select{border:1px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-size:12.5px;font-weight:800;background:#F6FBF7;color:var(--ink);flex:0 0 auto}
 #view-shopee .sp-form .btn{flex:0 0 auto;padding:11px 20px}
+/* v1.5.4b: tanpa kotak siku saat kolom cari difokus — dulu gaya global input:focus menggambar cincin/bayangan persegi di dalam bingkai melengkung;
+   sorotan fokus kini di bingkai luar (melengkung), kolom & dropdown tanpa tampilan bawaan iOS */
+#view-shopee .sp-form input{-webkit-appearance:none;appearance:none;border-radius:12px;box-shadow:none}
+#view-shopee .sp-form input:focus{border-color:transparent;box-shadow:none;outline:0}
+#view-shopee .sp-form input::-webkit-search-decoration,#view-shopee .sp-form input::-webkit-search-results-decoration{-webkit-appearance:none}
+#view-shopee .sp-form:focus-within{border-color:#8EB69B;box-shadow:var(--shadow),0 0 0 3px rgba(142,182,155,.32)}
+#view-shopee .sp-form select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:30px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23235347' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:13px}
+#view-shopee .sp-form select:focus{outline:0;border-color:#8EB69B;box-shadow:0 0 0 3px rgba(142,182,155,.32)}
 #view-shopee .sp-riw{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 2px 14px;min-height:8px}
 #view-shopee .sp-riw .lbl{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-right:2px}
 #view-shopee .sp-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.18s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -541,6 +551,16 @@
 #view-shopee .sp-muat i{width:18px;height:18px;border-radius:50%;border:2.5px solid #DAF1DE;border-top-color:#235347;animation:sp-putar .8s linear infinite;flex:0 0 auto}
 @keyframes sp-putar{to{transform:rotate(360deg)}}
 #view-shopee .sp-cat{font-size:11px;color:var(--muted);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+#view-shopee .sp-balik{display:flex;align-items:center;gap:10px;margin:0 0 12px;min-width:0}   /* v1.5.4b: tombol Kembali di Intip toko */
+#view-shopee .sp-balik-b{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:999px;padding:9px 14px 9px 10px;font:inherit;font-size:13px;font-weight:800;text-transform:none;cursor:pointer;box-shadow:var(--shadow);
+  -webkit-tap-highlight-color:transparent;transition:background .18s,border-color .18s,transform .15s}
+#view-shopee .sp-balik-b svg{width:17px;height:17px;color:var(--accent)}
+#view-shopee .sp-balik-b:hover{background:#F6FBF7;border-color:#8EB69B}
+#view-shopee .sp-balik-b:active{transform:scale(.96)}
+#view-shopee .sp-esc{margin-left:3px;font-size:10px;font-weight:800;color:#557069;border:1px solid var(--line);border-radius:7px;padding:1px 6px;background:#F6FBF7}
+#view-shopee .sp-balik-k{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (hover:none),(max-width:1024px){#view-shopee .sp-esc{display:none}}
 #view-shopee .sp-toko-kep{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 #view-shopee .sp-toko-kep .sp-lg{width:64px;height:64px;border-radius:18px;background:#EAF4EC;overflow:hidden;flex:0 0 auto;border:1px solid var(--line)}
 #view-shopee .sp-toko-kep .sp-lg img{width:100%;height:100%;object-fit:cover;display:block}
@@ -674,6 +694,92 @@
 .akl-tb{border:1px solid #8EB69B;background:#DAF1DE;color:#0B2B26;border-radius:999px;padding:4px 11px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;margin-left:2px}
 .akl-tb:hover{background:#8EB69B}
 @media(max-width:560px){.akl-r{grid-template-columns:1fr;gap:3px}.akl-r>span{justify-self:start;padding:2px 8px}.kk-in{width:112px}}
+/* ===== v1.5.5 tab Affiliator & Video ===== */
+#view-shopee .afv-intro{font-size:13px;line-height:1.55;color:var(--muted);background:#F6FBF7;border:1px solid #DCEBDF;border-radius:16px;padding:11px 14px;margin:0 0 12px}
+#view-shopee .afv-intro b{color:var(--ink)}
+#view-shopee .afv-loncat{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}
+#view-shopee .afv-loncat button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;text-transform:none}
+#view-shopee .afv-loncat button:hover{border-color:#8EB69B;background:#F6FBF7}
+#view-shopee .afv-sek{margin-bottom:16px;scroll-margin-top:84px}
+#view-shopee .afv-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin:-6px 0 12px}
+#view-shopee .afv-ring{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+#view-shopee .afv-ring span{font-size:11.5px;font-weight:700;color:#2F4A43;background:#F6FBF7;border:1px solid #DCEBDF;border-radius:999px;padding:4px 10px}
+#view-shopee .afv-ring span b{color:var(--ink)}
+#view-shopee .afv-list{display:grid;gap:10px}
+#view-shopee .afv-i{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:#fff}
+#view-shopee .afv-no{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#0B2B26;color:#DAF1DE;font-weight:800;font-size:13px}
+#view-shopee .afv-jd{font-weight:800;font-size:14px;color:var(--ink);line-height:1.35;margin-bottom:6px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#view-shopee .afv-fk{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+#view-shopee .afv-fk span{font-size:11.5px;font-weight:700;color:#2F4A43;background:#F3F8F4;border-radius:8px;padding:3px 8px}
+#view-shopee .afv-pd{font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px}
+#view-shopee .afv-pd.sepi{background:#DAF1DE;color:#163832}
+#view-shopee .afv-pd.sedang{background:#FFF3D6;color:#7A5410}
+#view-shopee .afv-pd.padat{background:#FBE3DF;color:#8A2E22}
+#view-shopee .afv-kt{font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:8px;overflow-wrap:anywhere}
+#view-shopee .afv-ak{display:flex;gap:6px;flex-wrap:wrap}
+#view-shopee .afv-ak > *{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:999px;padding:6px 11px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:none;text-transform:none;white-space:nowrap}
+#view-shopee .afv-ak > *:hover{border-color:#8EB69B;background:#F6FBF7}
+#view-shopee .afv-ak > .utama{background:#0B2B26;border-color:#0B2B26;color:#DAF1DE}
+#view-shopee .afv-cat{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px}
+#view-shopee .afv-kos{text-align:center;padding:22px 14px;color:var(--muted);font-size:13px;line-height:1.55}
+#view-shopee .afv-kos b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:4px}
+#view-shopee .afv-kos .afv-ak{justify-content:center;margin-top:10px}
+#view-shopee .afv-lagi{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 10px}
+#view-shopee .afv-lagi i{width:12px;height:12px;border-radius:50%;border:2px solid #8EB69B;border-top-color:transparent;animation:afvPutar .8s linear infinite}
+@keyframes afvPutar{to{transform:rotate(360deg)}}
+#view-shopee .afv-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:10px}
+#view-shopee .afv-p{display:grid;grid-template-columns:76px minmax(0,1fr);gap:11px;padding:12px;border:1px solid var(--line);border-radius:16px;background:#fff;align-content:start}
+#view-shopee .afv-th{position:relative;width:76px;height:76px;border-radius:12px;overflow:hidden;background:#EAF4EC;display:block}
+#view-shopee .afv-th img{width:100%;height:100%;object-fit:cover;display:block}
+#view-shopee .afv-skor{position:absolute;left:4px;bottom:4px;min-width:30px;text-align:center;font-size:12px;font-weight:800;border-radius:9px;padding:2px 6px;background:#0B2B26;color:#DAF1DE}
+#view-shopee .afv-skor.s2{background:#235347}
+#view-shopee .afv-skor.s3{background:#8EB69B;color:#051F20}
+#view-shopee .afv-nm{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none}
+#view-shopee .afv-hg{font-size:13px;font-weight:800;color:var(--ink);margin:3px 0 5px}
+#view-shopee .afv-rc{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+#view-shopee .afv-rc span{font-size:10.5px;font-weight:700;border-radius:7px;padding:2px 6px;background:#F3F8F4;color:#557069}
+#view-shopee .afv-rc span.ya{background:#DAF1DE;color:#163832}
+#view-shopee .afv-p .afv-ak{grid-column:1 / -1}
+#view-shopee .afv-kk{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px 12px;margin-bottom:12px}
+#view-shopee .afv-kk label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
+#view-shopee .afv-kk label small{font-weight:600;color:var(--muted);font-size:11px;line-height:1.35}
+#view-shopee .afv-kk input,#view-shopee .afv-kk select{-webkit-appearance:none;appearance:none;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;font-weight:700;background:#F6FBF7;color:var(--ink);box-shadow:none}
+#view-shopee .afv-kk select{padding-right:30px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23235347' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:13px}
+#view-shopee .afv-kk input:focus,#view-shopee .afv-kk select:focus{outline:0;border-color:#8EB69B;box-shadow:0 0 0 3px rgba(142,182,155,.32)}
+#view-shopee .afv-has{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:8px}
+#view-shopee .afv-h{border-radius:14px;padding:11px 12px;background:#F6FBF7;border:1px solid #DCEBDF}
+#view-shopee .afv-h .l{font-size:11px;font-weight:800;color:var(--muted)}
+#view-shopee .afv-h .v{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;letter-spacing:-.3px}
+#view-shopee .afv-h .s{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
+#view-shopee .afv-h.utama{background:#0B2B26;border-color:#0B2B26}
+#view-shopee .afv-h.utama .l,#view-shopee .afv-h.utama .s{color:#8EB69B}
+#view-shopee .afv-h.utama .v{color:#DAF1DE}
+#view-shopee .afv-h.rugi .v{color:#B5443A}
+#view-shopee .afv-warn{font-size:11.5px;font-weight:700;color:#7A5410;background:#FFF3D6;border-radius:10px;padding:6px 10px;margin:-4px 0 10px}
+.afv-ov{position:fixed;inset:0;z-index:520;background:rgba(5,31,32,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px}
+.afv-ov .modal{max-width:620px;width:100%;max-height:86vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box}
+.afv-ov .afv-mk{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.afv-ov .afv-mk b{font-size:16px;color:var(--ink);line-height:1.3}
+.afv-ov .afv-x{flex:none;width:34px;height:34px;border:0;border-radius:11px;background:#EEF6F0;color:#235347;cursor:pointer;font-size:15px;font-weight:800}
+.afv-ov .afv-l{font-size:11.5px;font-weight:800;color:var(--muted);margin:14px 0 7px;letter-spacing:.2px}
+.afv-ov .afv-hk{display:grid;gap:6px}
+.afv-ov .afv-hk button{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 11px;font:inherit;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;text-transform:none;line-height:1.4}
+.afv-ov .afv-hk button small{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-top:2px}
+.afv-ov .afv-hk button.on{border-color:#235347;background:#DAF1DE}
+.afv-ov .afv-ns{display:grid;gap:6px}
+.afv-ov .afv-ns div{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:13px;line-height:1.5;color:var(--ink);background:#F6FBF7;border-radius:12px;padding:8px 10px}
+.afv-ov .afv-ns div i{font-style:normal;font-size:11px;font-weight:800;color:#235347;padding-top:2px}
+.afv-ov .afv-cap{font-size:13px;line-height:1.55;background:#F6FBF7;border-radius:12px;padding:9px 11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.afv-ov .afv-nt{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px}
+.afv-ov .afv-bawah{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media (max-width:640px){
+  #view-shopee .afv-i{grid-template-columns:28px minmax(0,1fr);padding:12px}
+  #view-shopee .afv-no{width:28px;height:28px;font-size:12px;border-radius:9px}
+  #view-shopee .afv-p{grid-template-columns:68px minmax(0,1fr)}
+  #view-shopee .afv-th{width:68px;height:68px}
+  .afv-ov{padding:10px;align-items:flex-end}
+  .afv-ov .modal{max-height:88vh;border-radius:22px}
+}
 </style>
 <style>
 #view-meta {
@@ -2327,6 +2433,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
         <button type="button" data-t="flash" onclick="shpTab('flash')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Radar Flash Sale</button>
         <button type="button" data-t="toko" onclick="shpTab('toko')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>Intip toko</button>
         <button type="button" data-t="kalk" onclick="shpTab('kalk')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01M8.5 18h.01M12 18h3.5"/></svg>Hitung untung</button>
+        <button type="button" data-t="afv" onclick="shpTab('afv')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="m16 10 5-3v10l-5-3"/><path d="M8 9.5v5l4-2.5z"/></svg>Affiliator &amp; Video</button>
       </div>
 
       <section class="sp-sek" data-sek="cari">
@@ -2358,6 +2465,24 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
         </form>
         <div class="sp-riw" id="sp-toko-riw"></div>
         <div id="sp-toko-isi"></div>
+      </section>
+      <!-- v1.5.5: tab Affiliator & Video (A1 diiklankan affiliator · A2 kepadatan · A3 skor layak · A4 kalkulator komisi · V1 naskah) -->
+      <section class="sp-sek" data-sek="afv">
+        <div class="afv-intro"><b>Untuk affiliator &amp; kreator Shopee Video.</b> Cari produk yang sudah terbukti dibayari iklan oleh affiliator lain, nilai produk yang layak dipromosikan, hitung komisi, lalu susun naskah videonya.</div>
+        <form class="sp-form" id="afv-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="afv-q" type="search" placeholder="Kata kunci produk — misal: kipas, gorden, kacamata (kosongkan = semua)" aria-label="Kata kunci affiliator">
+          <button type="submit" class="btn" id="afv-btn">Analisis</button>
+        </form>
+        <div class="sp-riw" id="afv-riw"></div>
+        <div class="afv-loncat" id="afv-loncat">
+          <button type="button" onclick="afvLoncat('afv-a1')">📣 Diiklankan affiliator</button>
+          <button type="button" onclick="afvLoncat('afv-a3')">⭐ Layak dipromosikan</button>
+          <button type="button" onclick="afvLoncat('afv-kalk')">🧮 Kalkulator komisi</button>
+        </div>
+        <div id="afv-a1"></div>
+        <div id="afv-a3"></div>
+        <div id="afv-kalk"></div>
       </section>
 
       <div class="sp-legenda">
@@ -6288,6 +6413,7 @@ function tampilView(v, push){
   (function(){   /* v1.4.5: animasi masuk */
     const lama = VT.v; VT.v = v;
     if(lama === null || lama === v) return;
+    VT.lalu = lama;   /* v1.5.4b: dipakai tombol Kembali di Intip toko */
     document.documentElement.classList.add("anim-selesai");
     const sh = document.querySelector(".shell"), laci = !!sh && (sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup"));
     if(laci){ VT.sampai = performance.now() + 800; return; }   /* HP: kartu halaman yang kembali membesar = transisinya */
@@ -6383,6 +6509,7 @@ function shpUrl(){
   if(SHP.tab !== "cari") p.set("tab", SHP.tab);
   if(SHP.tab === "cari" && SHP.q){ p.set("q", SHP.q); if(SHP.urut !== "laris") p.set("urut", SHP.urut); }
   if(SHP.tab === "toko" && SHP.tokoQ) p.set("toko", SHP.tokoQ);
+  if(SHP.tab === "afv" && AFV.q) p.set("aq", AFV.q);   /* v1.5.5: kata kunci tab Affiliator & Video */
   const s = p.toString();
   return "/shopee" + (s ? "?" + s : "");
 }
@@ -6414,11 +6541,14 @@ function shpMasuk(opsi){
   shpPasang();
   opsi = opsi || {};
   if(opsi.tab) SHP.tab = opsi.tab;
+  if(opsi.aq != null && opsi.aq !== AFV.q){ AFV.q = opsi.aq.slice(0, 80); AFV.iklan = null; AFV.produk = null; AFV.galat = {iklan: "", produk: ""}; AFV.muat = {iklan: false, produk: false}; }
   shpTab(SHP.tab, true);
   const urut = opsi.urut || "laris";
+  if(SHP.tab === "afv") return;   /* v1.5.5: tab afv dimuat oleh afvMasuk (lewat shpTab) */
   if(opsi.q && !(SHP.cari && opsi.q === SHP.q && urut === SHP.urut)){
     shpCari(opsi.q, urut);
   } else if(opsi.toko && !(SHP.toko && opsi.toko === SHP.tokoQ)){
+    if(VT.lalu && VT.lalu !== "shopee") SHP.tokoAsal = {view: VT.lalu};   /* v1.5.4b: mis. dari kartu toko di Dashboard */
     shpToko(opsi.toko);
   } else {
     shpGambarSemua();
@@ -6427,10 +6557,11 @@ function shpMasuk(opsi){
 }
 function shpDariUrl(cari){
   const p = new URLSearchParams(cari == null ? location.search : cari), o = {};
-  const t = p.get("tab"); if(t === "flash" || t === "toko" || t === "cari" || t === "kalk") o.tab = t;
+  const t = p.get("tab"); if(t === "flash" || t === "toko" || t === "cari" || t === "kalk" || t === "afv") o.tab = t;
   const q = (p.get("q") || "").trim(); if(q){ o.q = q; o.tab = "cari"; }
   const u = p.get("urut"); if(u && SHP_URUT_LBL[u]) o.urut = u;
   const tk = (p.get("toko") || "").trim(); if(tk && !q){ o.toko = tk; o.tab = "toko"; }
+  const aq = p.get("aq"); if(aq != null && !q && !tk){ o.aq = aq.trim(); o.tab = "afv"; }
   return o;
 }
 function shpTab(t, diam){
@@ -6438,6 +6569,7 @@ function shpTab(t, diam){
   document.querySelectorAll("#sp-tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.t === t); });
   document.querySelectorAll("#view-shopee .sp-sek").forEach(function(s){ s.classList.toggle("on", s.dataset.sek === t); });
   if(t === "flash" && !SHP.flash && !SHP.muat.flash && !SHP.galat.flash) shpFlash();
+  if(t === "afv" && !diam){ afvMasuk(); shpSimpanUrl(); return; }
   shpGambarSemua();
   if(!diam) shpSimpanUrl();
 }
@@ -6445,6 +6577,7 @@ function shpGambarSemua(){
   if(SHP.tab === "cari") shpGambarCari();
   else if(SHP.tab === "flash") shpGambarFlash();
   else if(SHP.tab === "kalk") shpGambarKalk();
+  else if(SHP.tab === "afv") afvMasuk();
   else shpGambarToko();
 }
 function shpMuatHTML(t){ return '<div class="sp-muat"><i></i>' + t + '</div>'; }
@@ -6920,11 +7053,362 @@ function shpGambarFlash(){
       (d.n_delta ? "" : "<b>Selisih muncul mulai besok</b> setelah ada potret pembanding. ") + '🟠 <b>Laku di sesi ini</b> bisa meleset bila penjual menambah stok di tengah sesi.</div>';
 }
 
+/* ===================== v1.5.5 TAB AFFILIATOR & VIDEO ===================== */
+/* A1 diiklankan affiliator (arsip iklan Meta berlink Shopee) · A2 kepadatan affiliator · A3 skor layak dipromosikan (kartu Shopee)
+   A4 kalkulator komisi · V1 naskah Shopee Video (hook dari iklan nyata + fakta produk). Label: 🟢 asli · 🔵 hitungan INTAI · 🟠 perkiraan */
+var AFV = {q: "", iklan: null, produk: null, muat: {iklan: false, produk: false}, galat: {iklan: "", produk: ""}, coba: 0, pasang: false, semua: false, urut: []};
+const AFV_KANAL = {
+  medsos: {nama: "Media sosial (link affiliate)", maks: 7},
+  video:  {nama: "Shopee Video", maks: 5},
+  live:   {nama: "Shopee Live", maks: 10}
+};
+function afvEmail(){ return (typeof AKUN !== "undefined" && AKUN && AKUN.email) || "tamu"; }
+function afvRiw(){ try{ return JSON.parse(localStorage.getItem("intai_afv_riw:" + afvEmail()) || "[]"); }catch(e){ return []; } }
+function afvRiwTambah(q){
+  const r = afvRiw().filter(function(x){ return x !== q; }); r.unshift(q);
+  try{ localStorage.setItem("intai_afv_riw:" + afvEmail(), JSON.stringify(r.slice(0, 8))); }catch(e){}
+}
+function afvPasang(){
+  if(AFV.pasang) return;
+  AFV.pasang = true;
+  document.getElementById("afv-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    afvCari(document.getElementById("afv-q").value || "");
+  });
+  afvKalkGambar();
+}
+function afvMasuk(){
+  afvPasang();
+  if(AFV.iklan === null && !AFV.muat.iklan && !AFV.galat.iklan) afvCari(AFV.q, true);
+  else afvGambar();
+}
+function afvLoncat(id){ const el = document.getElementById(id); if(el) el.scrollIntoView({behavior: "smooth", block: "start"}); }
+function afvCari(q, diam){
+  q = String(q || "").trim().slice(0, 80);
+  AFV.q = q; AFV.coba = 0; AFV.semua = false;
+  const i = document.getElementById("afv-q"); if(i && i.value !== q) i.value = q;
+  if(q) afvRiwTambah(q);
+  if(AFV.iklan && AFV.iklan.q !== q) AFV.iklan = null;   /* kata kunci berganti → jangan tampilkan hasil kata kunci lama */
+  shpSimpanUrl();
+  afvMuatIklan();
+  if(q.length >= 2) afvMuatProduk(); else { AFV.produk = null; AFV.galat.produk = ""; AFV.muat.produk = false; }
+  afvGambar();
+  if(!diam) afvLoncat("afv-a1");
+}
+async function afvMuatIklan(){
+  const q = AFV.q;
+  AFV.muat.iklan = true; AFV.galat.iklan = ""; afvGambar();
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/afv?q=" + encodeURIComponent(q))).json(); }catch(e){}
+  if(AFV.q !== q) return;
+  AFV.muat.iklan = false;
+  if(d && d.ok){
+    AFV.iklan = d;
+    /* short link dibuka bertahap (maks 40 per permintaan) → minta lagi otomatis beberapa kali */
+    if(d.belum_dibuka > 0 && d.dibuka > 0 && AFV.coba < 4){ AFV.coba++; AFV.muat.iklan = true; setTimeout(function(){ if(AFV.q === q) afvMuatIklan(); }, 300); }
+  } else if(!AFV.iklan || AFV.iklan.q !== q){
+    AFV.iklan = null; AFV.galat.iklan = (d && d.error) || "Server INTAI tidak terhubung.";
+  }
+  afvGambar();
+}
+async function afvMuatProduk(){
+  const q = AFV.q;
+  if(typeof SHP !== "undefined" && SHP.cari && SHP.q === q && SHP.urut === "laris"){ AFV.produk = SHP.cari; AFV.galat.produk = ""; afvGambar(); return; }
+  AFV.muat.produk = true; AFV.galat.produk = ""; afvGambar();
+  let d = null;
+  try{ d = await (await fetch("/api/shopee/cari?q=" + encodeURIComponent(q) + "&urut=laris")).json(); }catch(e){}
+  if(AFV.q !== q) return;
+  AFV.muat.produk = false;
+  if(d && d.ok){ AFV.produk = d; }
+  else { AFV.produk = null; AFV.galat.produk = (d && d.error) || "Server INTAI tidak terhubung."; }
+  afvGambar();
+}
+/* A3: skor layak dipromosikan 0–100 (🔵) — rumus terbuka, dari data asli kartu Shopee */
+function afvSkor(p){
+  const r = [];
+  const lc = String(p.lencana || (p.resmi ? "Mall" : "") || "");
+  const tk = lc === "Mall" || lc === "Star+" ? 25 : lc === "Star" ? 20 : lc ? 10 : 0;
+  r.push({ya: tk >= 20, n: tk, t: tk >= 20 ? lc + " · berhak Komisi Xtra" : lc ? "lencana " + lc : "toko biasa (tanpa Komisi Xtra)"});
+  const rt = Number(p.rating) || 0;
+  const sr = rt >= 4.8 ? 20 : rt >= 4.5 ? 15 : rt >= 4 ? 6 : 0;
+  r.push({ya: sr >= 15, n: sr, t: rt ? "★ " + String(rt).replace(".", ",") : "belum ada rating"});
+  const h = Number(p.harga) || 0;
+  const sh = h >= 30000 && h <= 150000 ? 20 : (h >= 15000 && h < 30000) || (h > 150000 && h <= 300000) ? 10 : h ? 3 : 0;
+  r.push({ya: sh >= 20, n: sh, t: sh >= 20 ? "harga impulsif" : h > 300000 ? "harga tinggi" : h ? "harga " + (h < 30000 ? "sangat murah" : "menengah") : "harga ?"});
+  const tj = Number(p.terjual) || 0;
+  const st = tj >= 10000 ? 25 : tj >= 1000 ? 18 : tj >= 100 ? 9 : tj > 0 ? 3 : 0;
+  r.push({ya: st >= 18, n: st, t: p.terjual_teks ? String(p.terjual_teks) : "terjual ?"});
+  const sd = (p.diskon || p.harga_coret) ? 10 : 0;
+  r.push({ya: sd > 0, n: sd, t: p.diskon ? "diskon " + p.diskon + "%" : sd ? "ada harga coret" : "tanpa diskon"});
+  return {nilai: tk + sr + sh + st + sd, rincian: r};
+}
+function afvKepadatanTeks(x){
+  return x.kepadatan === "sepi" ? "1 affiliator · masih sepi" : x.kepadatan === "sedang" ? x.affiliator + " affiliator · sedang" : x.affiliator + " affiliator · padat";
+}
+function afvGambar(){
+  const riw = document.getElementById("afv-riw");
+  if(!riw) return;
+  const r = afvRiw(), daftar = r.length ? r : ["kipas", "gorden", "kacamata", "skincare"];
+  riw.innerHTML = '<span class="lbl">' + (r.length ? "Terakhir" : "Coba") + '</span>' + daftar.map(function(k){
+    return '<button type="button" class="sp-chip" data-k="' + esc(k) + '" onclick="afvCari(this.dataset.k)">' + esc(k) + '</button>'; }).join("") +
+    (AFV.q ? '<button type="button" class="sp-chip" onclick="afvCari(\'\')">Semua arsip</button>' : "");
+  afvGambarA1(); afvGambarA3();
+}
+function afvGambarA1(){
+  const el = document.getElementById("afv-a1"); if(!el) return;
+  const d = AFV.iklan, q = AFV.q;
+  let isi = '<div class="kartu afv-sek"><div class="judul-kartu"><b>📣 Diiklankan affiliator di Meta 🟢</b><span>' + (q ? "“" + esc(q) + "”" : "seluruh arsip") + '</span></div>' +
+    '<div class="afv-sub">Produk Shopee yang dipromosikan affiliator lewat <b>iklan Meta berbayar</b>. Affiliator hanya mau terus membiayai iklan untuk produk yang menghasilkan komisi, jadi iklan yang tayang lama adalah bukti terkuat.</div>';
+  if(!d && AFV.muat.iklan){ el.innerHTML = isi + shpMuatHTML("Membaca arsip iklan Meta dan membuka link Shopee…") + '</div>'; return; }
+  if(!d && AFV.galat.iklan){ el.innerHTML = isi + shpGalatHTML(AFV.galat.iklan, "afvMuatIklan()") + '</div>'; return; }
+  if(!d){ el.innerHTML = isi + '</div>'; return; }
+  const h = d.hitung || {};
+  isi += '<div class="afv-ring"><span><b>' + shpN(d.iklan_shopee) + '</b> iklan Meta berlink Shopee</span>' +
+    '<span><b>' + shpN(h.aff || 0) + '</b> lewat link affiliate</span>' + (h.penjual ? '<span><b>' + shpN(h.penjual) + '</b> iklan resmi penjual</span>' : "") +
+    (h.langsung ? '<span><b>' + shpN(h.langsung) + '</b> link langsung toko</span>' : "") + (h.belum ? '<span><b>' + shpN(h.belum) + '</b> link belum dibuka</span>' : "") + '</div>';
+  if(AFV.muat.iklan) isi += '<div class="afv-lagi"><i></i>Membuka link pendek berikutnya…</div>';
+  const pr = d.produk || [];
+  if(!pr.length){
+    isi += d.iklan_shopee
+      ? '<div class="afv-kos"><b>Belum ada produk lewat link affiliate</b>Ada ' + shpN(d.iklan_shopee) + ' iklan berlink Shopee untuk kata kunci ini, tapi semuanya iklan penjual/link langsung' + (h.belum ? " atau link pendeknya belum dibuka" : "") + '.' +
+        (h.belum ? '<div class="afv-ak"><button type="button" class="utama" onclick="AFV.coba=0;afvMuatIklan()">Buka link berikutnya</button></div>' : "") + '</div>'
+      : '<div class="afv-kos"><b>Arsip belum punya iklan Meta berlink Shopee' + (q ? " untuk “" + esc(q) + "”" : "") + '</b>Arsip INTAI terisi dari setiap Scan Meta (semua akun + scan harian otomatis). Jalankan Scan Meta untuk kata kunci ini, lalu kembali ke sini.' +
+        (q ? '<div class="afv-ak"><button type="button" class="utama" onclick="afvKeMeta()">Scan Meta “' + esc(q) + '” sekarang</button></div>' : "") + '</div>';
+  } else {
+    isi += '<div class="afv-list">' + pr.slice(0, AFV.semua ? 40 : 12).map(function(x, i){
+      const jd = (x.hook && x.hook[0]) || "Produk Shopee #" + x.itemid;
+      return '<div class="afv-i"><div class="afv-no">' + (i + 1) + '</div><div style="min-width:0">' +
+        '<div class="afv-jd">' + esc(jd) + '</div>' +
+        '<div class="afv-fk"><span class="afv-pd ' + x.kepadatan + '" title="🟢 dihitung dari ID affiliate (an_…) di link">' + afvKepadatanTeks(x) + '</span>' +
+          '<span title="🟢 umur iklan dari Meta">⏱ terlama ' + shpN(x.umur_maks) + ' hari</span>' +
+          '<span title="🟢 status terakhir saat discan">📣 ' + x.iklan + ' iklan · ' + x.aktif + ' masih tayang</span>' +
+          (x.niche || []).slice(0, 2).map(function(n){ return '<span>#' + esc(n) + '</span>'; }).join("") + '</div>' +
+        '<div class="afv-kt">' + (x.halaman.length ? 'Pengiklan: ' + x.halaman.slice(0, 3).map(esc).join(", ") : "") +
+          (x.tag.length ? (x.halaman.length ? " · " : "") + 'tag konten affiliator: ' + x.tag.slice(0, 2).map(esc).join(", ") : "") + '</div>' +
+        '<div class="afv-ak"><a class="utama" href="' + esc(x.url) + '" target="_blank" rel="noopener">Buka produk ↗</a>' +
+          '<button type="button" onclick="afvNaskahIklan(' + i + ')">🎬 Naskah video</button>' +
+          '<button type="button" onclick="afvKeKalk()">🧮 Hitung komisi</button>' +
+          '<button type="button" onclick="shpToko(\'' + esc(x.shopid) + '\')">Intip toko</button>' +
+          (x.aid && x.aid[0] ? '<a href="' + esc(pfAdLib(x.aid[0])) + '" target="_blank" rel="noopener">Lihat iklannya ↗</a>' : "") + '</div>' +
+      '</div></div>';
+    }).join("") + '</div>' +
+    (pr.length > 12 && !AFV.semua ? '<div class="afv-ak" style="margin-top:10px"><button type="button" onclick="AFV.semua=true;afvGambarA1()">Tampilkan semua (' + pr.length + ')</button></div>' : "");
+  }
+  isi += '<div class="afv-cat">Sampel = iklan yang pernah terlihat oleh scan INTAI, bukan seluruh iklan Meta. Jumlah affiliator 🟢 dihitung dari ID affiliate (<code>an_…</code>) di link Shopee; ' +
+    '“sepi” = baru 1 affiliator yang beriklan, peluang masih terbuka. Nama produk diambil dari teks iklan. Link pendek dibuka bertahap.</div></div>';
+  el.innerHTML = isi;
+}
+function afvGambarA3(){
+  const el = document.getElementById("afv-a3"); if(!el) return;
+  const q = AFV.q;
+  let isi = '<div class="kartu afv-sek"><div class="judul-kartu"><b>⭐ Layak dipromosikan 🔵</b><span>halaman pertama Shopee · Terlaris</span></div>' +
+    '<div class="afv-sub">Skor 0–100 dari data asli kartu Shopee: toko berhak Komisi Xtra (Mall/Star+/Star) 25 · rating 20 · harga impulsif Rp30–150rb 20 · bukti laku 25 · ada diskon 10.</div>';
+  if(q.length < 2){ el.innerHTML = isi + '<div class="afv-kos"><b>Ketik kata kunci produk</b>Skor dihitung dari hasil pencarian Shopee untuk kata kunci itu.</div></div>'; return; }
+  if(AFV.muat.produk){ el.innerHTML = isi + shpMuatHTML("Membaca halaman pertama Shopee untuk “" + esc(q) + "”…") + '</div>'; return; }
+  if(AFV.galat.produk){ el.innerHTML = isi + shpGalatHTML(AFV.galat.produk, "afvMuatProduk()") + '</div>'; return; }
+  const d = AFV.produk;
+  if(!d || !(d.produk || []).length){ el.innerHTML = isi + '<div class="afv-kos"><b>Belum ada produk</b>Shopee tidak mengirim produk untuk kata kunci ini.</div></div>'; return; }
+  AFV.urut = d.produk.map(function(p){ return {p: p, s: afvSkor(p)}; }).sort(function(a, b){ return b.s.nilai - a.s.nilai; });
+  isi += '<div class="afv-g">' + AFV.urut.slice(0, 20).map(function(o, i){
+    const p = o.p, s = o.s, g = shpGbr(p.gambar, true);
+    return '<div class="afv-p"><a class="afv-th" href="' + esc(p.url) + '" target="_blank" rel="noopener">' +
+        (g ? '<img loading="lazy" referrerpolicy="no-referrer" src="' + esc(g) + '" alt="" onerror="this.remove()">' : "") +
+        '<span class="afv-skor ' + (s.nilai >= 70 ? "" : s.nilai >= 50 ? "s2" : "s3") + '" title="🔵 skor layak dipromosikan">' + s.nilai + '</span></a>' +
+      '<div style="min-width:0"><a class="afv-nm" href="' + esc(p.url) + '" target="_blank" rel="noopener" title="' + esc(p.nama) + '">' + esc(p.nama) + '</a>' +
+        '<div class="afv-hg">' + shpRp(p.harga) + '</div>' +
+        '<div class="afv-rc">' + s.rincian.map(function(x){ return '<span class="' + (x.ya ? "ya" : "") + '" title="+' + x.n + ' poin">' + (x.ya ? "✓ " : "") + esc(x.t) + '</span>'; }).join("") + '</div></div>' +
+      '<div class="afv-ak"><button type="button" class="utama" onclick="afvNaskahProduk(' + i + ')">🎬 Naskah video</button>' +
+        '<button type="button" onclick="afvKeKalk(' + (Number(p.harga) || 0) + ')">🧮 Hitung komisi</button>' +
+        '<button type="button" onclick="shpToko(\'' + esc(p.shopid) + '\')">Intip toko</button></div></div>';
+  }).join("") + '</div>' +
+  '<div class="afv-cat">Skor bukan tarif komisi — tarif pastinya hanya terlihat di aplikasi Shopee Affiliate saat menyalin link. Pakai skor untuk menyaring, lalu cek komisinya di aplikasi.</div></div>';
+  el.innerHTML = isi;
+}
+function afvKeMeta(){
+  const q = AFV.q;
+  ke("/meta");
+  setTimeout(function(){
+    const i = document.getElementById("q"); if(!i) return;
+    i.value = q;
+    if(typeof MODE !== "undefined" && MODE === "cari" && typeof scan === "function") scan(); else i.focus();
+  }, 350);
+}
+/* ---------- A4 kalkulator komisi (🟠 perkiraan) ---------- */
+function afvKalkKunci(){ return "intai_kkaff_v1:" + afvEmail(); }
+function afvKalkBaca(){
+  let v = {}; try{ v = JSON.parse(localStorage.getItem(afvKalkKunci()) || "{}"); }catch(e){}
+  return Object.assign({harga: 100000, kanal: "video", komisi: 5, xtra: 0, maks: "", klik: 1000, cr: 2, cpc: 0}, v);
+}
+function afvKalkGambar(){
+  const el = document.getElementById("afv-kalk"); if(!el) return;
+  const v = afvKalkBaca();
+  const opsi = Object.keys(AFV_KANAL).map(function(k){ return '<option value="' + k + '"' + (v.kanal === k ? " selected" : "") + '>' + AFV_KANAL[k].nama + '</option>'; }).join("");
+  el.innerHTML = '<div class="kartu afv-sek"><div class="judul-kartu"><b>🧮 Kalkulator komisi 🟠</b><span>perkiraan · rumus terbuka</span></div>' +
+    '<div class="afv-sub">Isi persen komisi dari aplikasi Shopee Affiliate (terlihat saat menyalin link produk). Untuk affiliator yang beriklan di Meta, isi juga biaya per klik supaya tahu batas aman iklannya.</div>' +
+    '<div class="afv-kk">' +
+      '<label>Harga produk (Rp)<input id="afk-harga" type="number" inputmode="numeric" min="0" step="500" value="' + esc(v.harga) + '"><small>harga yang dibayar pembeli</small></label>' +
+      '<label>Kanal promosi<select id="afk-kanal">' + opsi + '</select><small id="afk-kanal-cat"></small></label>' +
+      '<label>Komisi dasar (%)<input id="afk-komisi" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="' + esc(v.komisi) + '"><small>dari aplikasi Affiliate</small></label>' +
+      '<label>Komisi Xtra (%)<input id="afk-xtra" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="' + esc(v.xtra) + '"><small>tambahan dari penjual (label Komisi XTRA), 0 bila tidak ada</small></label>' +
+      '<label>Batas komisi per pesanan (Rp)<input id="afk-maks" type="number" inputmode="numeric" min="0" step="1000" value="' + esc(v.maks) + '" placeholder="kosong = tanpa batas"><small>isi bila aplikasi menyebut batas</small></label>' +
+      '<label>Klik / penonton tertarik per bulan<input id="afk-klik" type="number" inputmode="numeric" min="0" step="10" value="' + esc(v.klik) + '"><small>klik link atau ketukan tag produk</small></label>' +
+      '<label>Konversi (%)<input id="afk-cr" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="' + esc(v.cr) + '"><small>persen klik yang jadi pesanan; pemula ±1–3%</small></label>' +
+      '<label>Biaya iklan per klik (Rp)<input id="afk-cpc" type="number" inputmode="numeric" min="0" step="50" value="' + esc(v.cpc) + '"><small>0 bila promosi organik</small></label>' +
+    '</div><div id="afk-warn"></div><div class="afv-has" id="afk-hasil"></div>' +
+    '<div class="afv-cat">Komisi = harga × (komisi dasar + Komisi Xtra), dibatasi “batas per pesanan” bila diisi. Batas program per kanal (aturan Jan 2026): Shopee Live maks 10%, media sosial maks 7%, Shopee Video maks 5% untuk pesanan langsung; Komisi Merek/Xtra bisa jauh lebih tinggi. ' +
+    'Belum dipotong pajak (PPh) dan biaya pencairan (±0,5%, maks Rp20.000 per penarikan). Angka hanya perkiraan — angka pasti ada di aplikasi Shopee Affiliate.</div></div>';
+  el.querySelectorAll("input,select").forEach(function(x){ x.addEventListener("input", afvKalkHitung); x.addEventListener("change", afvKalkHitung); });
+  afvKalkHitung();
+}
+function afvKalkHitung(){
+  const n = function(id){ const x = document.getElementById(id); const v = x ? parseFloat(String(x.value).replace(",", ".")) : NaN; return isFinite(v) && v > 0 ? v : 0; };
+  const kanal = (document.getElementById("afk-kanal") || {}).value || "video";
+  const v = {harga: n("afk-harga"), kanal: kanal, komisi: n("afk-komisi"), xtra: n("afk-xtra"), maks: (document.getElementById("afk-maks") || {}).value || "", klik: n("afk-klik"), cr: n("afk-cr"), cpc: n("afk-cpc")};
+  try{ localStorage.setItem(afvKalkKunci(), JSON.stringify(v)); }catch(e){}
+  const k = AFV_KANAL[kanal] || AFV_KANAL.video;
+  const cat = document.getElementById("afk-kanal-cat"); if(cat) cat.textContent = "batas program: maks " + k.maks + "% (pesanan langsung)";
+  const w = document.getElementById("afk-warn");
+  if(w) w.innerHTML = v.komisi > k.maks ? '<div class="afv-warn">Komisi dasar ' + String(v.komisi).replace(".", ",") + '% melebihi batas program ' + k.nama + ' (' + k.maks + '%). Kalau angka itu termasuk Komisi Xtra, pindahkan selisihnya ke kolom Komisi Xtra.</div>' : "";
+  let perP = v.harga * (v.komisi + v.xtra) / 100;
+  const maks = parseFloat(v.maks);
+  if(isFinite(maks) && maks > 0) perP = Math.min(perP, maks);
+  const pesanan = v.klik * v.cr / 100, kotor = perP * pesanan, iklan = v.klik * v.cpc, bersih = kotor - iklan;
+  const cpcAman = perP * v.cr / 100;
+  const rp = function(x){ x = Math.round(x); return (x < 0 ? "−" : "") + "Rp" + Math.abs(x).toLocaleString("id-ID"); };
+  const el = document.getElementById("afk-hasil"); if(!el) return;
+  el.innerHTML =
+    '<div class="afv-h"><div class="l">Komisi per pesanan</div><div class="v">' + rp(perP) + '</div><div class="s">' + String(+(v.komisi + v.xtra).toFixed(2)).replace(".", ",") + '% dari ' + rp(v.harga) + '</div></div>' +
+    '<div class="afv-h"><div class="l">Pesanan per bulan</div><div class="v">' + (Math.round(pesanan * 10) / 10).toLocaleString("id-ID") + '</div><div class="s">' + v.klik.toLocaleString("id-ID") + ' klik × ' + String(v.cr).replace(".", ",") + '%</div></div>' +
+    '<div class="afv-h utama"><div class="l">Komisi per bulan</div><div class="v">' + rp(kotor) + '</div><div class="s">sebelum pajak &amp; biaya pencairan</div></div>' +
+    (v.cpc > 0 ? '<div class="afv-h' + (bersih < 0 ? " rugi" : "") + '"><div class="l">Setelah biaya iklan</div><div class="v">' + rp(bersih) + '</div><div class="s">iklan ' + rp(iklan) + '/bulan</div></div>' : "") +
+    '<div class="afv-h"><div class="l">Batas aman biaya per klik</div><div class="v">' + rp(cpcAman) + '</div><div class="s">di atas ini iklan rugi (impas = komisi × konversi)</div></div>' +
+    '<div class="afv-h"><div class="l">Batas biaya per pesanan</div><div class="v">' + rp(perP) + '</div><div class="s">maks belanja iklan untuk 1 pesanan</div></div>';
+}
+function afvKeKalk(harga){
+  if(harga){ const i = document.getElementById("afk-harga"); if(i){ i.value = Math.round(harga); afvKalkHitung(); } }
+  afvLoncat("afv-kalk");
+  setTimeout(function(){ const i = document.getElementById(harga ? "afk-komisi" : "afk-harga"); if(i && !(window.matchMedia && matchMedia("(hover:none)").matches)) i.focus(); }, 450);
+}
+/* ---------- V1 naskah Shopee Video ---------- */
+function afvNamaPendek(nama){
+  let t = String(nama || "").replace(/[\[\(【].*?[\]\)】]/g, " ").replace(/\s+/g, " ").trim();
+  const k = t.split(" "); return k.slice(0, 5).join(" ").slice(0, 48) || "produk ini";
+}
+function afvHookBank(khusus){
+  const pakai = [], lihat = {};
+  (khusus || []).concat((AFV.iklan && AFV.iklan.hook) || []).forEach(function(h){
+    const x = typeof h === "string" ? {hook: h} : h;
+    const k = String(x.hook || "").toLowerCase().replace(/\W+/g, " ").trim();
+    if(!k || lihat[k]) return; lihat[k] = 1; pakai.push(x);
+  });
+  return pakai.slice(0, 4);
+}
+function afvNaskahProduk(i){
+  const o = AFV.urut[i]; if(!o) return;
+  const p = o.p;
+  afvNaskah({nama: p.nama, harga: p.harga, rating: p.rating, terjual: p.terjual_teks, lencana: p.lencana || (p.resmi ? "Mall" : ""), diskon: p.diskon, url: p.url, hooks: afvHookBank([])});
+}
+function afvNaskahIklan(i){
+  const x = ((AFV.iklan || {}).produk || [])[i]; if(!x) return;
+  afvNaskah({nama: (x.hook && x.hook[0]) || "", harga: null, url: x.url,
+    hooks: afvHookBank((x.hook || []).map(function(h){ return {hook: h, halaman: (x.halaman || [])[0], umur: x.umur_maks, aktif: x.aktif > 0, khusus: true}; }))});
+}
+function afvNaskah(s){
+  document.querySelectorAll(".afv-ov").forEach(function(o){ o.remove(); });
+  const nm = afvNamaPendek(s.nama), kw = AFV.q || nm;
+  const fakta = [];
+  if(s.rating) fakta.push("rating ★" + String(s.rating).replace(".", ","));
+  if(s.terjual) fakta.push(String(s.terjual).toLowerCase().indexOf("terjual") >= 0 ? String(s.terjual) : "terjual " + s.terjual);
+  if(s.lencana === "Mall" || s.lencana === "Star+" || s.lencana === "Star") fakta.push("toko " + s.lencana);
+  const tpl = [
+    {hook: s.terjual ? "Ini alasan " + nm + " udah " + String(s.terjual).replace(/\s*terjual/i, "") + " terjual…" : "Aku kira " + nm + " biasa aja, ternyata…", tpl: true},
+    {hook: "Jangan beli " + kw + " sebelum lihat ini.", tpl: true},
+    {hook: s.harga ? "Cuma " + shpRp(s.harga) + "? Aku cobain " + nm + " langsung." : "Aku cobain " + nm + " seminggu, ini hasilnya.", tpl: true}
+  ];
+  const hooks = (s.hooks || []).concat(tpl);
+  const ov = document.createElement("div");
+  ov.className = "afv-ov";
+  ov.addEventListener("click", function(e){ if(e.target === ov) ov.remove(); });
+  ov.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Naskah Shopee Video">' +
+    '<div class="afv-mk"><b>🎬 Naskah Shopee Video — ' + esc(nm) + '</b><button class="afv-x" type="button" aria-label="Tutup" onclick="this.closest(\'.afv-ov\').remove()">✕</button></div>' +
+    '<div class="afv-l">1 · PILIH HOOK (0–3 DETIK)</div><div class="afv-hk">' + hooks.map(function(h, i){
+      const asal = h.tpl ? "🔵 template dari fakta produk" : "🟢 dari iklan nyata" + (h.halaman ? " · " + esc(h.halaman) : "") + (h.umur ? " · tayang " + h.umur + " hari" : "") + (h.khusus ? " · produk ini" : "");
+      return '<button type="button" data-i="' + i + '"' + (i === 0 ? ' class="on"' : "") + '>' + esc(h.hook) + '<small>' + asal + '</small></button>'; }).join("") + '</div>' +
+    '<div class="afv-l">2 · NASKAH 20–30 DETIK</div><div class="afv-ns" id="afv-ns"></div>' +
+    '<div class="afv-l">3 · CAPTION &amp; TAGAR</div><div class="afv-cap" id="afv-cap"></div>' +
+    '<div class="afv-bawah"><button type="button" class="btn" id="afv-salin">Salin naskah + caption</button>' + (s.url ? '<a class="tombol2" href="' + esc(s.url) + '" target="_blank" rel="noopener" style="text-decoration:none">Buka produk ↗</a>' : "") + '</div>' +
+    '<div class="afv-nt">Tag produk di video supaya penonton bisa langsung beli dari Shopee Video. Komisi Shopee Video untuk pesanan langsung maks 5% (aturan Jan 2026) 🟠 — angka pasti per produk ada di aplikasi Affiliate. ' +
+    'Hook 🟢 diambil dari iklan Meta yang benar-benar tayang; ubah kalimatnya, jangan disalin mentah.</div></div>';
+  document.body.appendChild(ov);
+  let pilih = 0;
+  function susun(){
+    const h = hooks[pilih] ? hooks[pilih].hook : "";
+    const baris = [
+      ["0–3 dtk", "HOOK — " + h],
+      ["3–8 dtk", "MASALAH — tunjukkan masalah yang diselesaikan " + nm + " (sebelum memakai)."],
+      ["8–18 dtk", "DEMO — pakai " + nm + " langsung di depan kamera; perlihatkan detail dan hasilnya" + (s.harga ? ", sebut harganya " + shpRp(s.harga) : "") + "."],
+      ["18–25 dtk", "BUKTI — " + (fakta.length ? fakta.join(" · ") : "tunjukkan ulasan pembeli atau hasil pemakaian") + (s.diskon ? " · lagi diskon " + s.diskon + "%" : "") + "."],
+      ["25–30 dtk", "AJAKAN — “Produknya aku tag di bawah video ini, klik sebelum promonya habis ya.”"]
+    ];
+    document.getElementById("afv-ns").innerHTML = baris.map(function(b){ return '<div><i>' + b[0] + '</i><span>' + esc(b[1]) + '</span></div>'; }).join("");
+    const tag = String(kw).toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const cap = h + "\n\n" + nm + (fakta.length ? " — " + fakta.join(", ") : "") + ". Cek produknya di keranjang bawah video ✨\n\n#racunshopee #shopeevideo #shopeehaul" + (tag ? " #" + tag : "");
+    document.getElementById("afv-cap").textContent = cap;
+    ov.__teks = baris.map(function(b){ return "[" + b[0] + "] " + b[1]; }).join("\n") + "\n\nCAPTION:\n" + cap;
+  }
+  ov.querySelectorAll(".afv-hk button").forEach(function(b){ b.addEventListener("click", function(){
+    pilih = +b.dataset.i; ov.querySelectorAll(".afv-hk button").forEach(function(x){ x.classList.toggle("on", x === b); }); susun(); }); });
+  ov.querySelector("#afv-salin").addEventListener("click", function(){ salin(ov.__teks || ""); });
+  susun();
+}
+document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ const o = document.querySelector(".afv-ov"); if(o) o.remove(); } });
+
 /* ---------- Intip toko ---------- */
+/* v1.5.4b: tombol Kembali (Esc) di Intip toko — pulang ke asal (hasil cari / Flash Sale / Dashboard), atau tutup profil bila dibuka langsung */
+const SHP_ASAL_LBL = {dashboard: "Dashboard", meta: "Scan Meta", galeri: "Galeri", tren: "Tren", pesaing: "Pesaing Dipantau", pengiklan: "Profil Pengiklan", ekspor: "Ekspor CSV", tiktok: "Scan TikTok", cs: "CS & Bantuan", admin: "Admin"};
+function shpBalikHTML(){
+  const a = SHP.tokoAsal;
+  const ket = !a ? "tutup profil toko"
+    : a.tab === "cari" ? (SHP.q ? "ke hasil “" + esc(SHP.q) + "”" : "ke Cari produk")
+    : a.tab === "flash" ? "ke Radar Flash Sale"
+    : a.tab === "kalk" ? "ke Hitung untung"
+    : a.tab === "afv" ? "ke Affiliator &amp; Video"
+    : a.view ? "ke " + esc(SHP_ASAL_LBL[a.view] || "halaman sebelumnya") : "";
+  return '<div class="sp-balik"><button type="button" class="sp-balik-b" onclick="shpTokoKembali()" aria-label="Kembali">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Kembali<span class="sp-esc">Esc</span></button>' +
+    '<span class="sp-balik-k">' + ket + '</span></div>';
+}
+function shpTokoKembali(){
+  const a = SHP.tokoAsal; SHP.tokoAsal = null;
+  if(a && a.tab && a.tab !== "toko"){
+    shpTab(a.tab);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ window.scrollTo(0, a.y || 0); }); });
+    return;
+  }
+  if(a && a.view){ ke("/" + a.view); return; }
+  SHP.toko = null; SHP.tokoQ = ""; SHP.galat.toko = ""; SHP.muat.toko = false;
+  const i = document.getElementById("sp-toko-q"); if(i) i.value = "";
+  const b = document.getElementById("sp-toko-btn"); if(b) b.disabled = false;
+  shpGambarToko(); shpSimpanUrl();
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+/* Esc: fase capture → dicek SEBELUM penangan Esc lain menutup panel/laci/modal, supaya satu Esc = satu langkah */
+window.addEventListener("keydown", function(e){
+  if(e.key !== "Escape" || typeof VT === "undefined" || VT.v !== "shopee" || SHP.tab !== "toko") return;
+  if(!(SHP.toko || SHP.galat.toko || SHP.muat.toko)) return;
+  const H = document.documentElement, sh = document.querySelector(".shell");
+  if(H.classList.contains("bns-buka") || H.classList.contains("intai-terkunci") || (sh && (sh.classList.contains("sb-buka") || sh.classList.contains("sb-menutup")))) return;
+  if(document.querySelector(".kk-ov, .brief-ov, .afv-ov")) return;
+  const terbuka = Array.prototype.some.call(document.querySelectorAll(".ov, #mbg"), function(o){ return getComputedStyle(o).display !== "none" && getComputedStyle(o).visibility !== "hidden"; });
+  if(terbuka) return;
+  const ae = document.activeElement;
+  if(ae && ae.id === "sp-toko-q" && ae.value){ return; }   /* Esc saat mengetik = urusan kolom isian */
+  shpTokoKembali();
+}, true);
 async function shpToko(q){
   q = String(q || "").trim(); if(!q) return;
   SHP.tokoQ = q; SHP.galat.toko = "";
-  if(SHP.tab !== "toko") shpTab("toko", true);
+  if(SHP.tab !== "toko"){ SHP.tokoAsal = {tab: SHP.tab, y: window.scrollY || 0}; shpTab("toko", true); }   /* v1.5.4b: ingat asal untuk tombol Kembali */
   document.getElementById("sp-toko-q").value = q;
   shpSimpanUrl();
   SHP.muat.toko = true; shpGambarToko();
@@ -6943,8 +7427,8 @@ function shpGambarToko(){
   const r = shpRiw();
   document.getElementById("sp-toko-riw").innerHTML = r.toko.length ? '<span class="lbl">Pernah diintip</span>' + r.toko.map(function(t){
     return '<button class="sp-chip" onclick="shpToko(\'' + esc(t.id) + '\')">' + esc(t.nama || t.id) + '</button>'; }).join("") : "";
-  if(SHP.muat.toko){ el.innerHTML = shpMuatHTML("Membaca profil toko dan 37 produk terlarisnya…"); return; }
-  if(SHP.galat.toko){ el.innerHTML = shpGalatHTML(SHP.galat.toko, "shpToko(SHP.tokoQ)"); return; }
+  if(SHP.muat.toko){ el.innerHTML = shpBalikHTML() + shpMuatHTML("Membaca profil toko dan 37 produk terlarisnya…"); return; }
+  if(SHP.galat.toko){ el.innerHTML = shpBalikHTML() + shpGalatHTML(SHP.galat.toko, "shpToko(SHP.tokoQ)"); return; }
   const d = SHP.toko;
   if(!d){
     el.innerHTML = '<div class="sp-kosong"><b>Intip satu toko pesaing</b>Tempel link toko Shopee (<code>shopee.co.id/namatoko</code>), link salah satu produknya, atau klik <b>Intip toko</b> dari hasil pencarian. INTAI menampilkan pengikut, ulasan, rating, status LIVE, voucher, dan <b>37 produk terlarisnya</b> berurutan.</div>';
@@ -6952,7 +7436,7 @@ function shpGambarToko(){
   }
   const t = d.toko || {}, tb = d.tumbuh, lg = shpGbr(t.logo);
   const tumbuhS = function(v, lbl){ return v == null ? "" : '<div class="s"><b style="color:' + (v >= 0 ? "#2F7D64" : "#B5443A") + '">' + (v >= 0 ? "+" : "") + shpN(v) + '</b> ' + lbl + ' dalam ' + tb.hari + ' hari 🔵</div>'; };
-  el.innerHTML =
+  el.innerHTML = shpBalikHTML() +
     '<div class="kartu" style="margin-bottom:14px"><div class="sp-toko-kep"><div class="sp-lg">' + (lg ? '<img src="' + esc(lg) + '" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '</div>' +
       '<div class="sp-tnama"><h2>' + esc(t.nama) + '</h2><div class="sp-sb">' + (t.live ? '<span class="sp-live">LIVE</span>' + (t.kampanye_live ? " " + esc(t.kampanye_live) : "") : "") +
         (t.username ? ' <span>@' + esc(t.username) + '</span>' : "") + ' <span>ID ' + esc(t.shopid) + '</span></div></div>' +
@@ -7131,5 +7615,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b510bfb8217d45',t:'MTc5MjEzMjc1Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b5567bfe88ea87',t:'MTc5MjEzNTYxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.4"
+VERSI = "1.5.5"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -7707,6 +7707,279 @@ def shp_jalankan_item(it):
     return {"ok": bool(h.get("ok")), "jumlah": len(h.get("produk") or []), "error": h.get("error")}
 
 
+# ===== v1.5.5 AFFILIATOR & VIDEO (tab terpisah di Scan Shopee) =====
+# Sumber: arsip iklan Meta INTAI (intai_iklan) yang berlink Shopee — tanpa tabel/SQL baru.
+#   link `s.shopee.co.id/<kode>` dibuka (301) → /opaanlp/<shopid>/<itemid>?utm_medium=affiliates&utm_source=an_<id_affiliator>
+#   `an_redir?origin_link=` = affiliate · utm_source=facebook-ca / utm_medium=seller = iklan resmi penjual · link langsung = penjual/brand
+# Hasil buka short link disimpan permanen di setelan "shplink_peta" (terkompres) → tiap link dibuka sekali saja.
+AFV_KOLOM = "archive_id,page_id,halaman,niche,aktif,mulai,umur,format,cta,hook,teks,link,thumb,terakhir_terlihat"
+AFV_CACHE = {"t": 0.0, "versi": None, "rows": None, "ok": False}
+kunci_afv = threading.Lock()
+AFV_LINK = {"peta": None, "t_simpan": 0.0}
+kunci_afv_link = threading.Lock()
+AFV_LINK_MAKS = 6000          # entri short link yang diingat
+AFV_BUKA_PER_PANGGIL = 40     # short link baru yang dibuka per permintaan (sisanya di permintaan berikut)
+AFV_PENDEK = ("s.shopee.co.id", "shope.ee", "shp.ee", "id.shp.ee")
+_RE_SHP_URL = re.compile(r"https?://(?:[a-z0-9-]+\.)*(?:shopee\.co\.id|shope\.ee|shp\.ee)/[^\s\"'<>)\]\\]+", re.I)
+_AFV_PERINGKAT = {"aff": 3, "penjual": 2, "langsung": 1, "belum": 0, "mati": -1}
+
+
+def _afv_baris():
+    """Iklan arsip yang menyebut Shopee di link/teks. Return (ok, rows). Cache 5 menit / sampai arsip bertambah."""
+    versi = ARSIP_STATUS.get("terakhir_waktu")
+    with kunci_afv:
+        if AFV_CACHE["rows"] is not None and AFV_CACHE["versi"] == versi and time.time() - AFV_CACHE["t"] < 300:
+            return AFV_CACHE["ok"], AFV_CACHE["rows"]
+        rows, ok = [], True
+        try:
+            if supa_aktif():
+                filt = "&or=(link.ilike.*shope*,teks.ilike.*shope*)"
+                for off in range(0, 20000, 1000):
+                    o, r = supa("GET", "intai_iklan", params=f"?select={AFV_KOLOM}{filt}&order=archive_id.asc&limit=1000&offset={off}")
+                    if not o or not isinstance(r, list):
+                        ok = bool(rows)
+                        break
+                    rows += r
+                    if len(r) < 1000:
+                        break
+            else:
+                with kunci_arsip:
+                    _muat_arsip_lokal()
+                    rows = [dict(v) for v in ARSIP_LOKAL["iklan"].values()
+                            if re.search(r"shope", str(v.get("link") or "") + " " + str(v.get("teks") or ""), re.I)]
+        except Exception:
+            ok = bool(rows)
+        AFV_CACHE.update({"t": time.time(), "versi": versi, "rows": rows, "ok": ok})
+        return ok, rows
+
+
+def _afv_urls(r):
+    teks = str(r.get("link") or "") + "\n" + str(r.get("teks") or "").replace("\\n", "\n")
+    out = []
+    for u in _RE_SHP_URL.findall(teks):
+        u = u.rstrip(".,;:!?…*_~")
+        if u not in out:
+            out.append(u)
+    return out[:6]
+
+
+def _afv_urai(u, kedalaman=0):
+    """URL Shopee → {jenis: aff|penjual|langsung|pendek, shopid, itemid, aff, sub, kode, host}."""
+    try:
+        p = urlparse(u)
+    except Exception:
+        return {"jenis": "langsung"}
+    h = (p.hostname or "").lower()
+    q = parse_qs(p.query)
+    jalur = p.path or ""
+    if "an_redir" in jalur:
+        asal = q.get("origin_link", [""])[0]
+        d = _afv_urai(unquote(asal), kedalaman + 1) if (asal and kedalaman < 2) else {}
+        d["jenis"] = "aff"
+        d["aff"] = d.get("aff") or ("an_" + q["affiliate_id"][0] if q.get("affiliate_id") else "")
+        return d
+    kode = jalur.strip("/")
+    if h in AFV_PENDEK and kode and "/" not in kode:
+        return {"jenis": "pendek", "kode": kode[:40], "host": h}
+    d = {"jenis": "langsung"}
+    m = re.search(r"/(?:product|opaanlp)/(\d+)/(\d+)", jalur) or re.search(r"-i\.(\d+)\.(\d+)", jalur)
+    if m:
+        d.update(shopid=m.group(1), itemid=m.group(2))
+    else:
+        m2 = re.search(r"/shop/(\d+)", jalur)
+        if m2:
+            d["shopid"] = m2.group(1)
+    med = (q.get("utm_medium", [""])[0] or "").lower()
+    src = q.get("utm_source", [""])[0] or ""
+    mmp = q.get("mmp_pid", [""])[0] or ""
+    if med == "affiliates" or src.startswith("an_") or mmp.startswith("an_") or "/opaanlp/" in jalur:
+        d.update(jenis="aff", aff=(src if src.startswith("an_") else mmp if mmp.startswith("an_") else ""),
+                 sub=(q.get("utm_content", [""])[0] or "").strip("-")[:60])
+    elif src == "facebook-ca" or med == "seller":
+        d["jenis"] = "penjual"
+    return d
+
+
+_RE_AFV_KREDIT = re.compile(r"^\W*(credit|cr\b|cr\s*:|video\s*by|vid\s*by|sumber|source|repost|ig\s*:|tiktok\s*:)", re.I)
+_RE_AFV_AJAKAN = re.compile(r"^\W*(cek|beli|link|promo|klik|order|checkout|dapatkan|dapetin|ambil|grab|pesan|shop|langsung|buruan|yuk|info)\b.{0,40}"
+                            r"(di ?sini|disini|👇|👉|⬇|bawah|keranjang|shopee|kak)", re.I)
+
+
+def _afv_potong(b, n=140):
+    """Potong di batas kata + elipsis supaya hook tidak berakhir di tengah kata ('bebera')."""
+    b = str(b or "").strip()
+    if len(b) <= n:
+        return b
+    c = b[:n]
+    sp = c.rfind(" ")
+    if sp >= n * 0.6:
+        c = c[:sp]
+    return c.rstrip(" ,;:-–—") + "…"
+
+
+def _afv_hook_dari(teks, cadangan=""):
+    """Baris pembuka yang layak jadi hook: bukan link, bukan ajakan klik ('Cek di sini 👇'), cukup panjang."""
+    for baris in str(teks or "").replace("\\n", "\n").splitlines():
+        b = re.sub(r"https?://\S+", "", baris).strip(" -–—•*|")
+        if len(b) < 12 or len(re.sub(r"[\W\d_]+", "", b)) < 8:
+            continue
+        if (_RE_AFV_AJAKAN.search(b) and len(b) < 60) or _RE_AFV_KREDIT.search(b):
+            continue
+        return _afv_potong(b)
+    c = re.sub(r"https?://\S+", "", str(cadangan or "")).strip()
+    return _afv_potong(c) if len(c) >= 12 and not _RE_AFV_AJAKAN.search(c) else ""
+
+
+def _afv_peta():
+    with kunci_afv_link:
+        if AFV_LINK["peta"] is None:
+            try:
+                ok, v = setelan_baca("shplink_peta")
+                AFV_LINK["peta"] = _tk_buka(v) if (ok and v) else {}
+            except Exception:
+                AFV_LINK["peta"] = {}
+        return AFV_LINK["peta"]
+
+
+def _afv_buka_satu(kode, host):
+    """Buka 1 short link (tanpa mengikuti redirect). Return ringkasan atau None (gagal → dicoba lain kali)."""
+    try:
+        r = requests.get(f"https://{host}/{quote(kode)}", allow_redirects=False, timeout=5,
+                         headers={"User-Agent": SHP_UA_WEB, "Accept-Language": "id-ID,id;q=0.9"})
+        loc = r.headers.get("location") or ""
+        if r.status_code in (301, 302, 303, 307, 308) and loc:
+            d = _afv_urai(urljoin(f"https://{host}/", loc))
+            if d.get("jenis") == "pendek":
+                return None
+            return {"j": d.get("jenis") or "langsung", "s": d.get("shopid", ""), "i": d.get("itemid", ""),
+                    "a": d.get("aff", ""), "u": d.get("sub", ""), "t": int(time.time())}
+        if r.status_code in (404, 410):
+            return {"j": "mati", "t": int(time.time())}
+    except Exception:
+        pass
+    return None
+
+
+def _afv_simpan_peta():
+    try:
+        with kunci_afv_link:
+            peta = dict(AFV_LINK["peta"] or {})
+        if len(peta) > AFV_LINK_MAKS:
+            peta = dict(sorted(peta.items(), key=lambda kv: -int((kv[1] or {}).get("t") or 0))[:AFV_LINK_MAKS])
+            with kunci_afv_link:
+                AFV_LINK["peta"] = peta
+        setelan_tulis("shplink_peta", _tk_bungkus(peta))
+        AFV_LINK["t_simpan"] = time.time()
+    except Exception:
+        pass
+
+
+def afv_analisis(q):
+    """Tab Affiliator & Video: produk yang diiklankan affiliator di Meta (A1), kepadatan affiliator (A2), bank hook (V1)."""
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
+    ok, rows = _afv_baris()
+    tok = [t for t in re.split(r"\s+", _norm(q)) if len(t) >= 2] if q else []
+
+    def cocok(r):
+        if not tok:
+            return True
+        hay = _norm(" ".join(str(r.get(k) or "") for k in ("niche", "hook", "teks", "halaman")))
+        return all(t in hay for t in tok)
+
+    pilih = [r for r in rows if cocok(r)]
+    peta = _afv_peta()
+    per, perlu = [], {}
+    for r in pilih:
+        ur = [_afv_urai(u) for u in _afv_urls(r)]
+        if not ur:
+            continue
+        per.append((r, ur))
+        for d in ur:
+            if d.get("jenis") == "pendek" and d["kode"] not in peta:
+                perlu.setdefault(d["kode"], d["host"])
+    dibuka = 0
+    if perlu:
+        antre = list(perlu.items())[:AFV_BUKA_PER_PANGGIL]
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+                hasil = list(ex.map(lambda kh: (kh[0], _afv_buka_satu(kh[0], kh[1])), antre))
+        except Exception:
+            hasil = []
+        baru = {k: v for k, v in hasil if v}
+        if baru:
+            with kunci_afv_link:
+                AFV_LINK["peta"].update(baru)
+            dibuka = len(baru)
+            threading.Thread(target=_afv_simpan_peta, daemon=True, name="afv-peta").start()
+    hitung = {"aff": 0, "penjual": 0, "langsung": 0, "belum": 0}
+    produk, hook = {}, {}
+    for r, ur in per:
+        jenis, tgt = None, {}
+        for d in ur:
+            if d.get("jenis") == "pendek":
+                m = peta.get(d["kode"])
+                dd = {"jenis": "belum"} if not m else {"jenis": m.get("j"), "shopid": m.get("s"), "itemid": m.get("i"),
+                                                        "aff": m.get("a"), "sub": m.get("u")}
+            else:
+                dd = d
+            if jenis is None or _AFV_PERINGKAT.get(dd.get("jenis"), -1) > _AFV_PERINGKAT.get(jenis, -1):
+                jenis, tgt = dd.get("jenis"), dd
+        if jenis in hitung:
+            hitung[jenis] += 1
+        umur = _int(r.get("umur"), 0) or 0
+        aktif = r.get("aktif") is not False
+        hk = _afv_hook_dari(r.get("teks"), r.get("hook"))
+        if len(hk) >= 12:
+            kh = re.sub(r"\W+", " ", _norm(hk)).strip()[:80]
+            lama = hook.get(kh)
+            calon = {"hook": hk[:140], "halaman": r.get("halaman"), "umur": umur, "aktif": aktif,
+                     "aid": r.get("archive_id"), "jenis": jenis}
+            if not lama or (aktif, umur) > (lama["aktif"], lama["umur"]):
+                hook[kh] = calon
+        if jenis != "aff" or not tgt.get("itemid"):
+            continue
+        k = f"{tgt.get('shopid')}.{tgt.get('itemid')}"
+        p = produk.setdefault(k, {"shopid": tgt.get("shopid"), "itemid": tgt.get("itemid"), "_aff": set(), "_hal": {},
+                                  "iklan": 0, "aktif": 0, "umur_maks": 0, "_niche": set(), "_hook": [], "_sub": set(),
+                                  "aid": [], "thumb": None, "_teks": ""})
+        p["iklan"] += 1
+        p["aktif"] += 1 if aktif else 0
+        p["umur_maks"] = max(p["umur_maks"], umur)
+        p["_aff"].add(tgt.get("aff") or ("hal:" + str(r.get("page_id") or r.get("halaman") or "")))
+        if r.get("halaman"):
+            p["_hal"][r.get("halaman")] = max(p["_hal"].get(r.get("halaman"), 0), umur)
+        if r.get("niche"):
+            p["_niche"].add(r.get("niche"))
+        if hk and hk not in p["_hook"]:
+            p["_hook"].append(hk[:140])
+        if tgt.get("sub"):
+            p["_sub"].add(tgt.get("sub"))
+        if r.get("archive_id") and len(p["aid"]) < 6:
+            p["aid"].append(r.get("archive_id"))
+        if not p["thumb"] and str(r.get("thumb") or "").startswith("http"):
+            p["thumb"] = r.get("thumb")
+        if len(str(r.get("teks") or "")) > len(p["_teks"]):
+            p["_teks"] = str(r.get("teks") or "")[:300]
+    daftar = []
+    for p in produk.values():
+        n = len([a for a in p["_aff"] if a and a != "hal:"]) or 1
+        daftar.append({
+            "shopid": p["shopid"], "itemid": p["itemid"],
+            "url": SHP_BASIS + "/product/" + str(p["shopid"]) + "/" + str(p["itemid"]),
+            "affiliator": n, "kepadatan": ("sepi" if n <= 1 else "sedang" if n <= 4 else "padat"),
+            "iklan": p["iklan"], "aktif": p["aktif"], "umur_maks": p["umur_maks"],
+            "halaman": [h for h, _ in sorted(p["_hal"].items(), key=lambda x: -x[1])][:5],
+            "niche": sorted(p["_niche"])[:4], "hook": p["_hook"][:4], "tag": sorted(p["_sub"])[:4],
+            "aid": p["aid"], "thumb": p["thumb"], "teks": p["_teks"],
+        })
+    daftar.sort(key=lambda x: (-x["affiliator"], -x["aktif"], -x["umur_maks"], -x["iklan"]))
+    hooks = sorted(hook.values(), key=lambda x: (not x["aktif"], -x["umur"]))[:14]
+    sisa = len([1 for _, ur in per for d in ur if d.get("jenis") == "pendek" and d["kode"] not in peta])
+    return {"ok": True, "arsip_ok": bool(ok), "q": q, "produk": daftar[:40], "jumlah_produk": len(daftar),
+            "hook": hooks, "hitung": hitung, "iklan_shopee": len(per), "arsip_shopee": len(rows),
+            "dibuka": dibuka, "belum_dibuka": sisa, "jam": _iso_kini()}
+
+
 def shopee_uji():
     """Admin → Status sistem: uji semua jalur Shopee langsung dari server ini."""
     hasil = []
@@ -7924,6 +8197,11 @@ class Handler(BaseHTTPRequestHandler):
             self.json_ok(shp_dasbor(self.email) if self.email else {"ok": False, "error": "Silakan masuk dulu"})
         elif u.path == "/api/shopee/flash":
             self.json_ok(shopee_flash())
+        elif u.path == "/api/shopee/afv":   # v1.5.5 Affiliator & Video
+            try:
+                self.json_ok(afv_analisis(parse_qs(u.query).get("q", [""])[0]))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": "Analisis affiliator gagal: " + str(e_)[:120]})
         elif u.path == "/api/admin/shopee-uji":
             if not is_admin(self.email):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
