@@ -865,6 +865,17 @@
 #view-tiktok .sdt-c{font-size:11.5px;color:#557069;line-height:1.5}
 .tt-ov{position:fixed;inset:0;z-index:950;background:rgba(5,31,32,.72);display:flex;align-items:center;justify-content:center;padding:18px;opacity:0;transition:opacity .25s}
 .tt-ov.on{opacity:1}
+/* v1.6.8 transkrip suara iklan (TikTok + Meta) */
+.trk-hl{font-size:11.5px;line-height:1.4;color:#163832;background:#EEF7F0;border:1px solid #CFE3D4;border-radius:9px;padding:5px 8px;margin:5px 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.trk-blok{margin:8px 0;padding:9px 11px;border:1px solid #CFE3D4;border-radius:12px;background:#F4FAF5}
+.trk-blok .trk-hl{-webkit-line-clamp:unset;display:block;margin:4px 0 6px;font-size:12.5px;font-weight:700}
+.trk-blok b.trk-j{font-size:12px;color:#0B2B26}
+.trk-blok details{font-size:12px;color:#2F4A43}
+.trk-blok summary{cursor:pointer;font-weight:800;color:#235347}
+.trk-blok details p{margin:6px 0 0;line-height:1.55;white-space:pre-line}
+.trk-k{font-size:10.5px;color:#557069;margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.trk-k button{border:1px solid #CFE3D4;background:#fff;color:#163832;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:800;cursor:pointer}
+.trk-sepi{font-size:11.5px;color:#557069}
 html.tt-kunci{overflow:hidden}
 .tt-mod{position:relative;background:#fff;border-radius:24px;max-width:860px;width:100%;max-height:calc(100vh - 36px);overflow:auto;display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);box-shadow:0 30px 80px rgba(5,31,32,.45);transform:translateY(12px) scale(.98);transition:transform .3s cubic-bezier(.65,0,.35,1)}
 .tt-ov.on .tt-mod{transform:none}
@@ -4050,6 +4061,21 @@ function tautBaris(label, u, catatan){
     '<button type="button" class="taut-salin" data-u="' + esc(u) + '" onclick="event.stopPropagation();salin(this.dataset.u)" title="Salin link">Salin</button>' +
     (catatan ? '<div class="taut-cat">' + catatan + '</div>' : '') + '</div>';
 }
+/* v1.6.8: transkrip suara iklan Meta (per archive_id) */
+const TRK_M = {};
+async function trkMetaIsi(){
+  const el = Array.from(document.querySelectorAll("[data-trk-m]:not([data-isi])"));
+  if(!el.length) return;
+  el.forEach(function(e){ e.dataset.isi = "1"; });
+  const ids = el.map(function(e){ return e.dataset.trkM; }).filter(function(v, i, a){ return a.indexOf(v) === i && (!TRK_M[v] || TRK_M[v].status === "antre" || TRK_M[v].status === "belum"); });
+  if(ids.length){
+    try{
+      const d = await (await fetch("/api/transkrip?ids=" + encodeURIComponent(ids.join(",")))).json();
+      if(d && d.ok) ids.forEach(function(i){ TRK_M[i] = d.t[i] || {status: d.aktif ? "" : "mati"}; });
+    }catch(e){}
+  }
+  el.forEach(function(e){ e.innerHTML = trkBlokHTML(TRK_M[e.dataset.trkM]); });
+}
 function detailHTML(x){
   const d = x.detail;
   let h = "";
@@ -4090,6 +4116,11 @@ function detailHTML(x){
       ? "Iklan katalog: teksnya diisi otomatis oleh Meta per produk (template seperti {{product.brand}}), jadi tidak ada teks tetap yang bisa ditampilkan."
       : "Tanpa teks (kemungkinan murni visual).") + '</div>';
   else if(d.katalog_tpl) h += '<div class="hint">Sebagian teks iklan ini diisi otomatis per produk oleh Meta (template katalog). Bagian template disembunyikan.</div>';
+  // v1.6.8 UCAPAN DI VIDEO (transkrip otomatis, dimuat terpisah → detail tidak melambat)
+  if(vids.length && d.archive_id){
+    h += '<div class="subjudul">🎙️ Ucapan di Video</div><div class="trk-blok" data-trk-m="' + esc(String(d.archive_id)) + '"><span class="ai-muat"><i></i>Memuat transkrip…</span></div>';
+    setTimeout(trkMetaIsi, 60);
+  }
 
   // INFO
   const cta = (d.cta_text || "") + (d.cta_type ? ' <span style="color:#557069;font-weight:600">(' + esc(String(d.cta_type).replace(/_/g," ")) + ')</span>' : "");
@@ -4640,6 +4671,7 @@ function rakitNaskah(id){
   const hk = (HOOKS || []).slice(0, 3).map(h => h.hook);
   const hookAsli = (kal[0] || "").slice(0, 90);
   const d = x.detail || {};
+  const tkm = TRK_M[ptIdData(x)], hookLisan = tkm && tkm.status === "ok" ? (tkm.hook || "") : "";   /* v1.6.8 */
   const bukti = [];
   if(x.varian) bukti.push(x.varian + " varian aktif");
   if(x.jual != null) bukti.push("skor jual " + x.jual + "/100");
@@ -4659,6 +4691,7 @@ function rakitNaskah(id){
     "PERAKIT NASKAH VIDEO — " + x.halaman + "\n" +
     "1. HOOK (3 sudut):\n" + hk.map((h,i) => "   " + (i+1) + ". " + h).join("\n") +
     (hookAsli ? "\n   4. Pola kalimat pembuka iklan ini: \"" + hookAsli + "\"" : "") +
+    (hookLisan ? "\n   🎙️ Diucapkan di awal video iklan ini: \"" + hookLisan + "\"" : "") +
     "\n2. VOICE OVER 20–30 detik:\n   " + vo.join("\n   ") +
     "\n3. VISUAL:\n   " + visual.join("\n   ") +
     "\n4. ANGLE & CTA: " + ((d.angle || d.raw && d.raw.angle) || "—") + " · CTA: " + (x.cta || "—") +
@@ -4669,7 +4702,7 @@ function rakitNaskah(id){
     '<button class="tombol2" onclick="this.closest(\'.brief-ov\').remove()">✕ Tutup (Esc)</button></div>' +
     '<div class="note" style="margin:8px 0"><b>🟠 Pita Model:</b> kerangka brief yang dirakit otomatis dari DATA iklan ini + pola hook juara niche — panduan untuk tim kreatif, bukan naskah jadi dari AI generatif.</div>' +
     '<div class="sel"><div class="k">1 · Hook — 3 sudut</div><div class="v" style="white-space:pre-line">' +
-      esc(hk.map((h,i) => (i+1) + '. "' + h + '"').join("\n") + (hookAsli ? '\n4. Pola kalimat pembuka iklan ini: "' + hookAsli + '"' : "")) + '</div></div>' +
+      esc(hk.map((h,i) => (i+1) + '. "' + h + '"').join("\n") + (hookAsli ? '\n4. Pola kalimat pembuka iklan ini: "' + hookAsli + '"' : "") + (hookLisan ? '\n🎙️ Diucapkan di awal video iklan ini: "' + hookLisan + '"' : "")) + '</div></div>' +
     '<div class="sel"><div class="k">2 · Voice Over 20–30 detik</div><div class="v" style="white-space:pre-line">' + esc(vo.join("\n")) + '</div></div>' +
     '<div class="sel"><div class="k">3 · Visual</div><div class="v" style="white-space:pre-line">' + esc(visual.join("\n")) + '</div></div>' +
     '<div class="sel"><div class="k">4 · Angle & CTA</div><div class="v">' + esc((d.angle || "—")) + ' · CTA: ' + esc(x.cta || "—") + '</div></div>' +
@@ -7938,7 +7971,7 @@ function sdtHTML(){
   if(SDT.muat) return h + '<div class="ai-muat"><i></i>Membedah ' + SDT.n + ' iklan… 5–25 detik</div></div>';
   const d = SDT.d;
   if(!d || !d.ok) return h + '<div class="ai-k">⚠️ ' + esc((d && d.error) || "Gagal.") + '</div><button type="button" class="tombol2" onclick="SDT=null;sdtJalan(this)">Coba lagi</button></div>';
-  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span></div>';
+  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span>' + (d.n_ucapan ? ' <span class="ai-tg" title="Transkrip otomatis suara video ikut dibaca">🎙️ ' + d.n_ucapan + ' iklan ikut dibaca ucapannya</span>' : "") + '</div>';
   h += d.sudut.map(function(z){
     return '<div class="sdt-b"><div class="sdt-l"><b>' + esc(z.label) + '</b><span>' + z.jumlah + ' iklan · ' + z.persen + '%' + (z.persen_lama != null ? ' · awet: ' + z.persen_lama + '%' : "") + (z.persen_baru != null ? ' · baru: ' + z.persen_baru + '%' : "") + '</span></div>' +
       '<div class="sdt-bar"><i style="width:' + Math.max(3, z.persen) + '%"></i></div>' +
@@ -8172,12 +8205,28 @@ function ttLabelKat(){
   const s = g && TT.sub ? g.sub.find(function(x){ return x.id === TT.sub; }) : null;
   return g ? g.nama + (s ? " · " + s.nama : "") : "semua kategori";
 }
+/* ---------- v1.6.8 transkrip suara iklan: hook lisan di kartu + blok di detail ---------- */
+function ttLisan(x){
+  return x && x.hook_lisan ? '<div class="trk-hl" title="Kalimat pembuka yang DIUCAPKAN di video (transkrip otomatis 🤖)">🎙️ “' + esc(x.hook_lisan) + '”</div>' : "";
+}
+function trkBlokHTML(t){
+  /* t = {status, teks, hook} — dipakai TikTok & Meta */
+  if(!t || !t.status) return '<div class="trk-sepi">Belum ditranskrip. INTAI mentranskrip iklan video otomatis (maks ±300/hari) — coba buka lagi nanti.</div>';
+  if(t.status === "ok" && t.teks) return '<div class="trk-hl">🎙️ “' + esc(t.hook || t.teks.slice(0, 120)) + '”</div>' +
+    '<details><summary>Transkrip penuh</summary><p>' + esc(t.teks) + '</p></details>' +
+    '<div class="trk-k"><span>🤖 transkrip otomatis (Groq Whisper) · bisa ada salah dengar</span><button type="button" data-u="' + esc(t.teks) + '" onclick="salin(this.dataset.u)">Salin ucapan</button></div>';
+  if(t.status === "sunyi") return '<div class="trk-sepi">🎵 Video ini tanpa ucapan — hanya musik / teks di layar.</div>';
+  if(t.status === "antre") return '<div class="trk-sepi">⏳ Sedang dalam antrean transkrip — buka lagi beberapa menit lagi.</div>';
+  if(t.status === "mati") return '<div class="trk-sepi">Transkrip otomatis belum diaktifkan admin.</div>';
+  return '<div class="trk-sepi">Suara video ini belum bisa ditranskrip.</div>';
+}
+function ttTrk(x){ return x.transkrip ? {status: "ok", teks: x.transkrip, hook: x.hook_lisan} : (x.trk ? {status: x.trk} : null); }
 function ttKartuIklan(x, i){
   const cv = ttGbr(x.cover), ctr = ttCtr(x.ctr);
   return '<div class="sp-p tt-p">' +
     '<button type="button" class="sp-th tt-th" onclick="ttPutar(' + i + ')" aria-label="Putar video iklan">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") +
       '<span class="sp-ph">TikTok</span><span class="sp-pos">#' + x.peringkat + '</span>' + (x.durasi ? '<span class="tt-dur">' + ttDurasi(x.durasi) + '</span>' : "") + '<span class="tt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></button>' +
-    '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' +
+    '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' + ttLisan(x) +
       '<div class="sp-mt">' + (x.merek ? '<b style="color:var(--ink)">' + esc(x.merek) + '</b>' : "") + '<span>' + esc(x.kategori || "") + '</span></div>' +
       '<div class="tt-angka"><span title="Like di video iklan 🟢">♥ ' + ttK(x.like) + '</span>' + (ctr ? '<span class="tt-ctr" title="Peringkat CTR dibanding iklan sejenis (persentil dari TikTok). Top 3% = klik-nya lebih tinggi dari 97% iklan lain">CTR ' + ctr + '</span>' : "") + '</div>' +
       '<div class="sp-lb">' + (x.budget ? '<span class="tt-bud b' + x.budget_n + '">Budget ' + esc(x.budget) + '</span>' : "") + '<span>' + esc(x.tujuan) + '</span>' + (x.cari ? '<span>Iklan pencarian</span>' : "") + '</div>' +
@@ -8225,6 +8274,7 @@ async function ttPutar(i){
       '<div class="tt-kotak"><div><b>♥ ' + ttK(x.like) + '</b><span>like 🟢</span></div><div><b id="tt-d-kom">…</b><span>komentar 🟢</span></div><div><b id="tt-d-sh">…</b><span>share 🟢</span></div><div><b>' + (ttCtr(x.ctr) || "—") + '</b><span>CTR 🟢</span></div></div>' +
       '<div class="tt-chips">' + (x.budget ? '<span class="tt-bud b' + x.budget_n + '">Budget ' + esc(x.budget) + '</span>' : "") + '<span>' + esc(x.tujuan) + '</span>' + (x.durasi ? '<span>' + x.durasi + ' detik</span>' : "") + '</div>' +
       (x.tagar.length ? '<div class="tt-tg">' + x.tagar.map(function(t){ return "#" + esc(t); }).join(" ") + '</div>' : "") +
+      '<div class="trk-blok"><b class="trk-j">🎙️ Ucapan di video</b><div id="tt-d-trk">' + (ttTrk(x) ? trkBlokHTML(ttTrk(x)) : '<span class="ai-muat"><i></i>Mencari transkrip…</span>') + '</div></div>' +
       '<div id="tt-d-lain" class="tt-lain"><span class="ai-muat"><i></i>Membaca detail iklan…</span></div>' +
       '<div class="tt-aksi"><button type="button" class="tt-b" onclick="ttSalinHook(' + ttArg(i) + ')">Salin hook</button><a class="tt-b utama" href="' + cc + '" target="_blank" rel="noreferrer noopener">Buka di Creative Center ↗</a></div>' +
     '</div></div>';
@@ -8234,6 +8284,8 @@ async function ttPutar(i){
   let d = null; try{ d = await (await fetch("/api/tiktok/detail?id=" + encodeURIComponent(x.id))).json(); }catch(e){}
   if(!document.getElementById("tt-ov")) return;
   const $ = function(k){ return document.getElementById(k); };
+  if(!ttTrk(x) && d && d.transkrip){ x.transkrip = d.transkrip; x.hook_lisan = d.hook_lisan; }   /* v1.6.8 */
+  if($("tt-d-trk")) $("tt-d-trk").innerHTML = trkBlokHTML(ttTrk(x) || (d && d.ok && d.video ? {status: "antre"} : null));
   if(!d || !d.ok){ $("tt-d-kom").textContent = "—"; $("tt-d-sh").textContent = "—"; $("tt-d-lain").innerHTML = '<span class="ai-k">Detail tambahan belum bisa dibaca dari TikTok.</span>'; return; }
   $("tt-d-kom").textContent = ttK(d.komentar); $("tt-d-sh").textContent = ttK(d.share);
   if(!x.video && d.video){   /* v1.5.12: iklan arsip → tautan video diambil ulang dari TikTok */
@@ -8262,7 +8314,7 @@ function ttSudutHTML(){
   if(S.muat) return h + '<div class="ai-muat"><i></i>Membedah ' + S.n + ' iklan… 5–25 detik</div></div>';
   const d = S.d;
   if(!d || !d.ok) return h + '<div class="ai-k">⚠️ ' + esc((d && d.error) || "Gagal.") + '</div><button type="button" class="tombol2" onclick="TT.sudut=null;ttSudutJalan()">Coba lagi</button></div>';
-  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span></div>';
+  h += '<div class="sdt-r">' + esc(d.ringkas) + ' <span class="ai-tg">' + (d.sumber === "ai" ? "🤖 dikelompokkan AI 🔵" : "🔵 dikelompokkan kata kunci") + '</span>' + (d.n_ucapan ? ' <span class="ai-tg" title="Transkrip otomatis suara video ikut dibaca">🎙️ ' + d.n_ucapan + ' iklan ikut dibaca ucapannya</span>' : "") + '</div>';
   h += d.sudut.map(function(z){
     return '<div class="sdt-b"><div class="sdt-l"><b>' + esc(z.label) + '</b><span>' + z.jumlah + ' iklan · ' + z.persen + '%' + (z.persen_lama != null ? ' · ' + esc(d.label_a || "CTR tinggi") + ': ' + z.persen_lama + '%' : "") + '</span></div>' +
       '<div class="sdt-bar"><i style="width:' + Math.max(3, z.persen) + '%"></i></div>' +
@@ -8274,9 +8326,10 @@ function ttSudutHTML(){
 async function ttSudutJalan(){
   const lihat = {};
   let iklan = ((TT.iklan && TT.iklan.iklan) || []).filter(function(x){
-    const k = String(x.judul || "").toLowerCase().slice(0, 80);
-    if(String(x.judul || "").replace(/[^a-zA-Z]/g, "").length < 12 || lihat[k] || x.judul === "(tanpa teks)") return false;
-    lihat[k] = 1; return true;
+    const j = x.judul === "(tanpa teks)" ? (x.hook_lisan ? "🎙️ " + x.hook_lisan : "") : String(x.judul || "");
+    const k = j.toLowerCase().slice(0, 80);
+    if(j.replace(/[^a-zA-Z]/g, "").length < 12 || lihat[k]) return false;
+    lihat[k] = 1; x.__sdt = j; return true;
   }).slice(0, 40);
   if(iklan.length < 3){ toast("Butuh minimal 3 iklan bertulisan untuk dibedah."); return; }
   /* pembanding: CTR Top 20% vs sisanya; bila salah satu kelompok < 3 (mis. diurut CTR) → separuh atas vs separuh bawah */
@@ -8286,7 +8339,7 @@ async function ttSudutJalan(){
     const cs = ada.map(function(x){ return x.ctr; }).sort(function(a, b){ return a - b; });
     batas = cs.length ? cs[Math.floor((cs.length - 1) / 2)] : 0; la = "CTR separuh teratas"; lb = "CTR separuh bawah";
   }
-  iklan = iklan.map(function(x){ return {id: x.id, teks: x.judul.slice(0, 300), halaman: x.merek || x.kategori || "", kuat: x.ctr != null && x.ctr <= batas}; });
+  iklan = iklan.map(function(x){ return {id: x.id, teks: (x.__sdt || x.judul).slice(0, 300), halaman: x.merek || x.kategori || "", kuat: x.ctr != null && x.ctr <= batas}; });
   const k = TT.kunciIklan;
   TT.sudut = {k: k, muat: true, n: iklan.length}; ttSudutGambar();
   const d = await aiPost("/api/ai/sudut", {kata: "TikTok " + ttLabelKat(), iklan: iklan, label_kuat: la, label_lemah: lb});
@@ -8556,7 +8609,7 @@ function ttKartuArsip(x, kode){
   return '<div class="sp-p tt-p">' +
     '<button type="button" class="sp-th tt-th" onclick="ttPutar(\'' + kode + '\')" aria-label="Putar video iklan">' + (cv ? '<img src="' + esc(cv) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") +
       '<span class="sp-ph">TikTok</span><span class="sp-pos">' + (arsip ? "Arsip" : "#" + x.peringkat) + '</span>' + (x.durasi ? '<span class="tt-dur">' + ttDurasi(x.durasi) + '</span>' : "") + '<span class="tt-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></button>' +
-    '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' +
+    '<div class="sp-bd"><div class="sp-nm tt-hook" title="' + esc(x.judul) + '">' + esc(x.judul) + '</div>' + ttLisan(x) +
       '<div class="sp-mt">' + (x.merek ? '<b style="color:var(--ink)">' + esc(x.merek) + '</b>' : "") + '<span>' + esc(x.kategori || "") + '</span></div>' +
       '<div class="tt-angka"><span title="Like di video iklan 🟢 (nilai terakhir yang terbaca)">♥ ' + ttK(x.like) + '</span>' + (ctr ? '<span class="tt-ctr" title="Peringkat CTR dibanding iklan sejenis (persentil dari TikTok)">CTR ' + ctr + '</span>' : "") + '</div>' +
       (x.label && x.label.length ? '<div class="sp-lb tt-lbl">' + x.label.slice(0, 3).map(function(l){ return '<span title="Label niche dari AI 🤖 (bukan angka)">' + (x.label_ai ? "🤖 " : "") + esc(l) + '</span>'; }).join("") + '</div>' : "") +
@@ -8784,10 +8837,13 @@ function ttHookBank(khusus){
     .forEach(function(x){ tambah(x.judul, "🟢 iklan TikTok · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")); });
   if(n) (n.langsung || []).filter(function(x){ return x.cocok; }).slice(0, 3)
     .forEach(function(x){ tambah(x.judul, "🟢 top iklan kategori · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")); });
+  if(n) (n.iklan || []).concat((n.langsung || []).filter(function(x){ return x.cocok; })).filter(function(x){ return x.hook_lisan && !x.segmen_lain; })   /* v1.6.8 */
+    .sort(function(a, b){ return (b.like || 0) - (a.like || 0); }).slice(0, 3)
+    .forEach(function(x){ tambah(x.hook_lisan, "🎙️ diucapkan di iklan TikTok · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")); });
   const t = ttTrenData(false) || ttTrenData(true);
   if(t) (t.video || []).slice().sort(function(a, b){ return (b.views || 0) - (a.views || 0); }).slice(0, 3)
     .forEach(function(v){ tambah(v.judul, "🟢 video tren · ▶ " + ttK(v.views) + " · @" + v.u); });
-  return L.slice(0, 8);
+  return L.slice(0, 10);
 }
 function ttNaskahProduk(i){
   const p = TT.tok && TT.tok.produk && TT.tok.produk[i]; if(!p) return;
@@ -8795,7 +8851,9 @@ function ttNaskahProduk(i){
 }
 function ttNaskahIklan(kode){
   const x = ttAmbil(kode); if(!x) return;
-  ttNaskah({nama: TT.nq || x.merek || "", khusus: [{hook: x.judul, asal: "🟢 iklan ini · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")}], asal: "iklan"});
+  const ks = [{hook: x.judul, asal: "🟢 iklan ini · ♥ " + ttK(x.like) + (x.merek ? " · " + x.merek : "")}];
+  if(x.hook_lisan) ks.unshift({hook: x.hook_lisan, asal: "🎙️ diucapkan di iklan ini · ♥ " + ttK(x.like)});   /* v1.6.8 */
+  ttNaskah({nama: TT.nq || x.merek || "", khusus: ks, asal: "iklan"});
 }
 function ttNaskahVideo(id){
   const v = TT.vidIdx[id]; if(!v) return;
@@ -9091,7 +9149,7 @@ function ttKataHTML(q){
     (K && K.galat ? '<div class="ai-k">⚠️ ' + esc(K.galat) + '</div>' : '<div class="ai-k">Cari turunan kata kunci yang laku (mis. varian, manfaat, pemakaian) dan kebutuhan pembeli yang tersirat. Memakai 1 jatah AI harianmu; kalau AI sedang tidak bisa, tetap tampil hitungan kata dari judul produk.</div>') + '</div>';
   if(K.muat) return h + '</div><div class="ai-muat"><i></i>Membedah judul produk & iklan…</div></div>';
   const d = K.d;
-  h += '<span style="margin-left:auto;font-size:11px;color:var(--muted)">' + d.n_produk + ' judul produk · ' + d.n_iklan + ' iklan</span></div>';
+  h += '<span style="margin-left:auto;font-size:11px;color:var(--muted)">' + d.n_produk + ' judul produk · ' + d.n_iklan + ' iklan' + (d.n_ucapan ? ' · 🎙️ ' + d.n_ucapan + ' ucapan iklan' : '') + '</span></div>';
   if(d.kata && d.kata.length){
     h += '<div class="sdt-h"><b>🤖 Kata kunci berpeluang 🔵</b><span>usulan AI, hanya kata yang benar-benar ada di judul/iklan</span></div><div class="tt-kata-g">' +
       d.kata.map(function(x){ return '<button type="button" class="tt-kata-c" data-k="' + esc(x.kata) + '" onclick="ttTok(this.dataset.k, \'laris\')" title="Cari kata kunci ini di Tokopedia"><b>' + esc(x.kata) + '</b><span>' + (x.produk ? x.produk + ' produk' : '') + (x.alasan ? (x.produk ? ' · ' : '') + esc(x.alasan) : '') + '</span></button>'; }).join("") + '</div>';
@@ -9515,5 +9573,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ba10dcea1e4ab4',t:'MTc5MjE4NTE4OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ba55c1886eb599',t:'MTc5MjE4ODAxMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

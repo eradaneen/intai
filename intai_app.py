@@ -26,6 +26,8 @@ import secrets
 import threading
 import time
 import zlib
+import heapq
+import math
 import webbrowser
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -40,7 +42,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.7"
+VERSI = "1.6.8"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -4955,6 +4957,7 @@ def arsipkan_scan(out, label, mode, jumlah, ekonomi_niche):
     try:
         iklan, lihat = [], set()
         out_arsip = [x for x in out if (x.get("relevansi") or {}).get("label") != "Lepas"]   # v1.6: derau tidak diarsip
+        _coba(lambda: trk_meta_antre(out_arsip))   # v1.6.8 transkrip suara iklan video (latar, tak menyentuh hasil scan)
         for x in out_arsip:
             b = baris_arsip_iklan(x, label, mode, kini)
             if b and b["archive_id"] not in lihat:
@@ -8972,12 +8975,16 @@ def ai_sudut(email, d):
         lbl_b = str(d.get("label_lemah") or "lainnya")[:40] + " ("
         lbl_a, lbl_b = lbl_a.rstrip(" ("), lbl_b.rstrip(" (")
         lbl_a, lbl_b = lbl_a + " (", lbl_b + " ("
-    kunci = hashlib.sha1((kata + lbl_a + "|" + "|".join(r["id"] + r["teks"][:40] for r in rows)).encode()).hexdigest()
+    for r in rows:   # v1.6.8: ucapan di video (transkrip otomatis) ikut dibaca bila sudah ada
+        r["ucap"] = (_coba(lambda: trk_teks_id(r["id"])) or "")[:220]
+    n_ucap = sum(1 for r in rows if r["ucap"])
+    kunci = hashlib.sha1((kata + lbl_a + f"|u{n_ucap}|" + "|".join(r["id"] + r["teks"][:40] for r in rows)).encode()).hexdigest()
     if kunci in AI_SUDUT_CACHE:
         return dict(AI_SUDUT_CACHE[kunci], cache=True)
     hasil, sumber, info = {}, "aturan", {}
     if ai_aktif():
-        daftar = "\n".join(f"{i + 1}. [{r['halaman']}] {r['teks']}" for i, r in enumerate(rows))
+        daftar = "\n".join(f"{i + 1}. [{r['halaman']}] {r['teks']}" + (f" || ucapan video: {r['ucap']}" if r["ucap"] else "")
+                           for i, r in enumerate(rows))
         obj, info = ai_panggil(AI_SUDUT_SISTEM, f"Niche: {kata or '-'}\n\nIKLAN:\n{daftar}", tugas="sudut",
                                email=email, maks=50 * len(rows) + 200, suhu=0.1, batas=25)
         for h in ((obj or {}).get("hasil") or []) if isinstance(obj, dict) else []:
@@ -8991,7 +8998,7 @@ def ai_sudut(email, d):
             sumber = "ai"
     for i, r in enumerate(rows):   # tak dijawab AI / AI mati → aturan kata kunci
         if i not in hasil:
-            hasil[i] = (_sudut_aturan(r["teks"]), "")
+            hasil[i] = (_sudut_aturan(r["teks"] + " " + r["ucap"]), "")
     per = [{"id": r["id"], "sudut": hasil[i][0], "pola": hasil[i][1], "umur": r["umur"], "halaman": r["halaman"],
             "teks": r["teks"][:140], "ai": sumber == "ai"} for i, r in enumerate(rows)]
     n = len(per)
@@ -9027,7 +9034,7 @@ def ai_sudut(email, d):
                  else " Kelompok pembanding belum cukup (<3 masing-masing) untuk dibandingkan.")
     out = {"ok": True, "kata": kata, "jumlah": n, "jumlah_lama": len(lama), "sudut": dist, "ringkas": ring,
            "label_a": lbl_a.rstrip(" (") + (")" if "hari" in lbl_a else ""), "label_b": lbl_b.rstrip(" (") + (")" if "hari" in lbl_b else ""),
-           "sumber": sumber, "penyedia": info.get("penyedia"),
+           "sumber": sumber, "penyedia": info.get("penyedia"), "n_ucapan": n_ucap,
            "catatan": None if sumber == "ai" else (info.get("error") or "AI belum aktif") + " — dipakai pengelompokan kata kunci 🔵."}
     if sumber == "ai":
         AI_SUDUT_CACHE[kunci] = out
@@ -9107,16 +9114,19 @@ def ai_kata(email, d):
     qn = re.sub(r"\s+", " ", _norm(q)).strip()
     ik_rows = _coba(lambda: _tta_cari(qn, _tta_token(qn))[0]) or []
     iklan = [re.sub(r"\s+", " ", str(r.get("j") or ""))[:200] for s_, r in ik_rows[:25] if s_ >= 3 and len(str(r.get("j") or "")) >= 15]
+    ucapan = [r["tr"][:240] for s_, r in ik_rows[:25] if s_ >= 3 and r.get("trs") == "ok" and r.get("tr")][:10]   # v1.6.8
     aturan = _kata_aturan(q, produk, iklan)
-    kunci = hashlib.sha1((q.lower() + _tta_hari() + "|" + "|".join(p.get("nama", "")[:30] for p in produk[:20])).encode()).hexdigest()
+    kunci = hashlib.sha1((q.lower() + _tta_hari() + f"|u{len(ucapan)}|" + "|".join(p.get("nama", "")[:30] for p in produk[:20])).encode()).hexdigest()
     if kunci in AI_KATA_CACHE:
         return dict(AI_KATA_CACHE[kunci], cache=True)
-    korpus = _norm(" ".join([p.get("nama") or "" for p in produk] + iklan))
+    korpus = _norm(" ".join([p.get("nama") or "" for p in produk] + iklan + ucapan))
     kata_ai, butuh, sumber, info = [], [], "aturan", {}
     if ai_aktif():
         teks = "JUDUL PRODUK TOKOPEDIA (urut terlaris):\n" + "\n".join(f"- {p.get('nama', '')[:140]}" for p in produk[:50])
         if iklan:
             teks += "\n\nTEKS IKLAN TIKTOK:\n" + "\n".join(f"- {t}" for t in iklan[:20])
+        if ucapan:
+            teks += "\n\nUCAPAN DI VIDEO IKLAN TIKTOK (transkrip otomatis, bisa ada salah dengar):\n" + "\n".join(f"- {t}" for t in ucapan)
         obj, info = ai_panggil(AI_KATA_SISTEM, f"Niche: {q}\n\n{teks}", tugas="kata", email=email, maks=900, suhu=0.2, batas=25)
         boleh = _ai_angka_boleh(korpus)
         if isinstance(obj, dict):
@@ -9138,7 +9148,7 @@ def ai_kata(email, d):
         if kata_ai or butuh:
             sumber = "ai"
     out = {"ok": True, "q": q, "aturan": aturan, "kata": kata_ai[:8], "kebutuhan": butuh[:6], "sumber": sumber,
-           "penyedia": info.get("penyedia"), "n_produk": len(produk), "n_iklan": len(iklan),
+           "penyedia": info.get("penyedia"), "n_produk": len(produk), "n_iklan": len(iklan), "n_ucapan": len(ucapan),
            "catatan": None if sumber == "ai" else (info.get("error") or "AI belum aktif") + " — ditampilkan hitungan kata dari judul produk 🔵."}
     if sumber == "ai":
         AI_KATA_CACHE[kunci] = out
@@ -9371,6 +9381,7 @@ def tt_iklan(ind="", per="30", urut="for_you", bhs="id", hal="1", serap=True):
                     "durasi": round(float(vi.get("duration") or 0)), "cari": bool(m.get("is_search")),
                     "peringkat": (hal - 1) * 20 + i + 1,
                     "ind_id": str(_tta_induk(m.get("industry_key")) or _tta_induk(ind) or "")})
+    _coba(lambda: _trk_tt_isi(out))   # v1.6.8: transkrip yang sudah ada di arsip ikut tampil
     if serap and out:   # v1.5.12: semua yang dibuka user ikut menumpuk di arsip (latar, gagal = diabaikan)
         threading.Thread(target=tta_serap, args=(out, "user", ind), daemon=True).start()
     pg = d.get("pagination") or {}
@@ -9395,6 +9406,10 @@ def tt_iklan_detail(mid):
             "durasi": round(float(vi.get("duration") or 0)), "cover": vi.get("cover") or ""}
     if out["kata_kunci"] or out["landing"]:
         threading.Thread(target=tta_serap_detail, args=(mid, out), daemon=True).start()
+    _coba(lambda: trk_tt_antre_detail(mid, out["video"], out["durasi"]))   # v1.6.8
+    tr = _coba(lambda: trk_teks_id(mid)) or ""
+    if tr:
+        out["transkrip"], out["hook_lisan"] = tr, trk_hook(tr)
     return out
 
 
@@ -10159,9 +10174,9 @@ def tt_pakai_ringkas(hari=14):
 TRANSKRIP_UJI = {}   # v1.6.7: hasil uji kelayakan transkrip terakhir (admin)
 
 
-def _unduh_video(url, maks=25 * 1024 * 1024, timeout=30):
+def _unduh_video(url, maks=25 * 1024 * 1024, timeout=30, referer="https://ads.tiktok.com/"):
     """v1.6.7: unduh video iklan (CDN) ke memori, maks 25 MB (batas Groq gratis). → bytes."""
-    r = requests.get(url, timeout=timeout, stream=True, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://ads.tiktok.com/"})
+    r = requests.get(url, timeout=timeout, stream=True, headers={"User-Agent": "Mozilla/5.0", "Referer": referer})
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}")
     isi = bytearray()
@@ -10185,6 +10200,457 @@ def _whisper_groq(data, nama="iklan.mp4", bahasa="id", timeout=60):
         raise RuntimeError(f"Groq HTTP {r.status_code}: {r.text[:200]}")
     j = r.json()
     return str(j.get("text") or "").strip(), j.get("language"), j.get("duration")
+
+# ---------- v1.6.8: transkrip suara iklan OTOMATIS (Groq Whisper) — TikTok (arsip) + Meta (sesudah scan) ----------
+# 1 antrean prioritas di memori + 1 thread pekerja. Jeda ≥3,5 dtk antar-permintaan (≤17/menit, batas Groq 20/menit).
+# Batas harian aman: INTAI_TRK_HARIAN (bawaan 300 iklan) & 20.000 dtk audio (Groq gratis: 2.000 permintaan, 28.800 dtk/hari).
+# Antrean hilang saat server restart → tidak apa: cron TikTok & scan Meta berikutnya mengantre ulang yang belum bertranskrip.
+TRK_HARIAN = max(0, _int(os.environ.get("INTAI_TRK_HARIAN"), 300) or 0)
+TRK_DETIK_HARIAN = 20000
+TRK_META_PORSI = 0.4          # Meta maks 40% jatah harian → arsip TikTok tetap kebagian
+TRK_META_PER_SCAN = 20        # per scan Meta: 20 iklan video paling awet
+TRK_ISI_ARSIP = 40            # per hari: iklan arsip lama (link video diambil ulang dari Creative Center)
+TRK_JEDA = 3.5
+TRK_MAKS_ANTRE = 800
+TRK_M_PER_SHARD = 500         # Meta: 10 shard × 500 = 5.000 transkrip terakhir
+TRK_MAKS_TEKS = 900
+TRK_HALU = (r"terima kasih (telah|sudah|karena) menonton", r"sampai jumpa (lagi )?di video (berikutnya|selanjutnya)",
+            r"subtitle(s)? (by|oleh)[^.]*", r"amara\.org[^.]*", r"thank(s| you) for watching", r"ditranskripsikan oleh[^.]*",
+            r"jangan lupa (like|subscribe)[^.]*", r"terjemahan (oleh|by)[^.]*")
+kunci_trk = threading.Lock()
+TRK = {"antre": [], "ada": set(), "selesai": set(), "thread": None, "stat": None, "tulis_n": 0, "rehat": 0.0,
+       "galat": "", "m": None, "m_kotor": set(), "m_gagal": {}, "seri": 0, "terakhir": None}
+
+
+class TrkRehat(Exception):
+    def __init__(self, detik, pesan):
+        super().__init__(pesan)
+        self.detik = detik
+
+
+def _trk_groq(data, nama="iklan.mp4", timeout=90):
+    """Seperti _whisper_groq tapi mengembalikan JSON lengkap (segments) & membedakan 'tunggu' (429/5xx) dari 'gagal'."""
+    if not AI_GROQ:
+        raise TrkRehat(3600, "kunci Groq belum diisi")
+    try:
+        r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers={"Authorization": "Bearer " + AI_GROQ},
+                          files={"file": (nama, data, "video/mp4")},
+                          data={"model": "whisper-large-v3-turbo", "language": "id", "response_format": "verbose_json",
+                                "temperature": "0"}, timeout=timeout)
+    except requests.RequestException as e:
+        raise TrkRehat(30, "Groq tak terjangkau: " + str(e)[:80])
+    if r.status_code == 429:
+        try:
+            dt = float(r.headers.get("retry-after") or 60)
+        except Exception:
+            dt = 60.0
+        raise TrkRehat(min(max(dt, 5.0), 900.0), f"Groq 429 (batas tercapai) — jeda {int(min(max(dt, 5.0), 900.0))} dtk")
+    if r.status_code in (401, 403):
+        raise TrkRehat(3600, f"Groq HTTP {r.status_code}: kunci ditolak")
+    if r.status_code >= 500:
+        raise TrkRehat(30, f"Groq HTTP {r.status_code}")
+    if r.status_code != 200:
+        raise RuntimeError(f"Groq HTTP {r.status_code}: {r.text[:120]}")
+    return r.json()
+
+
+def _trk_olah(j):
+    """JSON Whisper → (status, teks, durasi). Segmen 'bukan ucapan' & kalimat halusinasi Whisper (musik) dibuang."""
+    dur = float(j.get("duration") or 0)
+    segs = [z for z in (j.get("segments") or []) if isinstance(z, dict)]
+    if segs:
+        teks = " ".join(str(z.get("text") or "").strip() for z in segs
+                        if float(z.get("no_speech_prob") or 0) < 0.6 and float(z.get("avg_logprob") or 0) > -1.2)
+    else:
+        teks = str(j.get("text") or "")
+    for pola in TRK_HALU:
+        teks = re.sub(pola, " ", teks, flags=re.I)
+    teks = re.sub(r"\s+", " ", teks).strip(" .,-")
+    kata = _norm(teks).split()
+    if len(kata) > 8 and len(set(kata)) / len(kata) < 0.25:   # "la la la la…" / kata diulang = musik
+        teks = ""
+    if len(re.sub(r"[^A-Za-z]", "", teks)) < 12:
+        return "sunyi", "", dur
+    if len(teks) > TRK_MAKS_TEKS:
+        teks = teks[:TRK_MAKS_TEKS].rsplit(" ", 1)[0] + "…"
+    return "ok", teks, dur
+
+
+def trk_hook(teks):
+    """Hook lisan = kalimat pertama yang diucapkan (±3 detik pertama)."""
+    t = re.sub(r"\s+", " ", str(teks or "")).strip()
+    if not t:
+        return ""
+    k = re.split(r"(?<=[.!?])\s+", t)
+    h = k[0]
+    if len(h) < 35 and len(k) > 1:   # "Bercak putih di gigi anak? Jangan panik dulu moms!"
+        h = h + " " + k[1]
+    if len(h) > 140:
+        h = h[:137].rsplit(" ", 1)[0] + "…"
+    return h
+
+
+def _trk_stat():
+    """Penghitung harian (dipanggil dengan kunci_trk dipegang). Disimpan di setelan 'trk_stat' agar restart tak mereset jatah."""
+    hari = _tta_hari()
+    st = TRK["stat"]
+    if st is None:
+        r = _coba(lambda: setelan_baca("trk_stat")) or (False, None)
+        st = r[1] if isinstance(r, tuple) and isinstance(r[1], dict) else {}
+    if st.get("hari") != hari:
+        st = {"hari": hari, "n": 0, "m": 0, "detik": 0.0, "sunyi": 0, "gagal": 0}
+    TRK["stat"] = st
+    return st
+
+
+def _trk_stat_tulis():
+    with kunci_trk:
+        st = dict(_trk_stat())
+    _coba(lambda: setelan_tulis("trk_stat", st))
+
+
+def _trk_penuh(st, plat=None):
+    if st["n"] + st["m"] >= TRK_HARIAN or st["detik"] >= TRK_DETIK_HARIAN:
+        return True
+    return plat == "m" and st["m"] >= int(TRK_HARIAN * TRK_META_PORSI)
+
+
+def trk_antre(plat, iid, url, prio=0.0, dur=0, ind=None):
+    """Masukkan 1 iklan ke antrean transkrip (dedup). plat 'tt' = TikTok (arsip), 'm' = Meta (archive_id)."""
+    iid = str(iid or "")
+    if not AI_GROQ or TRK_HARIAN <= 0 or not iid or not url:
+        return False
+    k = (plat, iid)
+    with kunci_trk:
+        if k in TRK["ada"] or k in TRK["selesai"] or _trk_penuh(_trk_stat(), plat):
+            return False
+        if len(TRK["antre"]) >= TRK_MAKS_ANTRE:
+            rendah = max(TRK["antre"])   # heap (-prio, seri, …) → elemen terbesar = prioritas terendah
+            if -rendah[0] >= prio:
+                return False
+            TRK["antre"].remove(rendah)
+            heapq.heapify(TRK["antre"])
+            TRK["ada"].discard((rendah[2], rendah[3]))
+        TRK["seri"] += 1
+        heapq.heappush(TRK["antre"], (-float(prio), TRK["seri"], plat, iid, url, int(dur or 0), ind))
+        TRK["ada"].add(k)
+        t = TRK["thread"]
+        if not (t and t.is_alive()):
+            t = threading.Thread(target=_trk_pekerja, daemon=True, name="trk")
+            TRK["thread"] = t
+            t.start()
+    return True
+
+
+def _trk_tt_rec(iid, ind=None):
+    """Record arsip TikTok (panggil dengan kunci_tta dipegang)."""
+    kat = TTA.get("kat") or {}
+    r = (kat.get(ind) or {}).get(iid) if ind else None
+    if r is None:
+        for d in kat.values():
+            r = d.get(iid)
+            if r is not None:
+                break
+    return r
+
+
+def _trk_m_muat():
+    with kunci_trk:
+        if TRK["m"] is not None:
+            return TRK["m"]
+    r = _coba(lambda: setelan_awalan("trk:m:")) or (False, {})
+    ok, semua = r if isinstance(r, tuple) else (False, {})
+    m = {}
+    for k, v in (semua or {}).items():
+        isi = _tk_buka(v)
+        m[str(k).split(":")[-1]] = OrderedDict(isi.get("t") or {}) if isinstance(isi, dict) else OrderedDict()
+    with kunci_trk:
+        if TRK["m"] is None and ok:
+            TRK["m"] = m
+        return TRK["m"] if TRK["m"] is not None else None
+
+
+def _trk_sudah(plat, iid, ind):
+    if plat == "tt":
+        _coba(_tta_muat)
+        with kunci_tta:
+            r = _trk_tt_rec(iid, ind)
+            return r is None or bool(r.get("trs"))   # sudah dibuang dari arsip / sudah bertranskrip → lewati
+    m = _trk_m_muat()
+    if m is None:
+        return False
+    with kunci_trk:
+        return iid in (m.get(iid[-1]) or {})
+
+
+def _trk_simpan(plat, iid, ind, status, teks):
+    hari = _tta_hari()
+    if plat == "tt":
+        with kunci_tta:
+            r = _trk_tt_rec(iid, ind)
+            if r is None:
+                return
+            if status == "gagal":
+                r["trg"] = (r.get("trg") or 0) + 1
+                if r["trg"] < 2:
+                    return            # dicoba lagi saat link video segar berikutnya
+                r["trs"] = "gagal"
+            else:
+                r["trs"] = status
+                r.pop("trg", None)
+                if teks:
+                    r["tr"] = teks
+                else:
+                    r.pop("tr", None)
+            r["trw"] = hari
+            _TTA_KOTOR.add(r.get("ind") or ind)
+        return
+    m = _trk_m_muat()
+    if m is None:
+        return
+    with kunci_trk:
+        if status == "gagal":
+            TRK["m_gagal"][iid] = TRK["m_gagal"].get(iid, 0) + 1
+            if TRK["m_gagal"][iid] < 2:
+                return
+            TRK["m_gagal"].pop(iid, None)
+        d = m.setdefault(iid[-1], OrderedDict())
+        d[iid] = {"t": teks, "s": status, "w": hari} if teks else {"s": status, "w": hari}
+        d.move_to_end(iid)
+        while len(d) > TRK_M_PER_SHARD:
+            d.popitem(last=False)
+        TRK["m_kotor"].add(iid[-1])
+
+
+def _trk_flush():
+    _tta_tandai()   # arsip TikTok yang berubah ditulis (1 tulis per kategori)
+    with kunci_trk:
+        kotor = list(TRK["m_kotor"])
+        TRK["m_kotor"].clear()
+        salin = {d: {"t": dict((TRK["m"] or {}).get(d) or {})} for d in kotor}
+    for d, v in salin.items():
+        if not _coba(lambda: setelan_tulis(f"trk:m:{d}", _tk_bungkus(v))):
+            with kunci_trk:
+                TRK["m_kotor"].add(d)
+
+
+def _trk_pekerja():
+    while True:
+        with kunci_trk:
+            tunggu = TRK["rehat"] - time.time()
+        if tunggu > 0:
+            time.sleep(min(tunggu, 20))
+            continue
+        with kunci_trk:
+            st = _trk_stat()
+            item = None
+            while TRK["antre"]:
+                it = heapq.heappop(TRK["antre"])
+                if _trk_penuh(st, it[2]):
+                    TRK["ada"].discard((it[2], it[3]))
+                    continue
+                item = it
+                break
+            if item is None:
+                if _trk_penuh(st):
+                    TRK["galat"] = f"jatah harian tercapai ({st['n'] + st['m']} iklan · {int(st['detik'])} dtk audio) — lanjut besok"
+                TRK["antre"].clear()
+                TRK["ada"].clear()
+                TRK["thread"] = None
+                break
+        _, _, plat, iid, url, dur, ind = item
+        t0, panggil = time.time(), False
+        try:
+            if _trk_sudah(plat, iid, ind):
+                hasil = None
+            else:
+                data = _unduh_video(url, referer="https://www.facebook.com/" if plat == "m" else "https://ads.tiktok.com/")
+                panggil = True
+                hasil = _trk_olah(_trk_groq(data, f"iklan-{iid[-8:]}.mp4"))
+        except TrkRehat as e:
+            with kunci_trk:
+                TRK["rehat"] = time.time() + e.detik
+                TRK["galat"] = str(e)
+                heapq.heappush(TRK["antre"], item)   # dikembalikan, dicoba sesudah jeda
+            continue
+        except Exception as e:
+            hasil = ("gagal", "", 0.0)
+            with kunci_trk:
+                TRK["galat"] = ("Groq: " if panggil else "unduh video: ") + str(e)[:120]
+        with kunci_trk:
+            TRK["ada"].discard((plat, iid))
+        if hasil is not None:
+            status, teks, durasi = hasil
+            _coba(lambda: _trk_simpan(plat, iid, ind, status, teks))
+            with kunci_trk:
+                st = _trk_stat()
+                if panggil:
+                    st["m" if plat == "m" else "n"] += 1
+                    st["detik"] = round(st["detik"] + max(10.0, float(durasi or dur or 30)), 1)
+                st[status] = st.get(status, 0) + 1   # ok / sunyi / gagal
+                if status != "gagal":
+                    TRK["selesai"].add((plat, iid))
+                    if len(TRK["selesai"]) > 30000:
+                        TRK["selesai"].clear()
+                    TRK["galat"] = ""
+                TRK["terakhir"] = _iso_kini()
+                TRK["tulis_n"] += 1
+                tulis = TRK["tulis_n"] % 5 == 0 or not TRK["antre"]
+            if tulis:
+                _trk_flush()
+                _trk_stat_tulis()
+        time.sleep(max(0.0, TRK_JEDA - (time.time() - t0)))
+    _trk_flush()
+    _trk_stat_tulis()
+
+
+def _trk_prio_tt(like, user=False):
+    return min(45.0, 8 * math.log10((like or 0) + 1)) + (30 if user else 0)
+
+
+def trk_tt_antre_detail(mid, video, durasi=0):
+    """Detail iklan dibuka / diambil ulang → link video segar → antre bila belum bertranskrip."""
+    if not video or not AI_GROQ:
+        return False
+    kat = _coba(_tta_muat)
+    if kat is None:
+        return False
+    with kunci_tta:
+        r = _trk_tt_rec(str(mid))
+        if r is None or r.get("trs"):
+            return False
+        ind, like = r.get("ind"), r.get("like") or 0
+    return trk_antre("tt", str(mid), video, _trk_prio_tt(like, True), durasi, ind)
+
+
+def trk_isi_arsip(maks=TRK_ISI_ARSIP):
+    """Cron harian: iklan arsip lama tanpa transkrip (link videonya tak disimpan) → ambil ulang link dari detail CC."""
+    if not AI_GROQ or TRK_HARIAN <= 0:
+        return 0
+    kat = _tta_muat()
+    hari = _tta_hari()
+    with kunci_tta:
+        kand = [r for d in kat.values() for r in d.values()
+                if not r.get("trs") and r.get("p2") != hari and (r.get("trc") or 0) < 2]
+    kand.sort(key=lambda r: -(r.get("like") or 0))
+    n = 0
+    for r in kand[:maks]:
+        with kunci_trk:
+            if _trk_penuh(_trk_stat(), "tt") or len(TRK["antre"]) >= TRK_MAKS_ANTRE // 2:
+                break
+        with kunci_tta:
+            r["trc"] = (r.get("trc") or 0) + 1
+        try:
+            det = tt_iklan_detail(r.get("id"))
+        except Exception:
+            det = {}
+        if det.get("video") and trk_antre("tt", str(r.get("id")), det["video"], _trk_prio_tt(r.get("like")) / 3,
+                                          det.get("durasi") or r.get("dur") or 0, r.get("ind")):
+            n += 1
+        time.sleep(2)
+    return n
+
+
+def trk_tunggu(plat="tt", maks_detik=600):
+    """Tunggu antrean platform ini kosong (maks). Dipakai cron agar label AI ikut membaca ucapan iklan baru."""
+    t_akhir = time.time() + maks_detik
+    while time.time() < t_akhir:
+        with kunci_trk:
+            sisa = sum(1 for it in TRK["antre"] if it[2] == plat)
+            jalan = TRK["thread"] and TRK["thread"].is_alive()
+        if not sisa or not jalan:
+            return True
+        time.sleep(5)
+    return False
+
+
+def trk_meta_antre(out):
+    """Sesudah scan Meta (thread arsip): 20 iklan VIDEO paling awet yang belum bertranskrip → antrean.
+    Link video fbcdn kedaluwarsa (oe=…) → harus segera, jadi prioritasnya di atas antrean cron TikTok."""
+    if not AI_GROQ or TRK_HARIAN <= 0:
+        return 0
+    m = _trk_m_muat()
+    if m is None:
+        return 0
+    kand = []
+    with kunci_trk:
+        for x in out or []:
+            d = x.get("detail") or {}
+            aid = str(d.get("archive_id") or x.get("archive_id") or "")
+            v = (d.get("videos") or [None])[0]
+            if not aid.isdigit() or not isinstance(v, dict) or aid in (m.get(aid[-1]) or {}):
+                continue
+            u = v.get("sd") or v.get("hd")
+            if u:
+                kand.append((_int(x.get("umur") or d.get("umur"), 0) or 0, aid, u))
+    kand.sort(key=lambda z: -z[0])
+    return sum(1 for umur, aid, u in kand[:TRK_META_PER_SCAN] if trk_antre("m", aid, u, 50 + min(umur, 90) / 3))
+
+
+def trk_meta_ambil(ids):
+    ids = [i for i in dict.fromkeys(re.sub(r"[^0-9]", "", str(i))[:25] for i in ids) if i][:80]
+    m = _trk_m_muat() or {}
+    out = {}
+    with kunci_trk:
+        for a in ids:
+            e = (m.get(a[-1]) or {}).get(a)
+            if e:
+                out[a] = {"status": e.get("s") or "ok", "teks": e.get("t") or "", "hook": trk_hook(e.get("t"))}
+            elif ("m", a) in TRK["ada"]:
+                out[a] = {"status": "antre"}
+    return {"ok": True, "t": out, "aktif": bool(AI_GROQ) and TRK_HARIAN > 0}
+
+
+def trk_teks_id(iid):
+    """Transkrip untuk id iklan apa pun (Meta archive_id atau TikTok material id). '' bila belum ada."""
+    iid = str(iid or "")
+    if not iid.isdigit():
+        return ""
+    m = TRK["m"]
+    if m is not None:
+        with kunci_trk:
+            e = (m.get(iid[-1]) or {}).get(iid)
+        if e and e.get("t"):
+            return e["t"]
+    if TTA.get("kat"):
+        with kunci_tta:
+            r = _trk_tt_rec(iid)
+            if r and r.get("tr"):
+                return r["tr"]
+    return ""
+
+
+def _trk_tt_isi(iklan):
+    """Hasil langsung Top Ads diperkaya transkrip dari arsip (berdasarkan id)."""
+    if not iklan or not TTA.get("kat"):
+        return
+    with kunci_tta:
+        for x in iklan:
+            r = _trk_tt_rec(str(x.get("id") or ""), _tta_induk(x.get("ind_id")))
+            if r is None:
+                continue
+            if r.get("tr"):
+                x["transkrip"], x["hook_lisan"] = r["tr"], trk_hook(r["tr"])
+            if r.get("trs"):
+                x["trk"] = r["trs"]
+
+
+def trk_status():
+    with kunci_trk:
+        st = dict(_trk_stat())
+        t = TRK["thread"]
+        return {"aktif": bool(AI_GROQ) and TRK_HARIAN > 0, "hari_ini": st["n"] + st["m"], "tiktok": st["n"], "meta": st["m"],
+                "detik": int(st["detik"]), "sunyi": st.get("sunyi", 0), "gagal": st.get("gagal", 0), "antre": len(TRK["antre"]),
+                "batas": TRK_HARIAN, "galat": TRK["galat"], "jalan": bool(t and t.is_alive()), "terakhir": TRK["terakhir"]}
+
+
+def trk_status_teks():
+    s = trk_status()
+    if not s["aktif"]:
+        return "transkrip otomatis MATI (" + ("kunci Groq kosong" if not AI_GROQ else "INTAI_TRK_HARIAN=0") + ")"
+    t = (f"otomatis hari ini: {s['hari_ini']}/{s['batas']} iklan (TikTok {s['tiktok']} · Meta {s['meta']}) · "
+         f"{s['detik']} dtk audio · tanpa ucapan {s['sunyi']} · gagal {s['gagal']} · antre {s['antre']}")
+    return t + (f" · catatan: {s['galat']}" if s["galat"] else "")
 
 
 def tt_uji():
@@ -10269,7 +10735,7 @@ def tt_uji():
     uji("Tokopedia lewat Jina Reader (cadangan)", tokped_jina)
 
     def transkrip():   # v1.6.7 uji kelayakan: unduh video iklan Top Ads dari server ini + 1 transkrip Groq Whisper
-        ik = [x for x in (tt_iklan(per="7", urut="like", bhs="id").get("iklan") or []) if x.get("video")][:5]
+        ik = [x for x in (tt_iklan(per="7", urut="like", bhs="id").get("iklan") or []) if x.get("video")][:3]
         if not ik:
             raise RuntimeError("Top Ads tidak memberi link video saat ini")
         unduh, gagal = [], []
@@ -10292,8 +10758,9 @@ def tt_uji():
         TRANSKRIP_UJI.clear()
         TRANSKRIP_UJI.update(jam=_iso_kini(), judul=x.get("judul"), merek=x.get("merek"), durasi=dur, bahasa=bhs, ms=ms, teks=teks)
         return (ket + f" · transkrip Groq Whisper: {dur or '?'} dtk audio dalam {ms / 1000:.1f} dtk, bahasa {bhs or '?'} · "
-                f"iklan “{(x.get('judul') or '')[:50]}” → «{teks[:400] or '(tanpa ucapan — mungkin hanya musik)'}»")
-    uji("Transkrip suara iklan (Groq Whisper) — uji kelayakan", transkrip)
+                f"iklan “{(x.get('judul') or '')[:50]}” → «{teks[:300] or '(tanpa ucapan — mungkin hanya musik)'}» · "
+                + trk_status_teks())
+    uji("Transkrip suara iklan (Groq Whisper)", transkrip)
 
     def tiktok_cfw():   # v1.6.5
         u, k = _cfw_env()
@@ -10488,7 +10955,7 @@ def tta_serap(iklan, sumber="user", ind_minta=None):
         kat = _tta_muat()
     except Exception:
         return 0
-    hari, baru = _tta_hari(), 0
+    hari, baru, trk = _tta_hari(), 0, []
     with kunci_tta:
         for x in iklan:
             mid = str(x.get("id") or "")
@@ -10512,12 +10979,16 @@ def tta_serap(iklan, sumber="user", ind_minta=None):
                 r["pk"] = pk
             if sumber not in r["src"]:
                 r["src"].append(sumber)
+            if x.get("video") and not r.get("trs"):   # v1.6.8: link video CC segar → antre transkrip
+                trk.append((mid, x["video"], _trk_prio_tt(r.get("like"), sumber == "user"), r.get("dur") or 0, ind))
             d.move_to_end(mid)
             _TTA_KOTOR.add(ind)
         for ind in list(_TTA_KOTOR):
             if isinstance(ind, int) and ind in kat:
                 _tta_rapikan(kat[ind])
     _tta_tandai()
+    for mid, u, pr, du, ind in trk:
+        _coba(lambda: trk_antre("tt", mid, u, pr, du, ind))
     if baru and sumber == "user":
         tta_label_latar(maks_panggilan=3)
     return baru
@@ -10590,6 +11061,7 @@ AI_ARSIP_SISTEM = (
     "JANGAN menulis nama merek sebagai niche. Jangan mengarang produk yang tidak tersirat dari teks.\n"
     "- 'sudut': SATU kode cara membujuk dari: " + ", ".join(f"\"{k}\" ({v})" for k, v in AI_SUDUT.items()) + ". Untuk AKUN pakai 'lain'.\n"
     "- 'pola': gaya pembuka, maks 8 kata, tanpa angka (boleh kosong untuk AKUN).\n"
+    "'ucapan' = transkrip otomatis suara video (bisa ada salah dengar) — pakai untuk memahami produk & cara membujuk.\n"
     "Balas JSON: {\"hasil\":[{\"id\":<nomor>,\"niche\":[\"...\"],\"sudut\":\"<kode>\",\"pola\":\"...\"}]}")
 
 
@@ -10600,6 +11072,8 @@ def _tta_baris_ai(jenis, r):
             t += " · tagar: " + " ".join("#" + x for x in r["tg"][:6])
         if r.get("kk"):
             t += " · kata kunci: " + ", ".join(r["kk"][:6])
+        if r.get("tr"):   # v1.6.8: ucapan di video (transkrip otomatis)
+            t += " · ucapan: " + r["tr"][:200]
         return t
     cap = " | ".join(v["c"][:70] for v in (r.get("video") or [])[:6] if v.get("c"))
     return f"[AKUN] @{r.get('nama')} ({r.get('tampil') or ''}) · kategori: {r.get('kategori') or '-'} · bio: {(r.get('bio') or '')[:140]} · caption: {cap[:360]}"
@@ -10780,6 +11254,9 @@ def _tta_pekerja():
                 st["tok"][k] = {"ok": ok, "n": jml, "galat": galat, "waktu": _iso_kini(), "coba": lama.get("coba", 0) + 1}
             _tta_status_tulis()
             time.sleep(4)
+        # 2b) v1.6.8 transkrip: iklan arsip lama (link video diambil ulang) + tunggu antrean ≤10 mnt agar label membaca ucapan
+        _coba(trk_isi_arsip)
+        _coba(lambda: trk_tunggu("tt", 600))
         # 3) label AI semua yang baru
         n_lb = tta_label(maks_panggilan=max(1, AI_ARSIP_HARIAN), jeda=7)
         with kunci_tta:
@@ -10921,6 +11398,12 @@ def _tta_cari(qn, tok):
             for r in d.values():
                 teks = _tta_teks_iklan(r)
                 s = _tta_skor(qn, tok, r.get("lb") or [], teks, _norm(r.get("kt") or ""))
+                if r.get("tr") and tok:   # v1.6.8: ucapan di video = bukti tambahan (kecil)
+                    trn = _norm(r["tr"])
+                    if s > 0 and all(_kata_ada(w, trn) for w in tok):
+                        s += 3
+                    elif s <= 0 and len(qn) >= 4 and _kata_ada(qn, trn):
+                        s = 5.0   # frasa niche utuh diucapkan di video walau tak tertulis di teks iklan
                 if s > 0:
                     # niche tidak menyebut anak/bayi → produk khusus anak/bayi diturunkan ke bawah (tetap ada, tidak dibuang)
                     if not seg_q and _tta_segmen(teks + " " + " ".join(r.get("lb") or [])):
@@ -10981,6 +11464,7 @@ def _tta_keluar(r, skor=None):
             "cover": r.get("cv") or "", "video": "", "peringkat": r.get("pk") or 0, "pertama": r.get("p1"), "terakhir": r.get("p2"),
             "hari": r.get("hr") or 1, "label": r.get("lb") or [], "label_ai": r.get("lsrc") == "ai", "sudut": r.get("sd"),
             "sudut_label": AI_SUDUT.get(r.get("sd") or "", ""), "pola": r.get("pl") or "", "kata_kunci": r.get("kk") or [],
+            "transkrip": r.get("tr") or "", "hook_lisan": trk_hook(r.get("tr")), "trk": r.get("trs") or "",
             "skor": round(skor, 1) if skor is not None else None}
 
 
@@ -12456,6 +12940,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.json_ok(sv_tagar(parse_qs(u.query).get("q", [""])[0]))
             except Exception as e_:
                 self.json_ok({"ok": False, "error": "Shopee Video gagal dibaca: " + str(e_)[:120]})
+        elif u.path == "/api/transkrip":   # v1.6.8 transkrip suara iklan Meta (archive_id)
+            if not self.email:
+                self.json_ok({"ok": False, "error": "Silakan masuk dulu"})
+            else:
+                self.json_ok(trk_meta_ambil(parse_qs(u.query).get("ids", [""])[0].split(",")))
         elif u.path.startswith("/api/tiktok/"):   # v1.5.8 Scan TikTok
             qs = parse_qs(u.query)
             g = lambda k, d="": qs.get(k, [d])[0]
