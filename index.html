@@ -901,6 +901,18 @@ html.tt-kunci{overflow:hidden}
   #view-tiktok .tt-form select{flex:1 1 calc(50% - 8px)}
   #view-tiktok .tt-urut{margin-left:0}
 }
+
+/* ===== v1.5.9 Tokopedia terlaris + embed resmi TikTok ===== */
+#view-tiktok .tt-harga{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+#view-tiktok .tt-harga b{font-size:13.5px;color:#051F20}
+#view-tiktok .tt-harga s{font-size:10.5px;color:var(--faint)}
+#view-tiktok .tt-dom{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:11.5px}
+#view-tiktok .tt-dom b{width:100%;font-size:12px;color:#163832}
+#view-tiktok .tt-dom span{background:#F1F8F2;border:1px solid #E3EFE6;border-radius:999px;padding:4px 10px;font-weight:700;color:#21403A}
+#view-tiktok .tt-dom i{font-style:normal;color:#557069;font-weight:600;margin-left:3px}
+#view-tiktok .tt-info-b{background:#EEF4F7;border-color:#D3E2EA;color:#2E4F63;margin-bottom:12px}
+#view-tiktok .tt-emb{display:block;width:100%;max-width:560px;height:720px;margin:0 auto;border:0;border-radius:16px;background:#fff}
+@media (max-width:760px){ #view-tiktok .tt-emb{height:620px} }
 </style>
 <style>
 #view-meta {
@@ -2034,7 +2046,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
             <button type="submit" class="hs-btn">Intip <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
           </form>
           <div class="hs-bawah" id="hs-chips-tt"><span class="lbl">Top iklan TikTok</span><button type="button" class="hs-chip" data-ind="">Semua kategori</button><button type="button" class="hs-chip" data-ind="14000000000">Kecantikan</button><button type="button" class="hs-chip" data-ind="27000000000">Makanan &amp; Minuman</button><button type="button" class="hs-chip" data-ind="22000000000">Fashion</button><button type="button" class="hs-chip" data-ind="29000000000">Kesehatan</button></div>
-          <div class="hs-info">Ketik akun pesaing untuk melihat <b>pengikut, 13 video + views, like, komentar, dan mana yang dipromosikan</b> · atau klik kategori untuk melihat <b>iklan TikTok terkuat 30 hari terakhir</b> (like, CTR, budget, video aslinya).</div>
+          <div class="hs-info">Ketik akun pesaing untuk melihat <b>pengikut, 13 video + views, like, komentar, dan mana yang dipromosikan</b> · atau klik kategori untuk melihat <b>iklan TikTok terkuat 30 hari terakhir</b> · ada juga tab <b>Tokopedia terlaris</b> dengan angka terjual.</div>
         </div>
       </div>
     </section>
@@ -2505,7 +2517,7 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
             <div class="kartu"><div class="judul-kartu"><b>Scan otomatis</b><span id="adm-put-tgl">—</span></div><div id="adm-putaran"></div></div>
             <div class="kartu"><div class="judul-kartu"><b>Mesin scan Meta</b><span id="adm-mesin-t">—</span></div><div id="adm-mesin"></div></div>
             <div class="kartu"><div class="judul-kartu"><b>🤖 AI asisten</b><span id="adm-ai-t">—</span></div><div id="adm-ai"></div></div>
-            <div class="kartu"><div class="judul-kartu"><b>🎵 Jalur TikTok &amp; Tokopedia</b><span id="adm-tt-t">belum diuji</span></div><div><small style="color:var(--faint)">Cek dari server Render: Creative Center (Top Iklan), profil + video akun, dan Tokopedia (untuk fitur angka terjual berikutnya).</small><br><button class="cs-tb" style="margin-top:8px" onclick="admTTUji(this)">Uji jalur sekarang</button><div id="adm-tt-hasil"></div></div></div>
+            <div class="kartu"><div class="judul-kartu"><b>🎵 Jalur TikTok &amp; Tokopedia</b><span id="adm-tt-t">belum diuji</span></div><div><small style="color:var(--faint)">Cek dari server Render: Creative Center (Top Iklan), profil + video akun, oEmbed, dan Tokopedia lewat Jina Reader (tab Tokopedia terlaris).</small><br><button class="cs-tb" style="margin-top:8px" onclick="admTTUji(this)">Uji jalur sekarang</button><div id="adm-tt-hasil"></div></div></div>
           </div>
         </div>
       </div>
@@ -2631,12 +2643,13 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
       <div class="sapaan-bar">
         <div>
           <h1>Scan TikTok <span class="sp-beta">Beta</span></h1>
-          <div class="sub2">Iklan TikTok yang paling kuat di Indonesia per kategori (like, CTR, budget, video aslinya) dan intip akun pesaing: pengikut, video terbaru, views, dan mana yang sedang dipromosikan.</div>
+          <div class="sub2">Iklan TikTok yang paling kuat di Indonesia per kategori (like, CTR, budget, video aslinya), intip akun pesaing, dan produk Tokopedia (satu grup dengan TikTok Shop) yang paling laku lengkap dengan angka terjualnya.</div>
         </div>
       </div>
       <div class="sp-tabs" role="tablist" id="tt-tabs">
         <button type="button" data-t="iklan" onclick="ttTab('iklan')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3.5 4.5 5 4.5 9a4.5 4.5 0 0 1-9 0c0-1.6.7-2.9 1.6-3.9.2 1.4 1 2.4 2 2.9C10.6 8.6 11 5.6 12 3z"/></svg>Top Iklan TikTok</button>
         <button type="button" data-t="akun" onclick="ttTab('akun')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>Intip akun</button>
+        <button type="button" data-t="tokped" onclick="ttTab('tokped')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>Tokopedia terlaris</button>
       </div>
 
       <section class="sp-sek" data-sek="iklan">
@@ -2661,6 +2674,17 @@ html.anim-selesai .anim{animation:none}   /* kartu dashboard bertingkat hanya sa
         </form>
         <div class="sp-riw" id="tt-akun-riw"></div>
         <div id="tt-akun-isi"></div>
+      </section>
+
+      <section class="sp-sek" data-sek="tokped">
+        <form class="sp-form" id="tt-tok-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="tt-tok-q" type="search" placeholder="Kata kunci produk — misal: madu anak, serum wajah, rak sepatu" aria-label="Kata kunci Tokopedia">
+          <select id="tt-tok-urut" aria-label="Urutan"><option value="laris">Terlaris</option><option value="sesuai">Paling sesuai</option></select>
+          <button type="submit" class="btn" id="tt-tok-btn">Scan</button>
+        </form>
+        <div class="sp-riw" id="tt-tok-riw"></div>
+        <div id="tt-tok-isi"></div>
       </section>
     </div>
   </main>
@@ -7756,7 +7780,8 @@ function sdtGambar(){ const el = document.getElementById("sdt-wadah"); if(el) el
 /* ---------- v1.5.8 Scan TikTok: Top Iklan (Creative Center) + Intip akun ---------- */
 const TT = {tab: "iklan", pasang: false, filter: null, filterMuat: false, ind: "", sub: "", per: "30", urut: "like", bhs: "id",
             iklan: null, kunciIklan: "", muat: {iklan: false, akun: false, lagi: false}, galat: {iklan: "", akun: ""},
-            akunQ: "", akun: null, akunUrut: "baru", akunAsal: null, sudut: null};
+            akunQ: "", akun: null, akunUrut: "baru", akunAsal: null, sudut: null, akunBlokir: "",
+            tokQ: "", tokUrut: "laris", tok: null};
 const TT_URUT_LBL = {like: "Like terbanyak", ctr: "CTR tertinggi", impression: "Tayangan terbanyak", for_you: "Pilihan TikTok"};
 function ttK(n){   /* angka ringkas: 3,7 jt · 12,4 rb */
   if(n == null || n === "") return "—"; n = Number(n);
@@ -7767,10 +7792,14 @@ function ttK(n){   /* angka ringkas: 3,7 jt · 12,4 rb */
 }
 function ttDurasi(d){ d = Number(d) || 0; return d ? Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0") : ""; }
 function ttTgl(t){ try{ return new Date(t * 1000).toLocaleDateString("id-ID", {day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Jakarta"}); }catch(e){ return ""; } }
-function ttGbr(u){ u = String(u || ""); return /^https:\/\/[a-z0-9.-]+\.(tiktokcdn\.com|tiktokcdn-us\.com|ibyteimg\.com|byteimg\.com|tiktokv\.com|muscdn\.com)\//.test(u) ? u : ""; }
+function ttGbr(u){ u = String(u || ""); return /^https:\/\/[a-z0-9.-]+\.(tiktokcdn\.com|tiktokcdn-us\.com|ibyteimg\.com|byteimg\.com|tiktokv\.com|muscdn\.com|tokopedia-static\.net|tokopedia\.net)\//.test(u) ? u : ""; }
 function ttCtr(c){ if(c == null || c === "") return null; const p = Math.max(1, Math.round(Number(c) * 100)); return "Top " + p + "%"; }
 function ttRiwKunci(){ return "intai_tt_v1:" + ((AKUN && AKUN.email) || "-"); }
-function ttRiw(){ try{ const v = JSON.parse(localStorage.getItem(ttRiwKunci()) || "{}"); return {akun: v.akun || []}; }catch(e){ return {akun: []}; } }
+function ttRiw(){ try{ const v = JSON.parse(localStorage.getItem(ttRiwKunci()) || "{}"); return {akun: v.akun || [], tq: v.tq || []}; }catch(e){ return {akun: [], tq: []}; } }
+function ttRiwTq(q){
+  const r = ttRiw(); r.tq = [q].concat(r.tq.filter(function(x){ return x.toLowerCase() !== q.toLowerCase(); })).slice(0, 8);
+  try{ localStorage.setItem(ttRiwKunci(), JSON.stringify(r)); }catch(e){}
+}
 function ttRiwTambah(nama, tampil){
   const r = ttRiw(); r.akun = [{u: nama, nama: tampil || nama}].concat(r.akun.filter(function(x){ return x.u !== nama; })).slice(0, 8);
   try{ localStorage.setItem(ttRiwKunci(), JSON.stringify(r)); }catch(e){}
@@ -7778,13 +7807,16 @@ function ttRiwTambah(nama, tampil){
 function ttUrl(){
   const p = new URLSearchParams();
   if(TT.tab === "akun"){ p.set("tab", "akun"); if(TT.akunQ) p.set("u", TT.akunQ); }
+  else if(TT.tab === "tokped"){ p.set("tab", "tokped"); if(TT.tokQ){ p.set("tq", TT.tokQ); if(TT.tokUrut !== "laris") p.set("turut", TT.tokUrut); } }
   else { const ind = TT.sub || TT.ind; if(ind) p.set("ind", ind); if(TT.per !== "30") p.set("per", TT.per); if(TT.urut !== "like") p.set("urut", TT.urut); if(TT.bhs !== "id") p.set("bhs", TT.bhs || "semua"); }
   const s = p.toString(); return "/tiktok" + (s ? "?" + s : "");
 }
 function ttSimpanUrl(){ if(location.pathname.indexOf("/tiktok") !== 0) return; try{ history.replaceState({v: "tiktok"}, "", ttUrl()); }catch(e){} }
 function ttDariUrl(cari){
   const p = new URLSearchParams(cari == null ? location.search : cari), o = {};
-  if(p.get("tab") === "akun" || p.get("tab") === "iklan") o.tab = p.get("tab");
+  if(p.get("tab") === "akun" || p.get("tab") === "iklan" || p.get("tab") === "tokped") o.tab = p.get("tab");
+  const tq = (p.get("tq") || "").trim(); if(tq){ o.tq = tq; o.tab = "tokped"; }
+  if(p.get("turut") === "sesuai") o.turut = "sesuai";
   const u = (p.get("u") || "").trim(); if(u){ o.u = u; o.tab = "akun"; }
   const ind = (p.get("ind") || "").replace(/\D/g, ""); if(ind){ o.ind = ind; o.tab = "iklan"; }
   const per = p.get("per"); if(per === "7" || per === "30" || per === "180") o.per = per;
@@ -7803,6 +7835,12 @@ function ttPasang(){
     if(q.replace("@", "").length < 2){ $("tt-akun-q").focus(); toast("Ketik nama akun TikTok, misal @somethincofficial, atau tempel link profilnya."); return; }
     TT.akunAsal = null; ttAkun(q);
   });
+  $("tt-tok-form").addEventListener("submit", function(e){
+    e.preventDefault(); const q = ($("tt-tok-q").value || "").trim();
+    if(q.length < 2){ $("tt-tok-q").focus(); toast("Ketik kata kunci produk minimal 2 huruf."); return; }
+    ttTok(q, $("tt-tok-urut").value);
+  });
+  $("tt-tok-urut").addEventListener("change", function(){ if(TT.tokQ) ttTok(TT.tokQ, this.value); });
 }
 function ttBacaForm(){
   const v = function(i){ return document.getElementById(i).value; };
@@ -7846,7 +7884,10 @@ function ttMasuk(opsi){
   }
   ttIsiForm(); ttMuatFilter();
   ttTab(TT.tab, true);
-  if(TT.tab === "akun"){
+  if(TT.tab === "tokped"){
+    if(opsi.tq && !(TT.tok && opsi.tq === TT.tokQ && (opsi.turut || "laris") === TT.tokUrut)) ttTok(opsi.tq, opsi.turut || "laris");
+    else { ttGambarTok(); ttSimpanUrl(); }
+  } else if(TT.tab === "akun"){
     if(opsi.u && opsi.u !== TT.akunQ){ TT.akunAsal = (VT.lalu && VT.lalu !== "tiktok") ? {view: VT.lalu} : null; ttAkun(opsi.u); }
     else { ttGambarAkun(); ttSimpanUrl(); }
   } else {
@@ -7858,6 +7899,7 @@ function ttTab(t, diam){
   document.querySelectorAll("#tt-tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.t === t); });
   document.querySelectorAll("#view-tiktok .sp-sek").forEach(function(s){ s.classList.toggle("on", s.dataset.sek === t); });
   if(t === "iklan"){ if(!diam && !TT.iklan && !TT.muat.iklan) ttIklan(); else ttGambarIklan(); }
+  else if(t === "tokped") ttGambarTok();
   else ttGambarAkun();
   if(!diam) ttSimpanUrl();
 }
@@ -8016,7 +8058,7 @@ function ttSudutGambar(){ const el = document.getElementById("tt-sdt"); if(el) e
 /* ---------- Intip akun ---------- */
 async function ttAkun(q){
   q = String(q || "").trim(); if(!q) return;
-  TT.akunQ = q; TT.akun = null; TT.galat.akun = ""; TT.muat.akun = true; TT.akunUrut = "baru";
+  TT.akunQ = q; TT.akun = null; TT.galat.akun = ""; TT.muat.akun = true; TT.akunUrut = "baru"; TT.akunBlokir = "";
   if(TT.tab !== "akun") ttTab("akun", true);
   document.getElementById("tt-akun-q").value = q;
   ttSimpanUrl(); ttGambarAkun();
@@ -8026,7 +8068,7 @@ async function ttAkun(q){
   if(TT.akunQ !== q) return;
   TT.muat.akun = false;
   if(d && d.ok){ TT.akun = d; TT.akunQ = d.akun.nama; ttRiwTambah(d.akun.nama, d.akun.tampil); document.getElementById("tt-akun-q").value = "@" + d.akun.nama; ttSimpanUrl(); }
-  else TT.galat.akun = (d && d.error) || "Server INTAI tidak terhubung.";
+  else { TT.galat.akun = (d && d.error) || "Server INTAI tidak terhubung."; TT.akunBlokir = (d && d.blokir && d.nama) || ""; if(TT.akunBlokir) ttRiwTambah(d.nama, d.nama); }
   ttGambarAkun();
 }
 const TT_ASAL_LBL = {dashboard: "Dashboard", meta: "Scan Meta", shopee: "Scan Shopee", galeri: "Galeri", tren: "Tren", pesaing: "Pesaing Dipantau", pengiklan: "Profil Pengiklan", ekspor: "Ekspor CSV", cs: "CS & Bantuan", admin: "Admin"};
@@ -8041,7 +8083,7 @@ function ttAkunKembali(){
   const a = TT.akunAsal; TT.akunAsal = null;
   if(a && a.view){ ke("/" + a.view); return; }
   if(a && a.tab === "iklan"){ ttTab("iklan"); return; }
-  TT.akun = null; TT.akunQ = ""; TT.galat.akun = ""; TT.muat.akun = false;
+  TT.akun = null; TT.akunQ = ""; TT.galat.akun = ""; TT.muat.akun = false; TT.akunBlokir = "";
   const i = document.getElementById("tt-akun-q"); if(i) i.value = "";
   const b = document.getElementById("tt-akun-btn"); if(b) b.disabled = false;
   ttGambarAkun(); ttSimpanUrl(); window.scrollTo({top: 0, behavior: "smooth"});
@@ -8064,7 +8106,7 @@ function ttGambarAkun(){
   if(TT.galat.akun){
     el.innerHTML = ttBalikHTML() + (/tidak ditemukan|Tulis nama akun/.test(TT.galat.akun)
       ? '<div class="sp-kosong"><b>Akun tidak ditemukan</b>' + esc(TT.galat.akun) + ' Periksa ejaan nama akunnya (tanpa spasi), atau tempel link profil dari aplikasi TikTok.</div>'
-      : ttGalatHTML(TT.galat.akun, "ttAkun(TT.akunQ)"));
+      : TT.akunBlokir ? ttEmbedHTML(TT.akunBlokir) : ttGalatHTML(TT.galat.akun, "ttAkun(TT.akunQ)"));
     return;
   }
   const d = TT.akun;
@@ -8109,7 +8151,12 @@ function ttGambarAkun(){
 /* ekspor ke penampung "Ekspor CSV" */
 function ttEkspor(jenis){
   let kol, baris, q, filter, mode;
-  if(jenis === "akun"){
+  if(jenis === "tokped"){
+    const d = TT.tok; if(!d) return;
+    kol = ["posisi", "nama", "harga", "harga_coret", "diskon_persen", "terjual_tokopedia", "terjual_minimal", "rating", "toko", "kota", "label", "link"];
+    baris = d.produk.map(function(p){ return [ekAngka(p.posisi), p.nama, ekAngka(p.harga), ekAngka(p.harga_coret), ekAngka(p.diskon), p.terjual_teks || "", ekAngka(p.terjual_min), ekAngka(p.rating), p.toko, p.kota, (p.label || []).join(" | "), p.url]; });
+    q = "Tokopedia " + d.q; filter = "urut " + d.urut_label; mode = "tokopedia";
+  } else if(jenis === "akun"){
     const d = TT.akun; if(!d) return;
     kol = ["tanggal", "caption", "views", "like", "komentar", "share", "simpan", "durasi_detik", "dipromosikan", "link"];
     baris = d.video.map(function(v){ return [v.unggah ? new Date(v.unggah * 1000).toISOString().slice(0, 10) : "", v.caption, ekAngka(v.tayang), ekAngka(v.like), ekAngka(v.komentar), ekAngka(v.share), ekAngka(v.simpan), ekAngka(v.durasi), v.iklan ? "ya" : "tidak", v.url]; });
@@ -8121,12 +8168,70 @@ function ttEkspor(jenis){
     q = "Top iklan TikTok " + ttLabelKat(); filter = d.periode + " hari · urut " + (TT_URUT_LBL[d.urut] || d.urut); mode = "tiktok-iklan";
   }
   if(!baris.length){ toast("Tidak ada baris untuk diekspor."); return; }
-  const entri = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sumber: "Scan TikTok", q: q, mode: mode,
+  const entri = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sumber: jenis === "tokped" ? "Tokopedia" : "Scan TikTok", q: q, mode: mode,
                  waktu: new Date().toISOString(), total: baris.length, filter: filter, kol: kol, baris: baris, unduh: {}};
   const list = ekMuat(); list.unshift(entri);
   if(!ekSimpan(list)){ ekBelumSiap(); return; }
   ekBadge(true);
-  toast("✓ " + baris.length + " baris TikTok masuk ke <b>Ekspor CSV</b> di sidebar · <u style=\"cursor:pointer\" onclick=\"ke('/ekspor')\">buka ›</u>");
+  toast("✓ " + baris.length + (jenis === "tokped" ? " baris Tokopedia" : " baris TikTok") + " masuk ke <b>Ekspor CSV</b> di sidebar · <u style=\"cursor:pointer\" onclick=\"ke('/ekspor')\">buka ›</u>");
+}
+
+/* v1.5.9: server diblokir TikTok → tampilan RESMI profil dari TikTok, dimuat dari perangkat pengguna (bukan server INTAI) */
+function ttEmbedHTML(nama){
+  const u = encodeURIComponent(nama);
+  return '<div class="sp-galat tt-info-b"><b>TikTok sedang memblokir server INTAI untuk data akun</b>Jadi angka hitungan INTAI (views tengah, interaksi, jumlah video dipromosikan) belum bisa dibuat. Di bawah ini tampilan <b>resmi dari TikTok</b> untuk @' + esc(nama) + ', dimuat langsung dari perangkatmu: pengikut, like, dan videonya bisa dilihat di situ.</div>' +
+    '<div class="kartu"><div class="judul-kartu"><b>@' + esc(nama) + '</b><span>tampilan resmi TikTok</span><span class="sp-aksi" style="margin-left:auto"><a class="sp-kecil" style="text-decoration:none" href="https://www.tiktok.com/@' + u + '" target="_blank" rel="noreferrer noopener">Buka di TikTok ↗</a></span></div>' +
+    '<iframe class="tt-emb" src="https://www.tiktok.com/embed/@' + u + '" loading="lazy" allow="encrypted-media; fullscreen; clipboard-write" referrerpolicy="strict-origin-when-cross-origin" title="Profil TikTok @' + esc(nama) + '"></iframe>' +
+    '<div class="sp-cat">Kalau kotak di atas kosong, akun mungkin privat atau tidak ada. Coba lagi beberapa jam lagi untuk versi lengkap dengan angka hitungan INTAI.</div></div>';
+}
+
+/* ---------- v1.5.9 Tokopedia terlaris (dibaca lewat Jina Reader) ---------- */
+async function ttTok(q, urut){
+  q = String(q || "").trim(); urut = urut === "sesuai" ? "sesuai" : "laris";
+  if(q.length < 2) return;
+  TT.tokQ = q; TT.tokUrut = urut; TT.tok = null; TT.galat.tok = ""; TT.muat.tok = true;
+  if(TT.tab !== "tokped") ttTab("tokped", true);
+  document.getElementById("tt-tok-q").value = q; document.getElementById("tt-tok-urut").value = urut;
+  ttSimpanUrl(); ttGambarTok();
+  const btn = document.getElementById("tt-tok-btn"); if(btn) btn.disabled = true;
+  let d = null; try{ d = await (await fetch("/api/tokped/cari?q=" + encodeURIComponent(q) + "&urut=" + urut)).json(); }catch(e){}
+  if(btn) btn.disabled = false;
+  if(TT.tokQ !== q || TT.tokUrut !== urut) return;
+  TT.muat.tok = false;
+  if(d && d.ok){ TT.tok = d; ttRiwTq(q); } else TT.galat.tok = (d && d.error) || "Server INTAI tidak terhubung.";
+  ttGambarTok();
+}
+function ttRp(n){ return n == null ? "—" : "Rp" + Number(n).toLocaleString("id-ID"); }
+function ttGambarTok(){
+  const el = document.getElementById("tt-tok-isi"); if(!el) return;
+  const r = ttRiw(), daftar = r.tq.length ? r.tq : ["madu anak", "serum wajah", "rak sepatu", "hijab instan"];
+  document.getElementById("tt-tok-riw").innerHTML = '<span class="lbl">' + (r.tq.length ? "Terakhir" : "Coba") + '</span>' + daftar.map(function(k){
+    return '<button type="button" class="sp-chip' + (k === TT.tokQ ? " on" : "") + '" onclick="ttTok(this.dataset.k, TT.tokUrut)" data-k="' + esc(k) + '">' + esc(k) + '</button>'; }).join("");
+  if(TT.muat.tok){ el.innerHTML = shpMuatHTML("Membaca halaman Tokopedia “" + esc(TT.tokQ) + "”… biasanya 15–35 detik untuk kata kunci baru; kata kunci yang sama berikutnya langsung tampil (disimpan 6 jam)"); return; }
+  if(TT.galat.tok){ el.innerHTML = '<div class="sp-galat"><b>Tokopedia belum terbaca</b>' + esc(TT.galat.tok) + ' <button class="sp-kecil" style="margin-left:6px" onclick="ttTok(TT.tokQ, TT.tokUrut)">Coba lagi</button><div style="margin-top:6px;font-size:11px;opacity:.85">Halaman Tokopedia dibaca lewat layanan pembaca halaman (Jina Reader) karena Tokopedia memblokir server. Kalau layanan itu sedang penuh, coba lagi sebentar — INTAI tidak menampilkan angka karangan sebagai gantinya.</div></div>'; return; }
+  const d = TT.tok;
+  if(!d){ el.innerHTML = '<div class="sp-kosong"><b>Produk Tokopedia yang paling laku</b>Ketik kata kunci produk. INTAI membaca halaman pencarian Tokopedia urutan <b>Terlaris</b>: nama, harga, diskon, rating, <b>angka terjual</b>, toko, dan kotanya. Tokopedia kini satu grup dengan TikTok Shop, jadi ini cermin terdekat untuk pasar TikTok Shop.</div>'; return; }
+  const g = d.ringkas || {}, h = g.harga;
+  el.innerHTML =
+    '<div class="sp-fakta">' +
+      '<div class="sp-f"><div class="l">Produk dibaca 🟢</div><div class="v">' + g.jumlah + '</div><div class="s">halaman 1 · urut ' + esc(d.urut_label) + '</div></div>' +
+      '<div class="sp-f"><div class="l">Terjual tertinggi 🟢</div><div class="v">' + esc((g.terlaris && g.terlaris.terjual_teks) || "—") + '</div><div class="s">' + esc(g.terlaris ? g.terlaris.nama.slice(0, 60) : "") + '</div></div>' +
+      '<div class="sp-f"><div class="l">Harga tengah 🔵</div><div class="v">' + (h ? ttRp(h.median) : "—") + '</div><div class="s">' + (h ? ttRp(h.min) + " – " + ttRp(h.max) : "") + '</div></div>' +
+      '<div class="sp-f"><div class="l">Toko terbanyak 🔵</div><div class="v" style="font-size:16px">' + esc(g.toko && g.toko[0] ? g.toko[0].toko : "—") + '</div><div class="s">' + (g.toko && g.toko[0] ? g.toko[0].produk + " dari " + g.jumlah + " produk" + (g.toko[0].kota ? " · " + esc(g.toko[0].kota) : "") : "") + '</div></div>' +
+    '</div>' +
+    '<div class="kartu"><div class="judul-kartu"><b>Produk Tokopedia “' + esc(d.q) + '” 🟢</b><span>urut ' + esc(d.urut_label) + ' · ' + d.produk.length + ' produk</span><span class="sp-aksi" style="margin-left:auto"><button onclick="ttEkspor(\'tokped\')">＋ Ekspor CSV</button></span></div>' +
+      '<div class="sp-grid">' + d.produk.map(function(p){
+        const gb = ttGbr(p.gambar);
+        return '<div class="sp-p"><a class="sp-th" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener">' + (gb ? '<img src="' + esc(gb) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '<span class="sp-ph">Tokopedia</span><span class="sp-pos">#' + p.posisi + '</span>' + (p.diskon ? '<span class="sp-lc">-' + p.diskon + '%</span>' : "") + '</a>' +
+          '<div class="sp-bd"><a class="sp-nm" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener" title="' + esc(p.nama) + '">' + esc(p.nama) + '</a>' +
+          '<div class="tt-harga"><b>' + ttRp(p.harga) + '</b>' + (p.harga_coret ? '<s>' + ttRp(p.harga_coret) + '</s>' : "") + '</div>' +
+          '<div class="tt-angka">' + (p.terjual_teks ? '<span title="Angka terjual dari Tokopedia (dibulatkan Tokopedia)">' + esc(p.terjual_teks) + ' terjual</span>' : '<span style="color:var(--muted)">terjual —</span>') + (p.rating ? '<span style="color:#B7791F">★ ' + String(p.rating).replace(".", ",") + '</span>' : "") + '</div>' +
+          '<div class="sp-mt"><span' + (p.resmi ? ' style="color:var(--ink);font-weight:800"' : "") + '>' + esc(p.toko) + '</span>' + (p.kota ? '<span>' + esc(p.kota) + '</span>' : "") + '</div>' +
+          (p.label && p.label.length ? '<div class="sp-lb">' + p.label.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("") + '</div>' : "") + '</div></div>';
+      }).join("") + '</div>' +
+      (g.toko && g.toko.length > 1 ? '<div class="tt-dom"><b>Toko yang paling sering muncul 🔵</b>' + g.toko.map(function(t){ return '<span>' + esc(t.toko) + ' <i>' + t.produk + ' produk</i></span>'; }).join("") + '</div>' : "") +
+      '<div class="sp-cat">Sumber: halaman pencarian <b>Tokopedia</b> (urut ' + esc(d.urut_label) + '), dibaca lewat layanan pembaca halaman karena Tokopedia memblokir server. <b>Angka terjual</b> adalah angka yang ditampilkan Tokopedia sendiri dan sudah dibulatkan oleh Tokopedia ("500rb+" = minimal 500 ribu). Hasil disimpan 6 jam. Dibaca ' + esc(shpWaktu(d.jam)) + '.</div>' +
+    '</div>';
 }
 /* ---------- v1.5.8 Admin → uji jalur TikTok & Tokopedia dari server ---------- */
 async function admTTUji(btn){
@@ -8424,5 +8529,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b60db69ffed8a3',t:'MTc5MjE0MzExNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4b6f641cec67a21',t:'MTc5MjE1MjY0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

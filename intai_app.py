@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.8b"
+VERSI = "1.5.9"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9368,7 +9368,8 @@ def tt_akun(u):
         if prof.get("statusCode") == 10221 or (not prof.get("userInfo") and not emb.get("userInfo")):
             if prof.get("statusCode") == 10221:
                 return {"ok": False, "error": f"Akun @{nama} tidak ditemukan di TikTok."}
-            return {"ok": False, "error": "TikTok tidak memberikan data akun saat ini (mungkin dibatasi). Coba lagi nanti.", "diag": diag}
+            return {"ok": False, "error": "TikTok tidak memberikan data akun saat ini (mungkin dibatasi). Coba lagi nanti.", "diag": diag,
+                    "blokir": True, "nama": nama}
         ui = (prof.get("userInfo") or {})
         us, st, eu = ui.get("user") or {}, ui.get("stats") or {}, emb.get("userInfo") or {}
         cu = us.get("commerceUserInfo") or {}
@@ -9418,6 +9419,143 @@ def tt_akun(u):
     return hasil
 
 
+# ===== v1.5.9 TOKOPEDIA TERLARIS (lewat Jina Reader) =====
+# Render & sandbox diblokir Tokopedia (timeout) → halaman cari dibaca oleh server Jina Reader (r.jina.ai) lalu diurai di sini.
+# Tanpa kunci: 20 permintaan/menit per IP (cukup, karena hasil di-cache 6 jam). Kunci opsional: INTAI_JINA_KUNCI.
+JINA_KUNCI = (os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip()
+TOKPED_URUT = {"laris": "5", "sesuai": "23"}
+TOKPED_URUT_LBL = {"laris": "Terlaris", "sesuai": "Paling sesuai"}
+_KOTA_RE = re.compile(r"\s((?:Kab\.|Kota|Kabupaten)\s.+|Jakarta\s(?:Selatan|Barat|Timur|Utara|Pusat)|Tangerang Selatan|Bandung Barat|"
+                      r"Banda Aceh|Bandar Lampung|Pangkal Pinang|Tanjung Pinang|Tanjung Balai|Pematang Siantar|Padang Sidempuan|"
+                      r"Kota Baru|Labuhan Batu|Tebing Tinggi|Gunung Sitoli|[A-Z][A-Za-z.-]+)$")
+
+
+def _tokped_angka_terjual(t):
+    """'100rb+' → 100000 · '1,2rb+' → 1200 · '30+' → 30 · '4' → 4 (batas bawah, sesuai pembulatan Tokopedia)."""
+    m = re.match(r"([\d.,]+)\s*(rb|jt)?", str(t or "").lower())
+    if not m:
+        return None
+    try:
+        v = float(m.group(1).replace(".", "").replace(",", ".")) if m.group(2) else float(m.group(1).replace(".", "").replace(",", ""))
+    except Exception:
+        return None
+    return int(v * (1000 if m.group(2) == "rb" else 1000000 if m.group(2) == "jt" else 1))
+
+
+def _tokped_rp(t):
+    try:
+        return int(str(t).replace("Rp", "").replace(".", "").strip())
+    except Exception:
+        return None
+
+
+def _tokped_urai(md):
+    out, lihat = [], set()
+    for par in re.split(r"\n\s*\n", md or ""):
+        par = par.strip()
+        if not par.startswith("[") or "](https://www.tokopedia.com/" not in par or "product-image" not in par:
+            continue
+        mlink = re.search(r"\]\((https://www\.tokopedia\.com/[^)\s]+)\)\s*$", par)
+        if not mlink:
+            continue
+        link = mlink.group(1).split("?")[0]
+        mimg = re.search(r"product-image\]\((https://[^)\s]+)\)", par)
+        teks = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", par[1:mlink.start()])
+        teks = re.sub(r"\s+", " ", teks).strip()
+        mrp = list(re.finditer(r"Rp[\d.]+", teks))
+        if not mrp or link in lihat:
+            continue
+        lihat.add(link)
+        kepala = teks[:mrp[0].start()].strip()
+        md_ = re.match(r"(\d{1,2})%\s+", kepala)
+        diskon = int(md_.group(1)) if md_ else None
+        nama = kepala[md_.end():].strip() if md_ else kepala
+        harga = _tokped_rp(mrp[0].group(0))
+        coret = None
+        if len(mrp) > 1 and teks[mrp[0].end():mrp[1].start()].strip() == "":
+            coret = _tokped_rp(mrp[1].group(0))
+        ekor = teks[(mrp[1] if coret else mrp[0]).end():].strip()
+        mt = re.search(r"(?:(\d\.\d)\s+)?([\d.,]+\s*(?:rb|jt)?\+?)\s*terjual\s*(.*)$", ekor, re.I)
+        rating, terjual, sisa, label = None, None, "", ekor
+        if mt:
+            rating = float(mt.group(1)) if mt.group(1) else None
+            terjual = re.sub(r"\s+", "", mt.group(2))
+            sisa = mt.group(3).strip()
+            label = ekor[:mt.start()].strip()
+        else:
+            mr = re.search(r"(\d\.\d)\s+(.*)$", ekor)
+            if mr:
+                rating, sisa, label = float(mr.group(1)), mr.group(2).strip(), ekor[:mr.start()].strip()
+        toko, kota = sisa, ""
+        mk = _KOTA_RE.search(" " + sisa)
+        if mk and mk.start() > 0:
+            kota, toko = mk.group(1).strip(), (" " + sisa)[:mk.start()].strip()
+        lbl = [x for x in ("Bisa COD", "Pakai Bonus", "Cashback", "Gratis Ongkir", "Hemat s.d \\d+%") if re.search(x, label)]
+        lbl = [re.search(x, label).group(0) for x in lbl]
+        slug = link.split("tokopedia.com/")[1].split("/")[0]
+        out.append({"posisi": len(out) + 1, "nama": nama[:200], "harga": harga, "harga_coret": coret, "diskon": diskon,
+                    "rating": rating, "terjual_teks": terjual, "terjual_min": _tokped_angka_terjual(terjual),
+                    "toko": toko[:80] or slug, "toko_slug": slug, "kota": kota[:40], "label": lbl[:4],
+                    "gambar": mimg.group(1) if mimg else "", "url": link,
+                    "resmi": bool(re.search(r"official|resmi", toko, re.I))})
+    return out
+
+
+def tokped_cari(q, urut="laris"):
+    q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
+    urut = urut if urut in TOKPED_URUT else "laris"
+    if len(q) < 2:
+        return {"ok": False, "error": "Ketik kata kunci produk minimal 2 huruf."}
+
+    def ambil():
+        url = "https://www.tokopedia.com/search?q=" + requests.utils.quote(q) + "&ob=" + TOKPED_URUT[urut]
+        hd = {"X-Timeout": "30", "X-Remove-Overlay": "true"}
+        if JINA_KUNCI:
+            hd["Authorization"] = "Bearer " + JINA_KUNCI
+        galat = None
+        t0 = time.time()
+        for coba in range(2):
+            if coba and time.time() - t0 > 35:   # jaga total < ±80 dtk (proxy Render memutus di 100 dtk)
+                break
+            try:
+                r = requests.get("https://r.jina.ai/" + url, headers=hd, timeout=40)
+            except Exception as e:
+                galat = "Pembaca halaman tidak menjawab (" + str(e)[:60] + ")"
+                continue
+            if r.status_code == 429:
+                galat = "Batas baca per menit sedang penuh — coba lagi 1 menit lagi."
+                break
+            if r.status_code != 200:
+                try:
+                    galat = (r.json().get("readableMessage") or r.json().get("message") or "")[:160]
+                except Exception:
+                    galat = f"HTTP {r.status_code}"
+                galat = "Pembaca halaman menolak (" + (galat or str(r.status_code)) + ")"
+                break
+            produk = _tokped_urai(r.text)
+            if produk:
+                return {"ok": True, "produk": produk}
+            galat = "Halaman Tokopedia terbaca tapi daftar produknya kosong (mungkin halaman verifikasi)."
+            time.sleep(1.5)
+        raise RuntimeError(galat or "Tokopedia belum terbaca")
+
+    hasil = _tt_cache(f"tokped:{urut}:{q.lower()}", 6 * 3600, ambil)
+    pr = hasil["produk"]
+    hg = sorted(p["harga"] for p in pr if p["harga"])
+    toko = {}
+    for p in pr:
+        t = toko.setdefault(p["toko_slug"], {"toko": p["toko"], "slug": p["toko_slug"], "kota": p["kota"], "produk": 0, "terjual_min": 0})
+        t["produk"] += 1
+        t["terjual_min"] += p["terjual_min"] or 0
+    dom = sorted(toko.values(), key=lambda t: (-t["produk"], -t["terjual_min"]))[:5]
+    laris = max(pr, key=lambda p: p["terjual_min"] or 0)
+    return {"ok": True, "q": q, "urut": urut, "urut_label": TOKPED_URUT_LBL[urut], "produk": pr,
+            "ringkas": {"jumlah": len(pr), "harga": {"min": hg[0], "median": hg[len(hg) // 2], "max": hg[-1]} if hg else None,
+                        "terlaris": {"nama": laris["nama"], "terjual_teks": laris["terjual_teks"]} if laris.get("terjual_min") else None,
+                        "diskon": sum(1 for p in pr if p["diskon"]), "toko": dom, "resmi": sum(1 for p in pr if p["resmi"])},
+            "jam": _iso_kini(), "kunci": bool(JINA_KUNCI)}
+
+
 def tt_uji():
     """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini."""
     hasil = []
@@ -9446,20 +9584,15 @@ def tt_uji():
         return _tt_diag(r, "author: " + str((r.json() if r.status_code == 200 else {}).get("author_name")))
     uji("TikTok oEmbed (resmi)", oembed)
 
-    def tokped_web():
-        r = requests.get("https://www.tokopedia.com/search?q=madu%20anak", timeout=12,
-                         headers={"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"})
-        return f"HTTP {r.status_code} · {len(r.text) // 1024} KB · kata 'terjual' {'ada' if 'terjual' in r.text.lower() else 'tidak ada'}"
-    uji("Tokopedia (halaman cari)", tokped_web)
-
-    def tokped_gql():
-        q = {"operationName": "SearchProductV5Query", "variables": {"params": "device=desktop&q=madu%20anak&rows=5&page=1&source=search"},
-             "query": "query SearchProductV5Query($params:String!){searchProductV5(params:$params){data{products{name}}}}"}
-        r = requests.post("https://gql.tokopedia.com/graphql/SearchProductV5Query", json=[q], timeout=12,
-                          headers={"User-Agent": TT_UA, "X-Source": "tokopedia-lite", "Origin": "https://www.tokopedia.com",
-                                   "Referer": "https://www.tokopedia.com/"})
-        return f"HTTP {r.status_code} · {r.text[:80]}"
-    uji("Tokopedia (GraphQL)", tokped_gql)
+    def tokped_jina():
+        with kunci_tt:
+            TT_CACHE.pop("tokped:laris:madu anak", None)
+        d = tokped_cari("madu anak", "laris")
+        if not d.get("ok"):
+            raise RuntimeError(d.get("error"))
+        t = d["ringkas"]["terlaris"] or {}
+        return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + (" · kunci Jina" if d["kunci"] else " · tanpa kunci")
+    uji("Tokopedia lewat Jina Reader", tokped_jina)
     return {"ok": True, "hasil": hasil}
 
 
@@ -9706,6 +9839,12 @@ class Handler(BaseHTTPRequestHandler):
                     self.tulis(404, json.dumps({"ok": False, "error": "Tidak ditemukan"}), "application/json")
             except Exception as e_:
                 self.json_ok({"ok": False, "error": "TikTok tidak bisa dibaca saat ini: " + str(e_)[:140]})
+        elif u.path == "/api/tokped/cari":   # v1.5.9
+            qs = parse_qs(u.query)
+            try:
+                self.json_ok(tokped_cari(qs.get("q", [""])[0], qs.get("urut", ["laris"])[0]))
+            except Exception as e_:
+                self.json_ok({"ok": False, "error": str(e_)[:200]})
         elif u.path == "/api/admin/tiktok-uji":   # v1.5.8
             if not is_admin(self.email):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
