@@ -8455,8 +8455,8 @@ function ttEkspor(jenis){
   let kol, baris, q, filter, mode;
   if(jenis === "tokped"){
     const d = TT.tok; if(!d) return;
-    kol = ["posisi", "nama", "harga", "harga_coret", "diskon_persen", "terjual_tokopedia", "terjual_minimal", "rating", "toko", "kota", "label", "link"];
-    baris = d.produk.map(function(p){ return [ekAngka(p.posisi), p.nama, ekAngka(p.harga), ekAngka(p.harga_coret), ekAngka(p.diskon), p.terjual_teks || "", ekAngka(p.terjual_min), ekAngka(p.rating), p.toko, p.kota, (p.label || []).join(" | "), p.url]; });
+    kol = ["posisi", "nama", "harga", "harga_coret", "diskon_persen", "terjual_tokopedia", "terjual_minimal", "terjual_persis", "stok_total", "ulasan", "rating", "toko", "kota", "label", "link"];
+    baris = d.produk.map(function(p){ return [ekAngka(p.posisi), p.nama, ekAngka(p.harga), ekAngka(p.harga_coret), ekAngka(p.diskon), p.terjual_teks || "", ekAngka(p.terjual_min), ekAngka(p.terjual_persis), ekAngka(p.stok_total), ekAngka(p.ulasan_persis), ekAngka(p.rating), p.toko, p.kota, (p.label || []).join(" | "), p.url]; });
     q = "Tokopedia " + d.q; filter = "urut " + d.urut_label; mode = "tokopedia";
   } else if(jenis === "akun"){
     const d = TT.akun; if(!d) return;
@@ -8575,34 +8575,37 @@ function ttRwHTML(rw){
     return h + '<div class="ai-k">Mulai dicatat ' + esc(ttTglIso(rw.dari)) + '. Kenaikan terjual baru terlihat setelah ada potret di hari berikutnya. ' + otomatis + '</div>' + ttPenandaHTML(rw) + '</div>';
   }
   const t0 = rw.tren[0], t1 = rw.tren[rw.tren.length - 1];
-  h += '<div class="sdt-r">Dibanding <b>' + esc(ttTglIso(rw.awal)) + '</b> → <b>' + esc(ttTglIso(rw.akhir)) + '</b>: <b>' + rw.n_naik + '</b> dari ' + rw.sama + ' produk yang sama terjualnya naik' +
-       (rw.masuk.length ? ', <b>' + rw.masuk.length + '</b> produk baru masuk daftar terlaris' : '') + '. Total terjual produk di daftar: ' + ttK(t0.total) + ' (' + esc(ttTglIso(t0.hari)) + ') → ' + ttK(t1.total) + ' (' + esc(ttTglIso(t1.hari)) + '). Data ' + rw.hari + ' hari.</div>';
+  if(rw.n_persis) h += '<div class="sdt-r">🟢 <b>Angka persis</b> (detail produk Tokopedia): <b>' + rw.n_naik_persis + '</b> dari ' + rw.n_persis + ' produk teratas bertambah terjual, total <b>+' + Number(rw.persis_total || 0).toLocaleString("id-ID") + '</b> terjual dalam ±' + String(rw.persis_hari || 1).replace(".", ",") + ' hari.</div>';
+  h += '<div class="sdt-r">Dibanding <b>' + esc(ttTglIso(rw.awal)) + '</b> → <b>' + esc(ttTglIso(rw.akhir)) + '</b>: <b>' + rw.n_naik + '</b> dari ' + rw.sama + ' produk yang sama terjualnya naik' + (rw.n_persis ? ' melewati batas pembulatan Tokopedia' : '') +
+       (rw.masuk.length ? ', <b>' + rw.masuk.length + '</b> produk baru masuk daftar terlaris' : '') + '. Total terjual produk di daftar' + (rw.n_persis ? ' (angka pencarian, dibulatkan)' : '') + ': ' + ttK(t0.total) + ' (' + esc(ttTglIso(t0.hari)) + ') → ' + ttK(t1.total) + ' (' + esc(ttTglIso(t1.hari)) + '). Data ' + rw.hari + ' hari.</div>';
   if(rw.naik.length){
     h += rw.naik.slice(0, 8).map(function(p, i){
       return '<div class="sp-tk"><span class="no">' + (i + 1) + '</span><div class="tx"><b><a href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener" style="color:inherit;text-decoration:none">' + esc(p.nama) + '</a></b>' +
-        esc(p.toko) + ' · terjual <b style="display:inline;color:#235347">' + esc(p.dari) + ' → ' + esc(p.ke) + '</b> (+' + ttK(p.selisih) + (p.persen != null ? ', +' + p.persen + '%' : '') + ')' + (p.harga ? ' · ' + ttRp(p.harga) : '') + '</div></div>';
+        esc(p.toko) + ' · terjual <b style="display:inline;color:#235347">' + esc(p.dari) + ' → ' + esc(p.ke) + '</b> (+' + (p.persis ? Number(p.selisih).toLocaleString("id-ID") : ttK(p.selisih)) + (p.persen != null ? ', +' + String(p.persen).replace(".", ",") + '%' : '') + ')' +
+        (p.persis ? ' <span title="Angka persis dari detail produk Tokopedia 🟢 · per hari dihitung INTAI 🔵">≈ ' + Number(p.per_hari).toLocaleString("id-ID") + '/hari</span>' : ' <span title="Lintasan batas pembulatan Tokopedia (mis. 1rb+ → 2rb+), bukan angka persis">≈</span>') + (p.harga ? ' · ' + ttRp(p.harga) : '') + '</div></div>';
     }).join("");
   } else h += '<div class="ai-k">Belum ada produk yang angka terjualnya naik melewati batas pembulatan Tokopedia di rentang ini.</div>';
   if(rw.masuk.length) h += '<div class="tt-dom"><b>Baru masuk daftar terlaris 🟢</b>' + rw.masuk.slice(0, 6).map(function(p){ return '<span>' + esc(p.nama.slice(0, 40)) + ' <i>' + esc(p.terjual || "") + ' terjual</i></span>'; }).join("") + '</div>';
   h += ttPenandaHTML(rw);
-  return h + '<div class="ai-k" style="margin-top:8px">Tokopedia membulatkan angka terjual (mis. 1rb+ → 2rb+), jadi kenaikan baru terlihat saat melewati batas pembulatan; angka = batas bawah. Untuk toko yang sinkron dengan TikTok Shop, angkanya sudah gabungan. ' + otomatis + '</div></div>';
+  return h + '<div class="ai-k" style="margin-top:8px">' + (rw.n_persis ? 'Untuk 20 produk teratas, INTAI membaca angka terjual <b>persis</b> dari halaman detail produk, jadi kenaikan per hari terlihat walau kecil. Produk lainnya memakai angka pencarian yang dibulatkan Tokopedia (mis. 1rb+ → 2rb+, tanda ≈): kenaikan baru terlihat saat melewati batas pembulatan.' : 'Tokopedia membulatkan angka terjual (mis. 1rb+ → 2rb+), jadi kenaikan baru terlihat saat melewati batas pembulatan; angka = batas bawah.') + ' Untuk toko yang sinkron dengan TikTok Shop, angkanya sudah gabungan. ' + otomatis + '</div></div>';
 }
 /* v1.6.6 T3/T4: penanda penjualan harian — ulasan baru (angka persis Tokopedia 🟢, selisih 🔵) + stok berkurang (perkiraan 🔵) */
 function ttPenandaHTML(rw){
-  const pn = (rw.penanda || []).filter(function(x){ return x.ulasan != null || x.stok != null; });
+  const pn = (rw.penanda || []).filter(function(x){ return x.ulasan != null || x.stok != null || x.terjual_persis != null; });
   if(!pn.length) return "";
-  const adaSelisih = pn.some(function(x){ return x.ulasan_naik != null || x.stok_turun != null; });
+  const adaSelisih = pn.some(function(x){ return x.ulasan_naik != null || x.stok_turun != null || x.terjual_naik != null; });
   let h = '<div class="sdt-h" style="margin-top:10px"><b>🧾 Penanda penjualan harian</b><span>' + (adaSelisih ? 'dibanding potret sebelumnya' : 'potret pertama · selisih tampil besok') + '</span></div>';
   h += pn.slice(0, 8).map(function(x, i){
     const bag = [];
+    if(x.terjual_persis != null) bag.push('<span title="Angka terjual persis dari detail produk Tokopedia 🟢 · per hari dihitung INTAI dari dua potret 🔵">terjual ' + Number(x.terjual_persis).toLocaleString("id-ID") + (x.terjual_naik != null ? ' <b style="display:inline;color:#235347">(+' + Number(x.terjual_naik).toLocaleString("id-ID") + (x.terjual_hari > 1.5 ? ' dlm ' + String(x.terjual_hari).replace(".", ",") + ' hr ≈ ' + Number(x.terjual_per_hari).toLocaleString("id-ID") + '/hr' : ' ≈ ' + Number(x.terjual_per_hari).toLocaleString("id-ID") + '/hr') + ')</b>' : '') + '</span>');
     if(x.ulasan != null) bag.push('<span title="Jumlah ulasan persis dari Tokopedia 🟢">' + x.ulasan.toLocaleString("id-ID") + ' ulasan' + (x.ulasan_naik != null ? ' <b style="display:inline;color:#235347">(+' + x.ulasan_naik + (x.ulasan_hari > 1 ? ' dlm ' + x.ulasan_hari + ' hr' : ' sejak kemarin') + ')</b>' : '') + '</span>');
-    if(x.stok != null) bag.push('<span title="Stok dari Tokopedia 🟢. Stok berkurang = perkiraan terjual 🔵 (penjual bisa mengubah stok; varian bisa ikut terhitung).">stok ' + x.stok.toLocaleString("id-ID") +
+    if(x.stok != null) bag.push('<span title="' + (x.stok_total ? 'Stok total semua varian dari detail produk Tokopedia 🟢' : 'Stok dari Tokopedia 🟢') + '. Stok berkurang = perkiraan terjual 🔵 (penjual bisa mengubah stok; varian bisa ikut terhitung).">' + (x.stok_total ? 'stok total ' : 'stok ') + x.stok.toLocaleString("id-ID") +
       (x.restok ? ' · restok' : x.stok_turun ? ' <b style="display:inline;color:#235347">(−' + x.stok_turun.toLocaleString("id-ID") + (x.stok_hari > 1 ? ' dlm ' + x.stok_hari + ' hr ≈ ' + x.stok_per_hari + '/hr' : ' sejak kemarin') + ')</b>' : (x.stok_turun === 0 ? ' · tetap' : '')) + '</span>');
     if(x.rating) bag.push('<span>★ ' + esc(String(x.rating)) + '</span>');
     return '<div class="sp-tk"><span class="no">' + (x.posisi || i + 1) + '</span><div class="tx"><b><a href="' + esc(x.url) + '" target="_blank" rel="noreferrer noopener" style="color:inherit;text-decoration:none">' + esc(x.nama) + '</a></b>' +
       esc(x.toko || "") + ' · ' + bag.join(' · ') + '</div></div>';
   }).join("");
-  return h + '<div class="ai-k" style="margin-top:6px">Ulasan baru per hari = penanda paling jujur dari penjualan nyata (tidak semua pembeli memberi ulasan, jadi penjualan sebenarnya lebih besar). Stok berkurang = perkiraan kasar: penjual bisa menambah/mengatur stok sendiri. Ulasan persis dicatat untuk 10 produk teratas niche yang dipantau.</div>';
+  return h + '<div class="ai-k" style="margin-top:6px">Ulasan baru per hari = penanda paling jujur dari penjualan nyata (tidak semua pembeli memberi ulasan, jadi penjualan sebenarnya lebih besar). Stok berkurang = perkiraan kasar: penjual bisa menambah/mengatur stok sendiri. Terjual persis, stok total & ulasan dicatat untuk 20 produk teratas setiap kali niche ini dibaca (otomatis tiap pagi bila dipantau).</div>';
 }
 function ttKartuArsip(x, kode){
   const cv = ttGbr(x.cover), ctr = ttCtr(x.ctr), arsip = kode.charAt(0) === "n";
@@ -8715,6 +8718,25 @@ function ttGambarNiche(){
 }
 
 /* ---------- v1.5.9 Tokopedia terlaris (dibaca lewat Jina Reader) ---------- */
+/* v1.6.10 T1: angka terjual persis (detail produk) dilengkapi di latar untuk 20 produk teratas → tampil bertahap */
+function ttPersisTeks(d){
+  const ps = d && d.persis; if(!ps) return "";
+  if(ps.antre > 0) return ' · <span title="INTAI sedang membaca halaman detail produk satu per satu (±2 detik per produk) supaya angka terjual tidak dibulatkan">⏳ melengkapi angka terjual persis (' + ps.n + '/' + Math.min(ps.top, d.produk.length) + ')</span>';
+  if(ps.n > 0) return ' · <span title="Angka terjual, stok total & jumlah ulasan dibaca dari halaman detail produk Tokopedia — tidak dibulatkan">🟢 angka persis untuk ' + ps.n + ' produk teratas</span>';
+  return "";
+}
+function ttTokPersis(q, urut, ke){
+  setTimeout(async function(){
+    if(TT.tokQ !== q || TT.tokUrut !== urut || TT.muat.tok || !TT.tok) return;
+    let d = null; try{ d = await (await fetch("/api/tokped/cari?q=" + encodeURIComponent(q) + "&urut=" + urut)).json(); }catch(e){}
+    if(!d || !d.ok || TT.tokQ !== q || TT.tokUrut !== urut || TT.muat.tok) return;
+    const tadi = (TT.tok.persis || {}).n || 0;
+    TT.tok = d;
+    if(TT.tab === "pasar" && (d.persis || {}).n !== tadi) ttGambarTok();
+    if((d.persis || {}).antre > 0 && ke < 6) ttTokPersis(q, urut, ke + 1);
+    else if(urut === "laris") setTimeout(function(){ ttRwMuat(q, "t"); }, 1500);   /* potret harian sudah berisi angka persis */
+  }, ke === 1 ? 15000 : 12000);
+}
 async function ttTok(q, urut){
   q = String(q || "").trim(); urut = urut === "sesuai" ? "sesuai" : "laris";
   if(q.length < 2) return;
@@ -8733,6 +8755,7 @@ async function ttTok(q, urut){
   ttGambarTok();
   if(d && d.ok && urut === "laris") setTimeout(function(){ ttRwMuat(q, "t"); }, 1500);   /* v1.5.12 riwayat terjual */
   if(d && d.ok){ TT.peluang = null; ttPeluangMuat(q); }   /* v1.6.1 skor peluang */
+  if(d && d.ok && d.persis && d.persis.antre > 0) ttTokPersis(q, urut, 1);   /* v1.6.10 */
 }
 /* ---------- v1.6.2 Fase 2: tagar tren + video tren Indonesia (Creative Center publik) ---------- */
 function ttNicheInd(){ const d = TT.niche; return d && d.kategori && d.kategori.id && TT.nq && String(d.q || "").toLowerCase() === TT.nq.toLowerCase() ? String(d.kategori.id) : ""; }
@@ -9230,7 +9253,7 @@ function ttNaikHTML(){
   if(d.naik.length){
     h += d.naik.slice(0, 10).map(function(p, i){
       return '<div class="sp-tk"><span class="no">' + (i + 1) + '</span><div class="tx"><b><a href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener" style="color:inherit;text-decoration:none">' + esc(p.nama) + '</a></b>' +
-        '<span class="tt-naik-tag">' + esc(p.niche) + '</span> ' + esc(p.toko) + ' · terjual <b style="display:inline;color:#235347">' + esc(p.dari) + ' → ' + esc(p.ke) + '</b> (+' + ttK(p.selisih) + (p.persen != null ? ', +' + p.persen + '%' : '') + ')' + (p.harga ? ' · ' + ttRp(p.harga) : '') + '</div></div>';
+        '<span class="tt-naik-tag">' + esc(p.niche) + '</span> ' + esc(p.toko) + ' · terjual <b style="display:inline;color:#235347">' + esc(p.dari) + ' → ' + esc(p.ke) + '</b> (+' + ttK(p.selisih) + (p.persen != null ? ', +' + String(p.persen).replace(".", ",") + '%' : '') + ')' + (p.persis ? ' ≈ ' + ttK(p.per_hari) + '/hari' : '') + (p.harga ? ' · ' + ttRp(p.harga) : '') + '</div></div>';
     }).join("");
   } else h += '<div class="ai-k">Belum ada produk yang angka terjualnya naik melewati pembulatan Tokopedia. Kenaikan butuh potret minimal 2 hari.</div>';
   return h + '<div class="sp-cat">Produk naik = produk yang sama, angka terjual Tokopedia hari ini lebih tinggi dari potret ≤7 hari sebelumnya (angka batas bawah yang dibulatkan Tokopedia). Niche dipantau di Scan TikTok terpisah dari 3 niche Scan otomatis Meta.</div></div>';
@@ -9261,13 +9284,16 @@ function ttGambarTok(){
     '</div>' +
     (d.urut === "laris" || TT.peluang ? '<div id="tt-peluang">' + ttPeluangHTML() + '</div>' : "") +
     '<div id="tt-kata">' + ttKataHTML(d.q) + '</div>' +
-    '<div class="kartu"><div class="judul-kartu"><b>Produk Tokopedia “' + esc(d.q) + '” 🟢</b><span>urut ' + esc(d.urut_label) + ' · ' + d.produk.length + ' produk</span><span class="sp-aksi" style="margin-left:auto">' + ttPantauTombol(d.q) + '<button onclick="ttEkspor(\'tokped\')">＋ Ekspor CSV</button></span></div>' +
+    '<div class="kartu"><div class="judul-kartu"><b>Produk Tokopedia “' + esc(d.q) + '” 🟢</b><span>urut ' + esc(d.urut_label) + ' · ' + d.produk.length + ' produk' + ttPersisTeks(d) + '</span><span class="sp-aksi" style="margin-left:auto">' + ttPantauTombol(d.q) + '<button onclick="ttEkspor(\'tokped\')">＋ Ekspor CSV</button></span></div>' +
       '<div class="sp-grid">' + d.produk.map(function(p, pi){
         const gb = ttGbr(p.gambar);
         return '<div class="sp-p"><a class="sp-th" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener">' + (gb ? '<img src="' + esc(gb) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.remove()">' : "") + '<span class="sp-ph">Tokopedia</span><span class="sp-pos">#' + p.posisi + '</span>' + (p.diskon ? '<span class="sp-lc">-' + p.diskon + '%</span>' : "") + '</a>' +
           '<div class="sp-bd"><a class="sp-nm" href="' + esc(p.url) + '" target="_blank" rel="noreferrer noopener" title="' + esc(p.nama) + '">' + esc(p.nama) + '</a>' +
           '<div class="tt-harga"><b>' + ttRp(p.harga) + '</b>' + (p.harga_coret ? '<s>' + ttRp(p.harga_coret) + '</s>' : "") + '</div>' +
-          '<div class="tt-angka">' + (p.terjual_teks ? '<span title="Angka terjual dari Tokopedia (dibulatkan Tokopedia). Bila toko sinkron dengan TikTok Shop, sudah termasuk penjualan TikTok Shop.">' + esc(p.terjual_teks) + ' terjual</span>' : '<span style="color:var(--muted)">terjual —</span>') + (p.rating ? '<span style="color:#B7791F">★ ' + String(p.rating).replace(".", ",") + '</span>' : "") + (p.stok != null ? '<span title="Stok saat ini dari Tokopedia 🟢" style="color:var(--muted)">stok ' + ttK(p.stok) + '</span>' : "") + '</div>' +
+          '<div class="tt-angka">' + (p.terjual_persis != null ? '<span title="Angka terjual PERSIS dari halaman detail produk Tokopedia 🟢 (di pencarian tertulis ' + esc(p.terjual_teks || "-") + '). Bila toko sinkron dengan TikTok Shop, sudah termasuk penjualan TikTok Shop.">' + Number(p.terjual_persis).toLocaleString("id-ID") + ' terjual</span>'
+            : p.terjual_teks ? '<span title="Angka terjual dari Tokopedia (dibulatkan Tokopedia). Bila toko sinkron dengan TikTok Shop, sudah termasuk penjualan TikTok Shop.">' + esc(p.terjual_teks) + ' terjual</span>' : '<span style="color:var(--muted)">terjual —</span>') + (p.rating ? '<span style="color:#B7791F">★ ' + String(p.rating).replace(".", ",") + '</span>' : "") + (p.stok_total != null ? '<span title="Stok total semua varian, dari detail produk Tokopedia 🟢" style="color:var(--muted)">stok ' + ttK(p.stok_total) + '</span>'
+            : p.stok != null ? '<span title="Stok saat ini dari Tokopedia 🟢" style="color:var(--muted)">stok ' + ttK(p.stok) + '</span>' : "") +
+          (p.ulasan_persis != null ? '<span title="Jumlah ulasan persis dari Tokopedia 🟢" style="color:var(--muted)">' + ttK(p.ulasan_persis) + ' ulasan</span>' : "") + '</div>' +
           '<div class="sp-mt"><span' + (p.resmi ? ' style="color:var(--ink);font-weight:800"' : "") + '>' + esc(p.toko) + '</span>' + (p.kota ? '<span>' + esc(p.kota) + '</span>' : "") + '</div>' +
           (p.label && p.label.length ? '<div class="sp-lb">' + p.label.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("") + '</div>' : "") +
           '<div class="tt-ak"><button type="button" class="sp-kecil" onclick="ttNaskahProduk(' + pi + ')">📝 Naskah TikTok</button></div></div></div>';
@@ -9573,5 +9599,5 @@ function ke(url){
   }catch(e){}
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ba55c1886eb599',t:'MTc5MjE4ODAxMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4baa5d098f414a6',t:'MTc5MjE5MTI5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

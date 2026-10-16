@@ -42,7 +42,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.9"
+VERSI = "1.6.10"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9080,7 +9080,7 @@ def _kata_aturan(q, produk, iklan):
             st = stat.setdefault(f, {"kata": f, "produk": 0, "terjual": 0, "iklan": 0, "_ip": []})
             st["_ip"].append(ip)
             st["produk"] += 1
-            st["terjual"] += p.get("terjual_min") or 0
+            st["terjual"] += _tk_jual(p)
     teks_ik = [_norm(x) for x in iklan]
     for f, st in stat.items():
         st["iklan"] = sum(1 for t in teks_ik if _kata_ada(f, t))
@@ -10001,8 +10001,12 @@ def tokped_cari(q, urut="laris", paksa_jina=False):
                 produk, total = _tokped_gql(q, urut)
                 if produk:
                     TOKPED_GQL_KET[0] = "jalan"
+                    for p_ in produk[:TKI_TOP]:   # v1.6.10: angka persis yang sudah ada di cache detail
+                        tki_tempel(p_)
                     if urut == "laris":
-                        threading.Thread(target=tkh_catat, args=(q, produk), daemon=True).start()
+                        threading.Thread(target=_tk_segar, args=(q, produk), daemon=True).start()
+                    else:
+                        tki_antre(None, produk)
                     return {"ok": True, "produk": produk, "total_barang": total, "jalur": "langsung"}
                 TOKPED_GQL_KET[0] = "kosong"
             except Exception as e:
@@ -10039,7 +10043,7 @@ def tokped_cari(q, urut="laris", paksa_jina=False):
             produk = _tokped_urai(r.text)
             if produk:
                 if urut == "laris":   # v1.5.12: potret terjual harian → riwayat kenaikan
-                    threading.Thread(target=tkh_catat, args=(q, produk), daemon=True).start()
+                    threading.Thread(target=tkh_catat, args=(q, produk), daemon=True).start()   # Jina tanpa id produk → tanpa angka persis
                 return {"ok": True, "produk": produk, "jalur": "jina"}
             galat = "Halaman Tokopedia terbaca tapi daftar produknya kosong (mungkin halaman verifikasi)."
             time.sleep(1.5)
@@ -10047,19 +10051,25 @@ def tokped_cari(q, urut="laris", paksa_jina=False):
 
     hasil = _tt_cache(f"tokped:{urut}:{q.lower()}" + (":jina" if paksa_jina else ""), 6 * 3600, ambil)
     pr = hasil["produk"]
+    if hasil.get("jalur") == "langsung":   # v1.6.10: dari cache → tempel yang sudah ada, antre yang belum
+        _coba(lambda: tki_antre(None, pr))
     hg = sorted(p["harga"] for p in pr if p["harga"])
     toko = {}
     for p in pr:
         t = toko.setdefault(p["toko_slug"], {"toko": p["toko"], "slug": p["toko_slug"], "kota": p["kota"], "produk": 0, "terjual_min": 0})
         t["produk"] += 1
-        t["terjual_min"] += p["terjual_min"] or 0
+        t["terjual_min"] += _tk_jual(p)
     dom = sorted(toko.values(), key=lambda t: (-t["produk"], -t["terjual_min"]))[:5]
-    laris = max(pr, key=lambda p: p["terjual_min"] or 0)
+    laris = max(pr, key=_tk_jual)
     return {"ok": True, "q": q, "urut": urut, "urut_label": TOKPED_URUT_LBL[urut], "produk": pr,
             "ringkas": {"jumlah": len(pr), "harga": {"min": hg[0], "median": hg[len(hg) // 2], "max": hg[-1]} if hg else None,
-                        "terlaris": {"nama": laris["nama"], "terjual_teks": laris["terjual_teks"]} if laris.get("terjual_min") else None,
+                        "terlaris": {"nama": laris["nama"], "terjual_teks": (_titik(laris["terjual_persis"]) if laris.get("terjual_persis") is not None
+                                                                           else laris["terjual_teks"]),
+                                     "persis": laris.get("terjual_persis") is not None} if _tk_jual(laris) else None,
                         "diskon": sum(1 for p in pr if p["diskon"]), "toko": dom, "resmi": sum(1 for p in pr if p["resmi"])},
-            "jam": _iso_kini(), "kunci": bool(_jina_kunci()), "jalur": hasil.get("jalur") or "jina", "total_barang": hasil.get("total_barang")}
+            "jam": _iso_kini(), "kunci": bool(_jina_kunci()), "jalur": hasil.get("jalur") or "jina", "total_barang": hasil.get("total_barang"),
+            "persis": {"n": sum(1 for p in pr if p.get("terjual_persis") is not None), "antre": tki_sisa(pr), "aktif": tki_aktif(),
+                       "top": TKI_TOP}}
 
 
 # ---------- v1.6.0 pencatatan pemakaian Scan TikTok (tanpa email, hitungan per tanggal WIB) ----------
@@ -10740,6 +10750,197 @@ def tki_ulasan(pid, n=10, timeout=15):
               "varian": str(x.get("variantName") or "")[:60], "waktu": _int(x.get("reviewCreateTimestamp"), None)}
              for x in (d.get("list") or [])], bool(d.get("hasNext")))
 
+# ── v1.6.10 T1/T2/T4: angka terjual PERSIS + stok total + ulasan persis lewat detail produk (jalur aplikasi) ──────────
+# Pencarian tetap jalur web (urutan Terlaris + label/kota/COD). Sesudahnya, 20 produk teratas diperkaya di LATAR lewat
+# tki_pdp (±1,3 dtk/produk, jeda ≥1 dtk karena Tokopedia membatasi ±4 permintaan beruntun → HTTP 429). Hasil disimpan 6 jam
+# di memori + ditempel ke produk di cache pencarian, dan dicatat ke potret harian tkharian (indeks 7 = terjual persis,
+# 8 = stok total, 9 = jam baca epoch) → terjual per hari yang akurat. Gagal/terblokir → tampilan "10rb+" seperti biasa.
+TKI_TOP = 20
+TKI_HARIAN = int(os.environ.get("INTAI_TKI_HARIAN") or 2000)   # batas panggilan detail produk per hari (0 = mati)
+TKI_TTL = 6 * 3600
+TKI = {"hari": None, "n": 0, "ok": 0, "gagal": 0, "mati": 0.0, "beruntun": 0, "ket": "", "t_akhir": 0.0, "thread": None}
+TKI_PDP = OrderedDict()      # tp_id → (epoch, dict | None)
+TKI_ANTRE = []               # [(q | None, [produk])]
+TKI_DIANTRE = set()
+kunci_tki = threading.Lock()
+kunci_tki_jalan = threading.Lock()
+
+
+def _titik(n):
+    try:
+        return f"{int(n):,}".replace(",", ".")
+    except Exception:
+        return None
+
+
+def _tki_stok(t):
+    t = str(t or "").strip()
+    return int(t.replace(".", "")) if re.fullmatch(r"\d{1,3}(\.\d{3})*|\d+", t) else None
+
+
+def tki_aktif():
+    return bool(cffi_req) and TKI_HARIAN > 0 and time.time() >= TKI["mati"]
+
+
+def _tki_hari_cek():
+    h = datetime.now(WIB).strftime("%Y-%m-%d")
+    if TKI["hari"] != h:
+        TKI.update(hari=h, n=0, ok=0, gagal=0)
+
+
+def tki_pdp_aman(tp_id):
+    """Detail produk dgn cache 6 jam, jeda, batas harian, ulang saat 429, dan 'istirahat 1 jam' bila 3× beruntun diputus.
+    → dict {terjual, ulasan, rating, stok, tts_pid, t} | None."""
+    tp_id = str(tp_id or "").strip()
+    if not tp_id.isdigit():
+        return None
+    with kunci_tki:
+        c = TKI_PDP.get(tp_id)
+        if c and time.time() - c[0] < TKI_TTL:
+            return c[1]
+    if not tki_aktif():
+        return None
+    with kunci_tki_jalan:   # satu per satu untuk seluruh server
+        with kunci_tki:
+            c = TKI_PDP.get(tp_id)
+            if c and time.time() - c[0] < TKI_TTL:
+                return c[1]
+            _tki_hari_cek()
+            if TKI["n"] >= TKI_HARIAN:
+                TKI["ket"] = "batas harian tercapai"
+                return None
+        for coba in range(3):
+            jeda = TKI["t_akhir"] + 1.0 - time.time()
+            if jeda > 0:
+                time.sleep(jeda)
+            with kunci_tki:
+                TKI["n"] += 1
+            try:
+                d = tki_pdp(tp_id, timeout=15)
+                TKI["t_akhir"] = time.time()
+                d = dict(d, stok_n=_tki_stok(d.get("stok")), t=int(time.time()))
+                with kunci_tki:
+                    TKI.update(ok=TKI["ok"] + 1, beruntun=0, ket="jalan")
+                    TKI_PDP[tp_id] = (time.time(), d)
+                    while len(TKI_PDP) > 4000:
+                        TKI_PDP.popitem(last=False)
+                return d
+            except Exception as e:
+                TKI["t_akhir"] = time.time()
+                m = str(e)
+                if "429" in m and coba < 2:
+                    time.sleep(4 + 4 * coba)
+                    continue
+                with kunci_tki:
+                    TKI["gagal"] += 1
+                    TKI["ket"] = m[:80]
+                    if "PDP kosong" in m:   # produk dihapus/disembunyikan → jangan dicoba lagi 6 jam
+                        TKI_PDP[tp_id] = (time.time(), None)
+                    else:
+                        TKI["beruntun"] += 1
+                        if TKI["beruntun"] >= 3:
+                            TKI["mati"] = time.time() + 3600
+                            TKI["beruntun"] = 0
+                return None
+    return None
+
+
+def tki_tempel(p, d=None):
+    """Tempel angka persis ke satu produk pencarian (in-place). terjual_min (batas bawah dari label) TIDAK diubah."""
+    if d is None:
+        with kunci_tki:
+            c = TKI_PDP.get(str(p.get("tp_id") or ""))
+        d = c[1] if c and time.time() - c[0] < TKI_TTL else None
+    if not d:
+        return False
+    if d.get("terjual") is not None:
+        p["terjual_persis"] = d["terjual"]
+    if d.get("ulasan") is not None:
+        p["ulasan_persis"] = d["ulasan"]
+    if d.get("stok_n") is not None:
+        p["stok_total"] = d["stok_n"]
+    if d.get("tts_pid"):
+        p["tts_pid"] = d["tts_pid"]
+    p["persis_t"] = d.get("t")
+    return True
+
+
+def _tk_jual(p):
+    """Angka terjual terbaik yang diketahui: persis (detail produk) bila ada, selain itu batas bawah label."""
+    v = p.get("terjual_persis")
+    return v if v is not None else (p.get("terjual_min") or 0)
+
+
+def tki_antre(q, produk):
+    """Masukkan ≤20 produk teratas ke antrean pengaya latar. q = niche (potret harian ikut diisi) atau None."""
+    if not tki_aktif() or not produk:
+        return 0
+    perlu = []
+    for p in produk[:TKI_TOP]:
+        tp = str(p.get("tp_id") or "")
+        if not tp.isdigit():
+            continue
+        ada = tki_tempel(p)
+        if q or (not ada and tp not in TKI_DIANTRE):   # niche: selalu dibawa (yang sudah di cache cepat) → potret harian terisi
+            perlu.append(p)
+    if not perlu or (not q and not any(p.get("terjual_persis") is None for p in perlu)):
+        return 0
+    with kunci_tki:
+        for p in perlu:
+            TKI_DIANTRE.add(str(p.get("tp_id")))
+        TKI_ANTRE.append((q, perlu))
+        t = TKI["thread"]
+        if not (t and t.is_alive()):
+            t = threading.Thread(target=_tki_pekerja, daemon=True, name="tki")
+            TKI["thread"] = t
+            t.start()
+    return sum(1 for p in perlu if p.get("terjual_persis") is None)
+
+
+def tki_sisa(produk):
+    return sum(1 for p in (produk or [])[:TKI_TOP] if str(p.get("tp_id") or "") in TKI_DIANTRE)
+
+
+def _tki_pekerja():
+    while True:
+        with kunci_tki:
+            if not TKI_ANTRE:
+                TKI["thread"] = None
+                return
+            q, items = TKI_ANTRE.pop(0)
+        hasil = {}
+        try:
+            for p in items:
+                d = tki_pdp_aman(p.get("tp_id"))
+                if d:
+                    tki_tempel(p, d)
+                    pid = _tkh_pid(p.get("url"))
+                    if pid:
+                        hasil[pid] = d
+                elif not tki_aktif():
+                    break
+            if q:
+                if hasil:
+                    _coba(lambda: tkh_persis(q, hasil))
+                else:   # jalur detail gagal → cara lama (jumlah ulasan persis lewat API ulasan web) untuk niche dipantau
+                    _coba(lambda: tkh_ulasan(q, items))
+        finally:
+            with kunci_tki:
+                for p in items:
+                    TKI_DIANTRE.discard(str(p.get("tp_id") or ""))
+
+
+def tki_status_teks():
+    _tki_hari_cek()
+    t = f"otomatis hari ini: {TKI['n']}/{TKI_HARIAN} detail produk ({TKI['ok']} berhasil, {TKI['gagal']} gagal)"
+    if TKI_HARIAN <= 0:
+        return "pengaya angka persis DIMATIKAN (INTAI_TKI_HARIAN=0)"
+    if time.time() < TKI["mati"]:
+        t += f" · ISTIRAHAT sampai {datetime.fromtimestamp(TKI['mati'], WIB).strftime('%H:%M')} WIB (diputus Tokopedia: {TKI['ket']})"
+    with kunci_tki:
+        n_antre = sum(len(x[1]) for x in TKI_ANTRE)
+    return t + f" · antre {n_antre} · cache {len(TKI_PDP)} produk"
+
 
 def tki_uji_baris():
     """Baris admin 'Tokopedia jalur aplikasi (uji P1)': cari → PDP produk teratas → 3 ulasan. Melempar galat bila semua gagal."""
@@ -10773,8 +10974,8 @@ def tki_uji_baris():
     except Exception as e:
         gagal.append("ulasan: " + str(e)[:90])
     if not hasil:
-        raise RuntimeError(" · ".join(gagal))
-    return " · ".join(hasil + (["GAGAL → " + " · ".join(gagal)] if gagal else []))
+        raise RuntimeError(" · ".join(gagal) + " · " + tki_status_teks())
+    return " · ".join(hasil + (["GAGAL → " + " · ".join(gagal)] if gagal else []) + [tki_status_teks()])
 
 
 def tt_uji():
@@ -10857,7 +11058,7 @@ def tt_uji():
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
     uji("Tokopedia lewat Jina Reader (cadangan)", tokped_jina)
-    uji("Tokopedia jalur aplikasi — terjual persis + ulasan (uji P1)", tki_uji_baris)   # v1.6.9
+    uji("Tokopedia jalur aplikasi — terjual persis, stok & ulasan", tki_uji_baris)   # v1.6.9 · v1.6.10 + status pengaya
 
     def transkrip():   # v1.6.7 uji kelayakan: unduh video iklan Top Ads dari server ini + 1 transkrip Groq Whisper
         ik = [x for x in (tt_iklan(per="7", urut="like", bhs="id").get("iklan") or []) if x.get("video")][:3]
@@ -11712,6 +11913,16 @@ def tkh_ada_hari_ini(q):
         return False
 
 
+def _tk_segar(q, produk):
+    """v1.6.10: potret harian dulu, lalu antre detail produk 20 teratas (potret ikut diisi angka persis)."""
+    tkh_catat(q, produk)
+    _coba(lambda: tki_antre(q, produk))
+
+
+def _e(x, i):
+    return x[i] if isinstance(x, list) and len(x) > i else None
+
+
 def tkh_catat(q, produk):
     """Simpan potret terjual hari ini (dipanggil saat Tokopedia BENAR-BENAR dibaca, bukan dari cache)."""
     if not produk:
@@ -11726,9 +11937,14 @@ def tkh_catat(q, produk):
                 pid = _tkh_pid(p.get("url"))
                 if not pid:
                     continue
-                ul = (lama.get(pid) or [None] * 7)[6] if len(lama.get(pid) or []) > 6 else None
+                le = lama.get(pid) or []
+                ul = _e(le, 6) if p.get("ulasan_persis") is None else p.get("ulasan_persis")
                 # v1.6.6: [terjual_min, harga, rating, terjual_teks, posisi, stok, ulasan_persis]
-                pot[pid] = [p.get("terjual_min"), p.get("harga"), p.get("rating"), p.get("terjual_teks"), p.get("posisi"), p.get("stok"), ul]
+                # v1.6.10: + [7] terjual persis, [8] stok total (detail produk), [9] jam baca angka persis (epoch)
+                ps = p.get("terjual_persis") if p.get("terjual_persis") is not None else _e(le, 7)
+                pot[pid] = [p.get("terjual_min"), p.get("harga"), p.get("rating"), p.get("terjual_teks"), p.get("posisi"), p.get("stok"), ul,
+                            ps, p.get("stok_total") if p.get("stok_total") is not None else _e(le, 8),
+                            p.get("persis_t") if p.get("terjual_persis") is not None else _e(le, 9)]
                 d["meta"][pid] = [p.get("nama", "")[:120], p.get("toko", "")[:60], p.get("gambar", ""), p.get("url", "")]
             d["q"] = re.sub(r"\s+", " ", str(q)).strip()[:60]
             d["hari"][hari] = pot
@@ -11740,9 +11956,38 @@ def tkh_catat(q, produk):
                 d["meta"].pop(k, None)
             salin = json.loads(json.dumps(d))
         setelan_tulis(_tkh_kunci(q), _tk_bungkus(salin))
-        tkh_ulasan(q, produk)
+        if not tki_aktif():   # v1.6.10: jalur detail produk mati → cara lama
+            tkh_ulasan(q, produk)
     except Exception:
         pass
+
+
+def tkh_persis(q, hasil):
+    """v1.6.10 T2/T4: isi potret HARI INI dgn angka persis dari detail produk: {pid: dict tki_pdp_aman}."""
+    d = _tkh_baca(q)
+    hari = _tta_hari()
+    ubah = 0
+    with kunci_tkh:
+        pot = d["hari"].get(hari) or {}
+        for pid, x in hasil.items():
+            e = pot.get(pid)
+            if not e:
+                continue
+            while len(e) < 10:
+                e.append(None)
+            if x.get("terjual") is not None:
+                e[7], e[9] = x["terjual"], x.get("t")
+            if x.get("stok_n") is not None:
+                e[8] = x["stok_n"]
+            if x.get("ulasan") is not None:
+                e[6] = x["ulasan"]
+            if x.get("rating") is not None:
+                e[2] = x["rating"]
+            ubah += 1
+        salin = json.loads(json.dumps(d)) if ubah else None
+    if salin:
+        setelan_tulis(_tkh_kunci(q), _tk_bungkus(salin))
+    return ubah
 
 
 def tkh_ulasan(q, produk):
@@ -11789,29 +12034,38 @@ def _tkh_penanda(d, hs):
     for pid, b in sorted(B.items(), key=lambda kv: (kv[1][4] or 999)):
         if (b[4] or 999) > 20:
             continue
-        stok_b = b[5] if len(b) > 5 else None
-        ul_b = b[6] if len(b) > 6 else None
-        if stok_b is None and ul_b is None:
+        si = 8 if _e(b, 8) is not None else 5   # v1.6.10: stok total (detail produk) dibanding stok total saja
+        stok_b = _e(b, si)
+        ul_b = _e(b, 6)
+        js_b = _e(b, 7)
+        if stok_b is None and ul_b is None and js_b is None:
             continue
-        x = {"pid": pid, "posisi": b[4], "stok": stok_b, "ulasan": ul_b, "rating": b[2], "terjual": b[3]}
+        x = {"pid": pid, "posisi": b[4], "stok": stok_b, "stok_total": si == 8, "ulasan": ul_b, "rating": b[2], "terjual": b[3],
+             "terjual_persis": js_b}
         for h in reversed(hs[:-1]):
             a = d["hari"][h].get(pid)
             if not a:
                 continue
             jarak = max(1, (datetime.strptime(akhir, "%Y-%m-%d") - datetime.strptime(h, "%Y-%m-%d")).days)
-            if "stok_turun" not in x and stok_b is not None and len(a) > 5 and a[5] is not None:
-                if a[5] > stok_b:
-                    x.update(stok_turun=a[5] - stok_b, stok_hari=jarak, stok_per_hari=round((a[5] - stok_b) / jarak, 1))
+            if "terjual_naik" not in x and js_b is not None and _e(a, 7) is not None:
+                ta, tb = _e(a, 9), _e(b, 9)
+                hr = (tb - ta) / 86400 if ta and tb and tb > ta else jarak
+                x.update(terjual_naik=max(0, js_b - a[7]), terjual_hari=round(hr, 1),
+                         terjual_per_hari=round(max(0, js_b - a[7]) / max(0.5, hr)))
+            if "stok_turun" not in x and stok_b is not None and _e(a, si) is not None:
+                if a[si] > stok_b:
+                    x.update(stok_turun=a[si] - stok_b, stok_hari=jarak, stok_per_hari=round((a[si] - stok_b) / jarak, 1))
                 else:
-                    x.update(stok_turun=0, stok_hari=jarak, restok=stok_b > a[5])
-            if "ulasan_naik" not in x and ul_b is not None and len(a) > 6 and a[6] is not None:
+                    x.update(stok_turun=0, stok_hari=jarak, restok=stok_b > a[si])
+            if "ulasan_naik" not in x and ul_b is not None and _e(a, 6) is not None:
                 x.update(ulasan_naik=max(0, ul_b - a[6]), ulasan_hari=jarak)
-            if "stok_turun" in x and ("ulasan_naik" in x or ul_b is None):
+            if ("stok_turun" in x or stok_b is None) and ("ulasan_naik" in x or ul_b is None) and ("terjual_naik" in x or js_b is None):
                 break
         m = d["meta"].get(pid) or ["", "", "", ""]
         x.update(nama=m[0], toko=m[1], url=m[3])
         out.append(x)
-    out.sort(key=lambda z: (-(z.get("ulasan_naik") or 0), -(z.get("stok_per_hari") or 0), z["posisi"] or 999))
+    out.sort(key=lambda z: (-(z.get("terjual_per_hari") or 0), -(z.get("ulasan_naik") or 0), -(z.get("stok_per_hari") or 0),
+                            z["posisi"] or 999))
     return out[:10]
 
 
@@ -11825,7 +12079,8 @@ def tokped_riwayat(q, hari_n=7):
            "tren": [], "naik": [], "masuk": [], "dicron": q.lower() in [n.lower() for n in _tkh_niche_cron()]}
     for h in hs[-30:]:
         v = d["hari"][h]
-        out["tren"].append({"hari": h, "total": sum((x[0] or 0) for x in v.values()), "produk": len(v)})
+        out["tren"].append({"hari": h, "total": sum((x[0] or 0) for x in v.values()), "produk": len(v),
+                            "persis": sum(1 for x in v.values() if _e(x, 7) is not None)})
     if hs:
         out["penanda"] = _coba(lambda: _tkh_penanda(d, hs)) or []
     if len(hs) < 2:
@@ -11834,22 +12089,43 @@ def tokped_riwayat(q, hari_n=7):
     batas = (datetime.strptime(akhir, "%Y-%m-%d") - timedelta(days=hari_n)).strftime("%Y-%m-%d")
     awal = next((h for h in hs if h >= batas and h != akhir), hs[-2])
     A, B = d["hari"][awal], d["hari"][akhir]
-    naik = []
+    naik, n_naik_rb = [], 0
+    n_persis, tot_persis, hr_persis = 0, 0, []
+    jendela = [h for h in hs if h >= batas and h != akhir]
     for pid, b in B.items():
         a = A.get(pid)
+        m = d["meta"].get(pid) or ["", "", "", ""]
         if a and b[0] is not None and a[0] is not None and b[0] > a[0]:
-            m = d["meta"].get(pid) or ["", "", "", ""]
+            n_naik_rb += 1   # momentum skor peluang tetap memakai lintasan batas pembulatan (makna lama)
+        # v1.6.10 T2: angka persis — potret terawal dalam rentang yang punya angka persis
+        bp = _e(b, 7)
+        ap_h = next((h for h in jendela if _e(d["hari"][h].get(pid), 7) is not None), None) if bp is not None else None
+        if ap_h:
+            ae = d["hari"][ap_h][pid]
+            n_persis += 1
+            sel = bp - ae[7]
+            ta, tb = _e(ae, 9), _e(b, 9)
+            hr = (tb - ta) / 86400 if ta and tb and tb > ta else max(1, (datetime.strptime(akhir, "%Y-%m-%d") - datetime.strptime(ap_h, "%Y-%m-%d")).days)
+            hr_persis.append(hr)
+            if sel > 0:
+                tot_persis += sel
+                naik.append({"nama": m[0], "toko": m[1], "gambar": m[2], "url": m[3], "dari": _titik(ae[7]), "ke": _titik(bp), "selisih": sel,
+                             "persen": round(100 * sel / ae[7], 1) if ae[7] else None, "harga": b[1], "posisi": b[4], "persis": True,
+                             "per_hari": round(sel / max(0.5, hr)), "hari": round(hr, 1), "sejak": ap_h})
+            continue
+        if a and b[0] is not None and a[0] is not None and b[0] > a[0]:
             naik.append({"nama": m[0], "toko": m[1], "gambar": m[2], "url": m[3], "dari": a[3], "ke": b[3], "selisih": b[0] - a[0],
                          "persen": round(100 * (b[0] - a[0]) / a[0]) if a[0] else None, "harga": b[1], "posisi": b[4]})
-    naik.sort(key=lambda z: (-z["selisih"], -(z["persen"] or 0)))
+    naik.sort(key=lambda z: (not z.get("persis"), -z["selisih"], -(z["persen"] or 0)))
     masuk = []
     for pid, b in B.items():
         if pid not in A:
             m = d["meta"].get(pid) or ["", "", "", ""]
             masuk.append({"nama": m[0], "toko": m[1], "gambar": m[2], "url": m[3], "terjual": b[3], "posisi": b[4], "harga": b[1]})
     masuk.sort(key=lambda z: z["posisi"] or 999)
-    out.update(awal=awal, akhir=akhir, naik=naik[:15], n_naik=len(naik), masuk=masuk[:10],
-               sama=sum(1 for pid in B if pid in A))
+    out.update(awal=awal, akhir=akhir, naik=naik[:15], n_naik=n_naik_rb, masuk=masuk[:10],
+               sama=sum(1 for pid in B if pid in A), n_naik_persis=sum(1 for z in naik if z.get("persis")), n_persis=n_persis,
+               persis_total=tot_persis, persis_hari=round(sum(hr_persis) / len(hr_persis), 1) if hr_persis else None)
     return out
 
 
@@ -11975,7 +12251,7 @@ _META_LINTAS_C = OrderedDict()   # ringkasan Meta per niche, 30 mnt (arsip Meta 
 
 def tt_lintas(q, pr, total_barang=None):
     """v1.6.6 M2: peluang lintas sumber Tokopedia × Meta (aturan INTAI 🔵 dari angka 🟢)."""
-    jual = sorted((p.get("terjual_min") or 0 for p in pr), reverse=True)
+    jual = sorted((_tk_jual(p) for p in pr), reverse=True)
     top1, top10 = (jual[0] if jual else 0), sum(jual[:10])
     tk_lv = "laris" if (top1 >= 1000 or top10 >= 3000) else ("sepi" if top1 < 100 else "sedang")
     kc = q.strip().lower()
@@ -12031,7 +12307,7 @@ def tt_peluang(q):
     for p in pr:
         t = toko.setdefault(p.get("toko_slug") or p.get("toko") or "?", {"toko": p.get("toko") or "?", "produk": 0, "terjual": 0})
         t["produk"] += 1
-        t["terjual"] += p.get("terjual_min") or 0
+        t["terjual"] += _tk_jual(p)
     top = sorted(toko.values(), key=lambda t: (-t["produk"], -t["terjual"]))[:3]
     dom = sum(t["produk"] for t in top) / n
     tot_j = sum(t["terjual"] for t in toko.values())
@@ -12051,7 +12327,8 @@ def tt_peluang(q):
         arah = (tr[-1]["total"] - tr[0]["total"]) if len(tr) >= 2 else 0
         komp.append({"k": "naik", "nama": "Momentum (produk naik)", "poin": p_mom, "maks": 40,
                      "nilai": f"{rw['n_naik']} dari {rw['sama']} produk naik", "level": "naik" if r >= 0.25 else ("pelan" if r > 0 else "datar"),
-                     "ket": f"{_tgl_pendek(rw.get('awal'))} → {_tgl_pendek(rw.get('akhir'))} · data {rw['hari']} hari · total terjual daftar " + ("bertambah" if arah > 0 else "tetap" if arah == 0 else "berkurang")})
+                     "ket": f"{_tgl_pendek(rw.get('awal'))} → {_tgl_pendek(rw.get('akhir'))} · data {rw['hari']} hari · naik = melewati batas pembulatan Tokopedia · total terjual daftar " + ("bertambah" if arah > 0 else "tetap" if arah == 0 else "berkurang")
+                            + (f" · angka persis: {rw['n_naik_persis']}/{rw['n_persis']} produk teratas bertambah, total +{_titik(rw.get('persis_total') or 0)} terjual" if rw.get("n_persis") else "")})
     else:
         komp.append({"k": "naik", "nama": "Momentum (produk naik)", "poin": None, "maks": 40, "nilai": "belum ada data",
                      "level": "", "ket": "Butuh potret Tokopedia minimal 2 hari. " + ("Mulai dicatat " + _tgl_pendek(rw.get("dari")) + "." if rw.get("dari") else "Pantau niche ini agar dicatat tiap pagi.")})
@@ -12096,7 +12373,7 @@ def tt_naik_lintas(email):
                     "sama": rw.get("sama", 0), "awal": rw.get("awal"), "akhir": rw.get("akhir"), "dari": rw.get("dari")})
         for p in (rw.get("naik") or [])[:8]:
             gab.append(dict(p, niche=q))
-    gab.sort(key=lambda z: (-(z.get("selisih") or 0), -(z.get("persen") or 0)))
+    gab.sort(key=lambda z: (not z.get("persis"), -(z.get("selisih") or 0), -(z.get("persen") or 0)))
     return {"ok": True, "niche": per, "naik": gab[:12], "pantau": pantau, "otomatis": otomatis, "maks": TTP_MAKS}
 
 
