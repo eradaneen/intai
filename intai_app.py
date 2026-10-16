@@ -40,7 +40,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.5"
+VERSI = "1.6.6"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9036,6 +9036,117 @@ def ai_sudut(email, d):
     return out
 
 
+# --- v1.6.6 S4 (Kalodata rek. 4): kata kunci peluang + kebutuhan pembeli dari judul produk/iklan yang SUDAH terbaca ---
+AI_KATA_CACHE = OrderedDict()
+_KATA_BUANG = STOP_ID | STOP_EN | set(
+    "original ori asli murah termurah terlaris laris best seller bestseller ready stock stok garansi resmi official store "
+    "pcs pc gram gr kg ml liter lt cm mm pack paket isi dan atau free bonus hadiah new terbaru viral cod bpom halal "
+    "premium super extra ekstra size ukuran warna varian pilih model type tipe kualitas import lokal grosir ecer satuan "
+    "untuk dengan the of x to by in pria wanita cowok cewek unisex dewasa anak bayi baru bahan dijamin kemasan "
+    "botol box toples sachet pouch".split())
+AI_KATA_SISTEM = (
+    "Kamu analis riset pasar e-commerce Indonesia. Dari JUDUL produk Tokopedia terlaris dan teks iklan TikTok yang diberikan, "
+    "temukan (a) kata kunci turunan yang berpeluang (spesifik, dicari pembeli, misal varian/manfaat/pemakaian) dan "
+    "(b) kebutuhan pembeli yang tersirat (masalah yang ingin diselesaikan, situasi pemakaian).\n"
+    "ATURAN KERAS: 1) Setiap kata kunci HARUS tersusun dari kata yang benar-benar muncul di teks. 2) Setiap kebutuhan wajib "
+    "punya 'bukti' = potongan 1-5 kata yang disalin persis dari teks. 3) Jangan mengarang angka, merek, atau klaim medis. "
+    "4) Bahasa Indonesia santai, singkat.\n"
+    "Balas JSON: {\"kata\":[{\"kata\":\"...\",\"alasan\":\"maks 12 kata\"}],\"kebutuhan\":[{\"kebutuhan\":\"maks 10 kata\","
+    "\"bukti\":\"...\"}]} — maks 8 kata kunci dan 6 kebutuhan.")
+
+
+def _kata_aturan(q, produk, iklan):
+    """🔵 aturan INTAI: frasa 1–2 kata yang sering muncul di judul produk terlaris, dengan jumlah produk & total terjual
+    (batas bawah) yang memuatnya, plus kemunculan di teks iklan TikTok."""
+    qtok = set(_tta_token(_norm(q)) or [])
+
+    def kata2(t):
+        w = [x for x in re.findall(r"[a-z][a-z0-9]+", _norm(t)) if len(x) >= 3 and x not in _KATA_BUANG and not re.match(r"^\d", x)]
+        return w
+
+    stat = {}
+    for ip, p in enumerate(produk):
+        w = kata2(p.get("nama") or "")
+        frasa = set(x for x in w if x not in qtok)
+        frasa |= set(f"{a} {b}" for a, b in zip(w, w[1:]) if not (a in qtok and b in qtok))
+        for f in frasa:
+            st = stat.setdefault(f, {"kata": f, "produk": 0, "terjual": 0, "iklan": 0, "_ip": []})
+            st["_ip"].append(ip)
+            st["produk"] += 1
+            st["terjual"] += p.get("terjual_min") or 0
+    teks_ik = [_norm(x) for x in iklan]
+    for f, st in stat.items():
+        st["iklan"] = sum(1 for t in teks_ik if _kata_ada(f, t))
+    n = max(1, len(produk))
+    calon = [st for st in stat.values() if st["produk"] >= max(2, round(n * 0.05)) and st["produk"] <= n * 0.7]
+    # dua kata yang sama-sama sering → simpan frasa 2 kata saja bila hampir selalu muncul bersama
+    for st in calon:
+        st["per_produk"] = round(st["terjual"] / st["produk"]) if st["produk"] else 0
+    calon.sort(key=lambda z: (-(z["per_produk"] * (1 + 0.5 * (" " in z["kata"]))), -z["produk"]))
+    out, lihat, set_ip = [], set(), set()
+    for st in calon:
+        sig = tuple(st.pop("_ip"))
+        if sig in set_ip or any(st["kata"] in x or x in st["kata"] for x in lihat):   # frasa dari produk yang persis sama = satu
+            continue
+        lihat.add(st["kata"])
+        set_ip.add(sig)
+        out.append(st)
+        if len(out) >= 10:
+            break
+    return out
+
+
+def ai_kata(email, d):
+    q = re.sub(r"\s+", " ", str(d.get("q") or "")).strip()[:80]
+    if len(q) < 2:
+        return {"ok": False, "error": "Niche kosong."}
+    tk = _tt_cache_intip(f"tokped:laris:{q.lower()}", 6 * 3600) or _tt_cache_intip(f"tokped:sesuai:{q.lower()}", 6 * 3600)
+    produk = (tk or {}).get("produk") or []
+    if len(produk) < 5:
+        return {"ok": False, "error": "Cari niche ini di Produk & Pasar dulu (butuh judul produk Tokopedia yang sudah terbaca)."}
+    qn = re.sub(r"\s+", " ", _norm(q)).strip()
+    ik_rows = _coba(lambda: _tta_cari(qn, _tta_token(qn))[0]) or []
+    iklan = [re.sub(r"\s+", " ", str(r.get("j") or ""))[:200] for s_, r in ik_rows[:25] if s_ >= 3 and len(str(r.get("j") or "")) >= 15]
+    aturan = _kata_aturan(q, produk, iklan)
+    kunci = hashlib.sha1((q.lower() + _tta_hari() + "|" + "|".join(p.get("nama", "")[:30] for p in produk[:20])).encode()).hexdigest()
+    if kunci in AI_KATA_CACHE:
+        return dict(AI_KATA_CACHE[kunci], cache=True)
+    korpus = _norm(" ".join([p.get("nama") or "" for p in produk] + iklan))
+    kata_ai, butuh, sumber, info = [], [], "aturan", {}
+    if ai_aktif():
+        teks = "JUDUL PRODUK TOKOPEDIA (urut terlaris):\n" + "\n".join(f"- {p.get('nama', '')[:140]}" for p in produk[:50])
+        if iklan:
+            teks += "\n\nTEKS IKLAN TIKTOK:\n" + "\n".join(f"- {t}" for t in iklan[:20])
+        obj, info = ai_panggil(AI_KATA_SISTEM, f"Niche: {q}\n\n{teks}", tugas="kata", email=email, maks=900, suhu=0.2, batas=25)
+        boleh = _ai_angka_boleh(korpus)
+        if isinstance(obj, dict):
+            for x in (obj.get("kata") or [])[:10]:
+                k = re.sub(r"\s+", " ", _norm(str((x or {}).get("kata") or ""))).strip()[:50]
+                kw = [w for w in k.split() if w]
+                if not kw or not all(_kata_ada(w, korpus) for w in kw):   # kata harus benar-benar ada di teks
+                    continue
+                if k in [z["kata"] for z in kata_ai]:
+                    continue
+                n_pr = sum(1 for p in produk if all(_kata_ada(w, _norm(p.get("nama") or "")) for w in kw))
+                kata_ai.append({"kata": k, "alasan": _ai_saring_angka(str((x or {}).get("alasan") or ""), boleh)[:90], "produk": n_pr})
+            for x in (obj.get("kebutuhan") or [])[:8]:
+                b = re.sub(r"\s+", " ", _norm(str((x or {}).get("bukti") or ""))).strip()[:60]
+                kb = _ai_saring_angka(str((x or {}).get("kebutuhan") or ""), boleh)[:90]
+                if not b or not kb or b not in korpus:   # bukti wajib kutipan persis
+                    continue
+                butuh.append({"kebutuhan": kb, "bukti": b})
+        if kata_ai or butuh:
+            sumber = "ai"
+    out = {"ok": True, "q": q, "aturan": aturan, "kata": kata_ai[:8], "kebutuhan": butuh[:6], "sumber": sumber,
+           "penyedia": info.get("penyedia"), "n_produk": len(produk), "n_iklan": len(iklan),
+           "catatan": None if sumber == "ai" else (info.get("error") or "AI belum aktif") + " — ditampilkan hitungan kata dari judul produk 🔵."}
+    if sumber == "ai":
+        AI_KATA_CACHE[kunci] = out
+        while len(AI_KATA_CACHE) > 200:
+            AI_KATA_CACHE.popitem(last=False)
+    return out
+
+
 # --- (2) NASKAH VIDEO AI ---
 AI_NASKAH_SISTEM = (
     "Kamu penulis naskah video pendek (Shopee Video / Reels / TikTok, 15-30 detik) untuk affiliator & penjual "
@@ -9776,7 +9887,7 @@ def _tokped_urai(md):
 TOKPED_GQL_MATI = [0.0]   # v1.6.4c: GraphQL langsung gagal → lewati sampai waktu ini (Jina dipakai)
 TOKPED_GQL_KET = [""]
 _TOKPED_Q4 = ("query SearchProductQueryV4($params: String!) { ace_search_product_v4(params: $params) { header { totalData responseCode "
-              "errorMessage } data { products { id name url price originalPrice ratingAverage imageUrl categoryName "
+              "errorMessage } data { products { id name url price originalPrice ratingAverage imageUrl categoryName stock "
               "labelGroups { position title type } shop { id name city isOfficial isPowerBadge url } } } } }")
 
 
@@ -9830,8 +9941,37 @@ def _tokped_gql(q, urut="laris", rows=60, timeout=15):
                     "toko": str(sh.get("name") or slug)[:80], "toko_slug": slug, "kota": str(sh.get("city") or "")[:40],
                     "label": lbl[:4], "gambar": str(p.get("imageUrl") or ""), "url": link,
                     "resmi": bool(sh.get("isOfficial")) or bool(re.search(r"official|resmi", str(sh.get("name") or ""), re.I)),
-                    "kategori": str(p.get("categoryName") or "")[:60]})
+                    "kategori": str(p.get("categoryName") or "")[:60],
+                    "stok": _int(p.get("stock"), None), "tp_id": str(p.get("id") or "")[:24]})   # v1.6.6 T4: stok dari Tokopedia
     return out, _int((a.get("header") or {}).get("totalData"), None)
+
+
+_TOKPED_QRAT = ("query productRatingAndTopics($productID: String!) { productrevGetProductRatingAndTopics(productID: $productID) "
+                "{ productID rating { ratingScore totalRating } } }")
+TKH_ULASAN_TOP = 10    # v1.6.6 T3: jumlah ulasan persis hanya untuk 10 produk teratas niche yang dipantau/Scan otomatis
+
+
+def _tokped_ulasan(tp_id, timeout=10):
+    """v1.6.6 T3: jumlah ulasan persis + rating 1 desimal satu produk Tokopedia (API ulasan situsnya; publik). (n, rating) / None."""
+    if not cffi_req or not tp_id:
+        return None
+    hd = {"Origin": "https://www.tokopedia.com", "Referer": "https://www.tokopedia.com/", "X-Source": "tokopedia-lite",
+          "X-Tkpd-Lite-Service": "zeus", "X-Device": "desktop-0.0", "Content-Type": "application/json", "Accept": "*/*"}
+    r = cffi_req.post("https://gql.tokopedia.com/graphql/productRatingAndTopics", impersonate="chrome", headers=hd, timeout=timeout,
+                      data=json.dumps([{"operationName": "productRatingAndTopics", "variables": {"productID": str(tp_id)}, "query": _TOKPED_QRAT}]))
+    if r.status_code != 200:
+        return None
+    j = r.json()
+    j = j[0] if isinstance(j, list) and j else j
+    rt = (((j.get("data") or {}).get("productrevGetProductRatingAndTopics") or {}).get("rating") or {})
+    n = _int(rt.get("totalRating"), None)
+    if n is None:
+        return None
+    try:
+        sk = float(rt.get("ratingScore")) if rt.get("ratingScore") else None
+    except Exception:
+        sk = None
+    return n, sk
 
 
 def tokped_cari(q, urut="laris", paksa_jina=False):
@@ -10027,7 +10167,10 @@ def tt_uji():
         nama, f = nf
         t0 = time.time()
         try:
-            return {"jalur": nama, "ok": True, "ket": f(), "ms": int((time.time() - t0) * 1000)}
+            v = f()
+            if isinstance(v, tuple):   # v1.6.6: (keterangan, True) = baris informasi (ℹ️), bukan galat
+                return {"jalur": nama, "ok": True, "info": True, "ket": v[0], "ms": int((time.time() - t0) * 1000)}
+            return {"jalur": nama, "ok": True, "ket": v, "ms": int((time.time() - t0) * 1000)}
         except Exception as e:
             return {"jalur": nama, "ok": False, "ket": str(e)[:700], "ms": int((time.time() - t0) * 1000)}
     TT_LANGSUNG_MATI[0] = 0.0
@@ -10047,10 +10190,16 @@ def tt_uji():
 
     # v1.5.11: baris oEmbed dihapus — tak dipakai fitur mana pun & selalu timeout dari IP Render (www.tiktok.com memblokir server)
 
+    tok_ev, tok_ok = threading.Event(), [False]
+
     def tokped_langsung():   # v1.6.4c
-        produk, total = _tokped_gql("madu anak", "laris", timeout=20)
+        try:
+            produk, total = _tokped_gql("madu anak", "laris", timeout=20)
+        finally:
+            tok_ev.set()
         if not produk:
             raise RuntimeError("terbaca tapi 0 produk")
+        tok_ok[0] = True
         t = max(produk, key=lambda p: p["terjual_min"] or 0)
         TOKPED_GQL_MATI[0] = 0.0
         return (f"{len(produk)} produk dari {total or '?'} barang · terlaris: {t['nama'][:40]} ({t['terjual_teks'] or '-'} terjual) · "
@@ -10069,11 +10218,16 @@ def tt_uji():
             except Exception as e:
                 hasil.append(f"{jl.split('.com')[1]}: galat {str(e)[:60]}")
         if not any("data ADA" in h for h in hasil):
+            if cfw_siap():   # v1.6.6: wajar — TikTok memblokir IP server Render; data dibaca lewat Worker
+                return ("diblokir TikTok dari server Render (wajar) — TikTok dibaca lewat Cloudflare Worker. Detail: " + " · ".join(hasil), True)
             raise RuntimeError(" · ".join(hasil))
         return " · ".join(hasil)
     uji("TikTok langsung (curl_cffi)", tiktok_langsung)
 
     def tokped_jina():
+        tok_ev.wait(30)   # v1.6.6: Jina hanya cadangan → dilewati bila jalur langsung jalan (hemat ±35 dtk)
+        if tok_ok[0]:
+            return ("dilewati — jalur langsung jalan, Jina hanya dipakai bila jalur langsung gagal · Jina: " + jina_status(), True)
         with kunci_tt:
             TT_CACHE.pop("tokped:laris:madu anak:jina", None)
         d = tokped_cari("madu anak", "laris", paksa_jina=True)
@@ -10081,7 +10235,7 @@ def tt_uji():
             raise RuntimeError(d.get("error"))
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
-    uji("Tokopedia lewat Jina Reader", tokped_jina)
+    uji("Tokopedia lewat Jina Reader (cadangan)", tokped_jina)
 
     def tiktok_cfw():   # v1.6.5
         u, k = _cfw_env()
@@ -10118,7 +10272,7 @@ def tt_uji():
         return (f"pengikut {pg} · {_int(st.get('videoCount'), 0) or '?'} video total · "
                 f"{len(vl)} video sampel · detail video: " + (f"like {dd['like']}, iklan {'ya' if dd['iklan'] else 'tidak'}" if dd else "gagal") +
                 " · Jina: " + jina_status())
-    uji("TikTok akun lewat Jina Reader", akun_jina)
+    uji("TikTok akun lewat Jina Reader (cadangan)", akun_jina)
 
     def arsip():   # v1.5.12: tanpa permintaan ke luar — hanya membaca isi arsip
         a = tta_ringkas()
@@ -10162,7 +10316,7 @@ def tt_uji():
         ktk = sum(1 for r in rs if kontak_bio(r.get("bio"), r.get("lb")))
         ap = _ttap_semua()
         return (f"{len(rs)} kreator di arsip · {naik} naik (≥2 hari muncul di tren, 30 hari) · {ktk} punya kontak publik di bio · "
-                f"akun dipantau: {len({u for L in ap.values() for u in L})} akun dari {len(ap)} pengguna · pagi terakhir {TTK.get('hari') or '-'}")
+                f"akun dipantau: {len({u for L in ap.values() for u in L})} akun dari {len(ap)} pengguna · pengumpulan pagi terakhir: {_ttk_pagi() or 'belum pernah'} (jalan tiap hari mulai {JADWAL.get('jam', 5):02d}:00 WIB)")
     uji("Arsip kreator TikTok (INTAI)", kreator)
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(tugas)) as ex:
         hasil = list(ex.map(_jalan, tugas))
@@ -10632,11 +10786,11 @@ TTA_KATA_KAT = {
     16000000000: "blender rice cooker magic com kipas ac kulkas mesin cuci setrika vacuum air fryer dispenser kompor listrik "
                  "oven microwave humidifier",
     15000000000: "hp handphone smartphone laptop earphone earbuds headset tws charger powerbank smartwatch gadget kamera "
-                 "speaker keyboard mouse tablet",
+                 "speaker keyboard mouse tablet gaming konsol console joystick gamepad monitor",
     19000000000: "kucing anjing hewan peliharaan pakan makanan kucing pasir kucing aquarium ikan hias",
     28000000000: "olahraga sepeda gym fitness outdoor camping lari badminton bola yoga dumbel",
     11000000000: "motor mobil oli helm aksesoris kendaraan ban sparepart",
-    25000000000: "game gaming top up diamond",
+    25000000000: "game games top up topup diamond voucher game",
     13000000000: "pinjaman pinjol kredit investasi asuransi bank paylater saham emas",
     10000000000: "kursus belajar les bahasa inggris sekolah kampus kuliah bimbel",
     17000000000: "hotel tiket pesawat travel liburan wisata umroh",
@@ -10657,6 +10811,21 @@ def _tta_segmen(teks):
     return bool(_TTA_SEGMEN.search(teks or ""))
 
 
+_KATA_AKHIRAN = ("nya", "ku", "mu", "lah", "kah", "an", "kan", "s", "es")
+
+
+def _kata_ada(w, teks):
+    """v1.6.6: kata niche ada di teks sebagai kata utuh, kata + akhiran (kopinya, serums), atau awal gabungan tagar
+    (berasorganik, serumwajah: sisa ≥4 huruf). Dulu cukup awalan → "beras" cocok dgn "berasa"/"berasal" (niche meleset)."""
+    if not w:
+        return False
+    for m in re.finditer(r"\b" + re.escape(w) + r"([a-z0-9]*)", teks or ""):
+        sisa = m.group(1)
+        if not sisa or sisa in _KATA_AKHIRAN or len(sisa) >= 4:
+            return True
+    return False
+
+
 def _tta_skor(qn, tok, lb, teks, kt=""):
     """Skor kecocokan niche. lb = label AI, teks = teks iklan/akun, kt = nama kategori TikTok (huruf kecil).
     v1.5.12b: cocok HANYA lewat nama kategori = kecocokan lemah (3), supaya iklan yang labelnya benar-benar sesuai naik duluan."""
@@ -10664,17 +10833,18 @@ def _tta_skor(qn, tok, lb, teks, kt=""):
     if lb:
         if qn in lb:
             s = 12
-        elif any(len(x) >= 4 and (qn in x or x in qn) for x in lb):
+        elif any(len(x) >= 4 and (_kata_ada(qn, x) or _kata_ada(x, qn)) for x in lb):
             s = 8
         lbt = " ".join(lb)
-        s += 3 * sum(1 for w in tok if re.search(r"\b" + re.escape(w), lbt)) / max(1, len(tok))
-    if qn and qn in teks:
+        s += 3 * sum(1 for w in tok if _kata_ada(w, lbt)) / max(1, len(tok))
+    if qn and _kata_ada(qn, teks):
         s += 6
-    hit = sum(1 for w in tok if re.search(r"\b" + re.escape(w), teks))
+    hit = sum(1 for w in tok if _kata_ada(w, teks))
     s += 2 * hit / max(1, len(tok))
-    if kt and all(re.search(r"\b" + re.escape(w), kt) for w in tok):
+    if kt and all(_kata_ada(w, kt) for w in tok):
         s += 3
-    semua = all(re.search(r"\b" + re.escape(w), (" ".join(lb or []) + " " + teks + " " + (kt or ""))) for w in tok)
+    gab = " ".join(lb or []) + " " + teks + " " + (kt or "")
+    semua = all(_kata_ada(w, gab) for w in tok)
     if not semua and s < 8:
         return 0.0
     return s
@@ -10716,19 +10886,34 @@ def _tta_cari(qn, tok):
     return iklan, akun
 
 
-def _tta_kat_terdekat(tok, cocok):
-    hit = {}
-    for s, r in cocok[:30]:
-        if r.get("ind"):
-            hit[r["ind"]] = hit.get(r["ind"], 0) + s
-    if hit:
-        return max(hit.items(), key=lambda kv: kv[1])[0], "arsip"
+def _tta_kat_kamus(tok):
     best, skor = None, 0
     for ind, kata in TTA_KATA_KAT.items():
         s = sum(1 for w in tok if re.search(r"\b" + re.escape(w) + r"\b", kata))
         if s > skor:
             best, skor = ind, s
-    return best, ("kata" if best else None)
+    return best
+
+
+def _tta_kat_terdekat(tok, cocok):
+    """v1.6.6: kamus kata (TTA_KATA_KAT) didahulukan. Dulu 1–2 iklan arsip yang kebetulan cocok langsung menentukan kategori
+    (kopi → Kecantikan, susu/teh → Aplikasi, popok bayi → Olahraga). Arsip hanya menang bila buktinya kuat:
+    ≥3 iklan cocok kuat (skor ≥8) di kategori itu dan bobotnya ≥2× kategori kamus."""
+    kd = _tta_kat_kamus(tok)
+    hit, kuat = {}, {}
+    for s, r in cocok[:30]:
+        if r.get("ind"):
+            i = int(r["ind"])
+            hit[i] = hit.get(i, 0) + s
+            if s >= 8 and not r.get("_seg"):
+                kuat[i] = kuat.get(i, 0) + 1
+    if hit:
+        ia = max(hit.items(), key=lambda kv: kv[1])[0]
+        if not kd or ia == int(kd):
+            return ia, "arsip"
+        if kuat.get(ia, 0) >= 3 and hit[ia] >= 2 * hit.get(int(kd), 0):
+            return ia, "arsip"
+    return (kd, "kata") if kd else (None, None)
 
 
 def _tta_keluar(r, skor=None):
@@ -10743,6 +10928,7 @@ def _tta_keluar(r, skor=None):
 
 def tta_ringkas():
     kat = _tta_muat()
+    _coba(_tta_status)   # v1.6.6: muat status putaran dari Supabase bila server baru hidup (belum ada tick)
     with kunci_tta:
         semua = [r for d in kat.values() for r in d.values()]
         p1 = min((r.get("p1") for r in semua if r.get("p1")), default=None)
@@ -10868,11 +11054,14 @@ def tkh_catat(q, produk):
         hari = _tta_hari()
         with kunci_tkh:
             pot = {}
+            lama = d["hari"].get(hari) or {}
             for p in produk[:80]:
                 pid = _tkh_pid(p.get("url"))
                 if not pid:
                     continue
-                pot[pid] = [p.get("terjual_min"), p.get("harga"), p.get("rating"), p.get("terjual_teks"), p.get("posisi")]
+                ul = (lama.get(pid) or [None] * 7)[6] if len(lama.get(pid) or []) > 6 else None
+                # v1.6.6: [terjual_min, harga, rating, terjual_teks, posisi, stok, ulasan_persis]
+                pot[pid] = [p.get("terjual_min"), p.get("harga"), p.get("rating"), p.get("terjual_teks"), p.get("posisi"), p.get("stok"), ul]
                 d["meta"][pid] = [p.get("nama", "")[:120], p.get("toko", "")[:60], p.get("gambar", ""), p.get("url", "")]
             d["q"] = re.sub(r"\s+", " ", str(q)).strip()[:60]
             d["hari"][hari] = pot
@@ -10884,8 +11073,79 @@ def tkh_catat(q, produk):
                 d["meta"].pop(k, None)
             salin = json.loads(json.dumps(d))
         setelan_tulis(_tkh_kunci(q), _tk_bungkus(salin))
+        tkh_ulasan(q, produk)
     except Exception:
         pass
+
+
+def tkh_ulasan(q, produk):
+    """v1.6.6 T3: jumlah ulasan persis sekali sehari untuk 10 produk teratas — hanya niche dipantau / Scan otomatis
+    (supaya permintaan ke Tokopedia tetap sedikit). Gagal = dilewati diam-diam."""
+    if not cffi_req or q.strip().lower() not in [n.lower() for n in (_coba(_tkh_niche_cron) or [])]:
+        return
+    d = _tkh_baca(q)
+    hari = _tta_hari()
+    ubah = 0
+    for p in produk[:TKH_ULASAN_TOP]:
+        pid = _tkh_pid(p.get("url"))
+        with kunci_tkh:
+            e = (d["hari"].get(hari) or {}).get(pid)
+        if not e or (len(e) > 6 and e[6] is not None) or not p.get("tp_id"):
+            continue
+        try:
+            u = _tokped_ulasan(p["tp_id"])
+        except Exception:
+            u = None
+        if not u:
+            continue
+        with kunci_tkh:
+            while len(e) < 7:
+                e.append(None)
+            e[6] = u[0]
+            if u[1] is not None:
+                e[2] = u[1]
+        ubah += 1
+        time.sleep(0.4)
+    if ubah:
+        with kunci_tkh:
+            salin = json.loads(json.dumps(d))
+        setelan_tulis(_tkh_kunci(q), _tk_bungkus(salin))
+
+
+def _tkh_penanda(d, hs):
+    """v1.6.6 T3/T4: penanda penjualan harian produk teratas — selisih ulasan persis (🟢 angka Tokopedia, selisih 🔵) dan
+    stok yang berkurang (perkiraan terjual 🔵; stok naik = restok, tidak ditebak). Membandingkan potret terbaru dgn potret
+    sebelumnya yang punya angka itu."""
+    akhir = hs[-1]
+    B = d["hari"][akhir]
+    out = []
+    for pid, b in sorted(B.items(), key=lambda kv: (kv[1][4] or 999)):
+        if (b[4] or 999) > 20:
+            continue
+        stok_b = b[5] if len(b) > 5 else None
+        ul_b = b[6] if len(b) > 6 else None
+        if stok_b is None and ul_b is None:
+            continue
+        x = {"pid": pid, "posisi": b[4], "stok": stok_b, "ulasan": ul_b, "rating": b[2], "terjual": b[3]}
+        for h in reversed(hs[:-1]):
+            a = d["hari"][h].get(pid)
+            if not a:
+                continue
+            jarak = max(1, (datetime.strptime(akhir, "%Y-%m-%d") - datetime.strptime(h, "%Y-%m-%d")).days)
+            if "stok_turun" not in x and stok_b is not None and len(a) > 5 and a[5] is not None:
+                if a[5] > stok_b:
+                    x.update(stok_turun=a[5] - stok_b, stok_hari=jarak, stok_per_hari=round((a[5] - stok_b) / jarak, 1))
+                else:
+                    x.update(stok_turun=0, stok_hari=jarak, restok=stok_b > a[5])
+            if "ulasan_naik" not in x and ul_b is not None and len(a) > 6 and a[6] is not None:
+                x.update(ulasan_naik=max(0, ul_b - a[6]), ulasan_hari=jarak)
+            if "stok_turun" in x and ("ulasan_naik" in x or ul_b is None):
+                break
+        m = d["meta"].get(pid) or ["", "", "", ""]
+        x.update(nama=m[0], toko=m[1], url=m[3])
+        out.append(x)
+    out.sort(key=lambda z: (-(z.get("ulasan_naik") or 0), -(z.get("stok_per_hari") or 0), z["posisi"] or 999))
+    return out[:10]
 
 
 def tokped_riwayat(q, hari_n=7):
@@ -10899,6 +11159,8 @@ def tokped_riwayat(q, hari_n=7):
     for h in hs[-30:]:
         v = d["hari"][h]
         out["tren"].append({"hari": h, "total": sum((x[0] or 0) for x in v.values()), "produk": len(v)})
+    if hs:
+        out["penanda"] = _coba(lambda: _tkh_penanda(d, hs)) or []
     if len(hs) < 2:
         return out
     akhir = hs[-1]
@@ -11006,6 +11268,88 @@ def _tgl_pendek(iso):
         return str(iso or "-")
 
 
+def _meta_lintas(q):
+    """v1.6.6 M2 (Kalodata rek. 2): keramaian iklan Meta untuk niche ini — HANYA MEMBACA arsip iklan Meta yang sudah ada
+    (hasil scan/galeri; tanpa scan baru, tanpa menyentuh mesin Meta). Cocok = niche scan sama persis, atau semua kata niche
+    ada di hook/nama halaman/domain iklan (kata utuh)."""
+    qn = re.sub(r"\s+", " ", _norm(q)).strip()
+    tok = _tta_token(qn) or [qn]
+    ok, rows = _galeri_semua()
+    if not rows:
+        return {"ada": False, "discan": False, "ket": "Arsip iklan Meta belum terbaca."}
+    hari = _hari_ini()
+    cocok, discan = [], False
+    for r in rows:
+        nn = re.sub(r"\s+", " ", _norm(r.get("niche") or "")).strip()
+        if nn == qn:
+            discan = True
+        if r.get("relevansi") == "Lepas":
+            continue
+        if nn == qn or all(_kata_ada(w, _norm(" ".join(str(r.get(k) or "") for k in ("hook", "halaman", "domain")))) for w in tok):
+            cocok.append(r)
+    if not cocok:
+        return {"ada": discan, "discan": discan, "iklan": 0, "aktif": 0, "pengiklan": 0, "tahan30": 0, "baru30": 0}
+    aktif = [r for r in cocok if r.get("aktif") is True]
+    hal = {}
+    for r in aktif:
+        k = str(r.get("page_id") or r.get("halaman") or "")
+        if k:
+            hal.setdefault(k, [r.get("halaman") or k, 0])[1] += 1
+    tahan = sum(1 for r in aktif if (_umur_kini(r, hari) or 0) >= 30)
+    baru = sum(1 for r in aktif if _tgl(r.get("mulai")) and (hari - _tgl(r.get("mulai"))).days < 30)
+    terakhir = max((str(r.get("terakhir_terlihat") or "")[:10] for r in cocok), default="")
+    return {"ada": True, "discan": discan, "iklan": len(cocok), "aktif": len(aktif), "pengiklan": len(hal), "tahan30": tahan,
+            "baru30": baru, "terakhir": terakhir or None,
+            "contoh": [v[0] for v in sorted(hal.values(), key=lambda v: -v[1])[:3]]}
+
+
+_META_LINTAS_C = OrderedDict()   # ringkasan Meta per niche, 30 mnt (arsip Meta hanya bertambah saat ada scan)
+
+
+def tt_lintas(q, pr, total_barang=None):
+    """v1.6.6 M2: peluang lintas sumber Tokopedia × Meta (aturan INTAI 🔵 dari angka 🟢)."""
+    jual = sorted((p.get("terjual_min") or 0 for p in pr), reverse=True)
+    top1, top10 = (jual[0] if jual else 0), sum(jual[:10])
+    tk_lv = "laris" if (top1 >= 1000 or top10 >= 3000) else ("sepi" if top1 < 100 else "sedang")
+    kc = q.strip().lower()
+    c = _META_LINTAS_C.get(kc)
+    if c and time.time() - c[0] < 1800:
+        m = dict(c[1])
+    else:
+        m = _coba(lambda: _meta_lintas(q))
+        if m:
+            _META_LINTAS_C[kc] = (time.time(), dict(m))
+            while len(_META_LINTAS_C) > 300:
+                _META_LINTAS_C.popitem(last=False)
+        m = m or {"ada": False, "discan": False, "ket": "Arsip iklan Meta belum terbaca."}
+    out = {"tokped": {"level": tk_lv, "top1": top1, "top10": top10, "total_barang": total_barang}, "meta": m}
+    if not m.get("ada"):
+        out.update(kode="belum", judul="Data iklan Meta untuk niche ini belum ada",
+                   saran="Perbandingan Tokopedia × Meta muncul setelah niche ini pernah di-scan di Scan Meta (oleh akun mana pun) atau masuk Scan otomatis.")
+        return out
+    mm = m.get("pengiklan") or 0
+    m_lv = "ramai" if (mm >= 8 or (m.get("tahan30") or 0) >= 5) else ("sepi" if mm <= 2 else "sedang")
+    if not m.get("discan") and m_lv == "sepi":
+        m_lv = "kurang data"   # tanpa scan niche ini, sedikitnya iklan cocok bukan bukti sepi
+    m["level"] = m_lv
+    if tk_lv == "laris" and m_lv == "sepi":
+        out.update(kode="celah_meta", judul="Laris di Tokopedia, iklan Meta masih sepi",
+                   saran="Pembeli sudah ada (terjual tinggi di Tokopedia) tapi hanya sedikit pengiklan di Facebook/Instagram. Peluang menjangkau pembeli lewat iklan Meta sebelum ramai.")
+    elif tk_lv == "sepi" and m_lv == "ramai":
+        out.update(kode="celah_tokped", judul="Ramai diiklankan di Meta, belum laris di Tokopedia",
+                   saran="Banyak pengiklan Meta (sering jualan lewat WA/website) tapi angka terjual Tokopedia masih kecil. Bisa jadi celah membuka lapak marketplace — cek dulu apakah produknya memang cocok dijual di marketplace.")
+    elif tk_lv == "laris" and m_lv == "ramai":
+        out.update(kode="ketat", judul="Ramai di dua sisi: Tokopedia laris, iklan Meta juga padat",
+                   saran="Pasar terbukti tapi persaingan tinggi di dua kanal. Masuk dengan pembeda jelas (harga, bundling, sudut iklan baru).")
+    elif tk_lv == "sepi" and m_lv in ("sepi", "kurang data"):
+        out.update(kode="kecil", judul="Sepi di dua sisi",
+                   saran="Penjualan Tokopedia dan iklan Meta sama-sama sedikit: pasar kecil, baru mulai, atau kata kuncinya kurang tepat. Coba variasi kata kunci.")
+    else:
+        out.update(kode="sedang", judul="Belum ada selisih mencolok antar-sumber",
+                   saran="Permintaan Tokopedia dan keramaian iklan Meta sebanding. Pakai skor peluang di atas untuk menimbang.")
+    return out
+
+
 def tt_peluang(q):
     """Skor peluang niche 0–100 dari 3 komponen yang ditampilkan semua (🔵 hitungan INTAI).
     Tidak membaca Tokopedia lagi: memakai hasil pencarian yang baru saja dibaca (cache 6 jam)."""
@@ -11063,7 +11407,8 @@ def tt_peluang(q):
     harga = {"min": hg[0], "median": hg[len(hg) // 2], "max": hg[-1], "rentang": round(hg[-1] / hg[0], 1) if hg[0] else None} if hg else None
     return {"ok": True, "q": q, "skor": skor, "lengkap": len(ada) == len(komp),
             "level": None if skor is None else ("bagus" if skor >= 65 else "sedang" if skor >= 40 else "berat"),
-            "komponen": komp, "harga": harga, "n_produk": n, "jam": _iso_kini()}
+            "komponen": komp, "harga": harga, "n_produk": n, "jam": _iso_kini(),
+            "lintas": _coba(lambda: tt_lintas(q, pr, tk.get("total_barang")))}
 
 
 def tt_naik_lintas(email):
@@ -11527,8 +11872,8 @@ def tt_kreator(q="", urut="muncul", kontak=False, email=None):
         skor, cocok = 0.0, ""
         if tok:
             teks = _norm(" ".join([r.get("u") or "", r.get("nama") or "", r.get("bio") or "", " ".join(r.get("tg") or []), r.get("kat") or ""]))
-            hit = sum(1 for w in tok if re.search(r"\b" + re.escape(w), teks))
-            if qn and qn in teks:
+            hit = sum(1 for w in tok if _kata_ada(w, teks))
+            if qn and _kata_ada(qn, teks):
                 skor += 6
             skor += 3 * hit / len(tok)
             if skor:
@@ -11699,6 +12044,15 @@ def tt_akun_plus(u, email=None):
 
 
 # --- cron pagi: kumpulkan kreator dari tren + potret akun dipantau ---
+def _ttk_pagi():
+    """v1.6.6: tanggal terakhir pengumpulan kreator tren pagi (disimpan di setelan 'ttk_pagi')."""
+    if TTK.get("hari") is None:
+        ok, v = setelan_baca("ttk_pagi")
+        if ok:
+            TTK["hari"] = v if isinstance(v, str) else ""
+    return TTK.get("hari") or ""
+
+
 def tt_f3_tick():
     try:
         kini = datetime.now(WIB)
@@ -11710,7 +12064,7 @@ def tt_f3_tick():
                 return
             TTK["jalan"] = True
         try:
-            if TTK.get("hari") != hari:
+            if _ttk_pagi() != hari:
                 out = tt_tren("7", "", "", True)   # 15 industri + video semua kategori (serap kreator otomatis)
                 for lb in CC_LABEL_VIDEO:
                     try:
@@ -11720,6 +12074,7 @@ def tt_f3_tick():
                         pass
                 if out.get("tagar") or out.get("per_industri"):
                     TTK["hari"] = hari
+                    _coba(lambda: setelan_tulis("ttk_pagi", hari))
             daftar = sorted({u for L in (_ttap_semua(segar=True) or {}).values() for u in L})[:TTAP_CRON_MAKS]
             for u in daftar:
                 k = hari + ":" + u
@@ -11790,6 +12145,15 @@ def tt_minggu(email):
             if semua:
                 r = max(semua, key=lambda r: (len((r.get("j") or "").strip()) >= 15, r.get("like") or 0))
                 out["iklan"] = dict(_tta_keluar(r), baru=True, niche="", umum=True)
+            else:   # v1.6.6: arsip belum terisi 7 hari terakhir → iklan terkuat dari potret terakhir yang ada (diberi tanda tanggal)
+                with kunci_tta:
+                    semua = [r for d in kat.values() for r in d.values()]
+                if semua:
+                    akhir = max((r.get("p2") or "") for r in semua)
+                    batas = (datetime.strptime(akhir, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d") if akhir else ""
+                    semua = [r for r in semua if (r.get("p2") or "") >= batas]
+                    r = max(semua, key=lambda r: (len((r.get("j") or "").strip()) >= 15, r.get("like") or 0))
+                    out["iklan"] = dict(_tta_keluar(r), baru=False, niche="", umum=True, lama=akhir)
         except Exception as e:
             out["galat"]["iklan"] = str(e)[:120]
     label = CC_IND_KE_LABEL.get(str(ind or ""), "")
@@ -12311,10 +12675,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.tulis(403, json.dumps({"ok": False, "error": "Khusus admin"}), "application/json")
             else:
                 self.json_ok(admin_ubah(self.email, self.baca_json(), basis_url(self)))
-        elif u.path in ("/api/ai/naskah", "/api/ai/sudut"):   # v1.5.7
+        elif u.path in ("/api/ai/naskah", "/api/ai/sudut", "/api/ai/kata"):   # v1.5.7 · v1.6.6 kata
             try:
                 d_ = self.baca_json()
-                self.json_ok(ai_naskah(self.email, d_) if u.path.endswith("naskah") else ai_sudut(self.email, d_))
+                self.json_ok(ai_naskah(self.email, d_) if u.path.endswith("naskah") else ai_kata(self.email, d_) if u.path.endswith("kata")
+                             else ai_sudut(self.email, d_))
             except Exception as e_:
                 self.json_ok({"ok": False, "error": "AI gagal: " + str(e_)[:120]})
         elif u.path == "/api/logout":
