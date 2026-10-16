@@ -40,7 +40,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.6"
+VERSI = "1.6.7"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -10156,6 +10156,37 @@ def tt_pakai_ringkas(hari=14):
             "niche": urut(total["niche"], 15), "per_hari": per_hari}
 
 
+TRANSKRIP_UJI = {}   # v1.6.7: hasil uji kelayakan transkrip terakhir (admin)
+
+
+def _unduh_video(url, maks=25 * 1024 * 1024, timeout=30):
+    """v1.6.7: unduh video iklan (CDN) ke memori, maks 25 MB (batas Groq gratis). → bytes."""
+    r = requests.get(url, timeout=timeout, stream=True, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://ads.tiktok.com/"})
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+    isi = bytearray()
+    for b in r.iter_content(256 * 1024):
+        isi += b
+        if len(isi) > maks:
+            raise RuntimeError("lebih dari 25 MB")
+    return bytes(isi)
+
+
+def _whisper_groq(data, nama="iklan.mp4", bahasa="id", timeout=60):
+    """v1.6.7: transkrip suara lewat Groq Whisper (gratis: 20/menit, 2.000/hari, 28.800 dtk audio/hari, maks 25 MB).
+    Groq menerima mp4 langsung — tanpa ffmpeg. → (teks, bahasa, durasi_detik)."""
+    if not AI_GROQ:
+        raise RuntimeError("kunci Groq belum diisi (INTAI_GROQ_KUNCI)")
+    r = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers={"Authorization": "Bearer " + AI_GROQ},
+                      files={"file": (nama, data, "video/mp4")},
+                      data={"model": "whisper-large-v3-turbo", "language": bahasa, "response_format": "verbose_json", "temperature": "0"},
+                      timeout=timeout)
+    if r.status_code != 200:
+        raise RuntimeError(f"Groq HTTP {r.status_code}: {r.text[:200]}")
+    j = r.json()
+    return str(j.get("text") or "").strip(), j.get("language"), j.get("duration")
+
+
 def tt_uji():
     """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini. v1.5.10: semua baris jalan paralel (proxy Render putus di 100 dtk)."""
     tugas = []
@@ -10236,6 +10267,33 @@ def tt_uji():
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
     uji("Tokopedia lewat Jina Reader (cadangan)", tokped_jina)
+
+    def transkrip():   # v1.6.7 uji kelayakan: unduh video iklan Top Ads dari server ini + 1 transkrip Groq Whisper
+        ik = [x for x in (tt_iklan(per="7", urut="like", bhs="id").get("iklan") or []) if x.get("video")][:5]
+        if not ik:
+            raise RuntimeError("Top Ads tidak memberi link video saat ini")
+        unduh, gagal = [], []
+        for x in ik:
+            t0 = time.time()
+            try:
+                b = _unduh_video(x["video"])
+                unduh.append((x, b, time.time() - t0))
+            except Exception as e:
+                gagal.append(str(e)[:60])
+        if not unduh:
+            raise RuntimeError("0/" + str(len(ik)) + " video terunduh dari server: " + " · ".join(gagal))
+        mb = sum(len(b) for _, b, _ in unduh) / len(unduh) / 1e6
+        dt = sum(d for _, _, d in unduh) / len(unduh)
+        ket = f"{len(unduh)}/{len(ik)} video iklan terunduh dari server (rata {mb:.1f} MB, {dt:.1f} dtk)"
+        x, b, _ = min(unduh, key=lambda z: abs((z[0].get("durasi") or 30) - 30))   # pilih yang ±30 dtk
+        t0 = time.time()
+        teks, bhs, dur = _whisper_groq(b)
+        ms = int((time.time() - t0) * 1000)
+        TRANSKRIP_UJI.clear()
+        TRANSKRIP_UJI.update(jam=_iso_kini(), judul=x.get("judul"), merek=x.get("merek"), durasi=dur, bahasa=bhs, ms=ms, teks=teks)
+        return (ket + f" · transkrip Groq Whisper: {dur or '?'} dtk audio dalam {ms / 1000:.1f} dtk, bahasa {bhs or '?'} · "
+                f"iklan “{(x.get('judul') or '')[:50]}” → «{teks[:400] or '(tanpa ucapan — mungkin hanya musik)'}»")
+    uji("Transkrip suara iklan (Groq Whisper) — uji kelayakan", transkrip)
 
     def tiktok_cfw():   # v1.6.5
         u, k = _cfw_env()
