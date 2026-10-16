@@ -34,9 +34,13 @@ from urllib.parse import urlparse, parse_qs, quote, unquote, urljoin
 
 import requests
 import intai_mvp as mesin
+try:   # v1.6.4c: klien HTTP bersidik-jari browser Chrome — Tokopedia & TikTok menolak sidik-jari TLS pustaka requests
+    from curl_cffi import requests as cffi_req
+except Exception:
+    cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.4"
+VERSI = "1.6.4c"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -9297,8 +9301,12 @@ def _tt_nama(u):
 
 def _tt_video_detail(nama, vid):
     try:
-        r = requests.get(f"https://www.tiktok.com/@{nama}/video/{vid}", timeout=10,
-                         headers={"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"})
+        if cffi_req:   # v1.6.4c
+            r = cffi_req.get(f"https://www.tiktok.com/@{nama}/video/{vid}", timeout=10, impersonate="chrome",
+                             headers={"Accept-Language": "id-ID,id;q=0.9"})
+        else:
+            r = requests.get(f"https://www.tiktok.com/@{nama}/video/{vid}", timeout=10,
+                             headers={"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9"})
         d = _tt_rehidrasi(r.text).get("webapp.video-detail") or {}
         it = (d.get("itemInfo") or {}).get("itemStruct") or {}
         st = it.get("stats") or {}
@@ -9338,9 +9346,14 @@ def _tt_profil_embed(nama, cepat=False):
     """v1.5.8b: profil + embed dgn sesi ber-cookie; bila kosong → pemanasan beranda (ttwid) lalu ulang sekali.
     Mengembalikan (profil, embed, diag) — diag dipakai tombol uji admin untuk melihat apa yang diterima server."""
     diag = {}
-    s = requests.Session()
-    s.headers.update({"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-                      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
+    if cffi_req:   # v1.6.4c: sidik-jari Chrome (UA ikut bawaan impersonate supaya cocok)
+        s = cffi_req.Session(impersonate="chrome")
+        s.headers.update({"Accept-Language": "id-ID,id;q=0.9,en;q=0.8"})
+        diag["klien"] = "curl_cffi (Chrome)"
+    else:
+        s = requests.Session()
+        s.headers.update({"User-Agent": TT_UA, "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+                          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
     prof, emb = {}, {}
     bt = 6 if cepat else 12   # v1.5.11: mode cepat = 1 percobaan, batas 6 dtk (IP Render hampir pasti diblokir)
     for coba in range(1 if cepat else 2):
@@ -9376,33 +9389,107 @@ def _tt_profil_embed(nama, cepat=False):
 # ===== v1.5.10 AKUN TIKTOK LEWAT JINA READER =====
 # IP Render diblokir TikTok → halaman dibaca server Jina (format HTML mentah agar JSON di dalam halaman ikut).
 # Jina sering memblokir akses anonim ke "www.tiktok.com" (penyalahgunaan orang lain) → coba "tiktok.com" dulu, lalu www.
+# v1.6.4b: saldo token kunci Jina bisa habis (InsufficientBalanceError, HTTP 402) → tandai 6 jam & pakai jalur anonim.
+JINA_HABIS = [0.0]
+
+
+def _jina_kunci_env():
+    return (os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip()
+
+
+def _jina_kunci():
+    """Kunci Jina yang boleh dipakai sekarang ('' = anonim: saldo habis < 6 jam lalu atau tanpa kunci)."""
+    k = _jina_kunci_env()
+    return k if k and time.time() >= JINA_HABIS[0] else ""
+
+
+def _jina_saldo_habis(r):
+    try:
+        t = r.text[:600]
+    except Exception:
+        t = ""
+    if r.status_code == 402 or "InsufficientBalance" in t or "balance not enough" in t:
+        JINA_HABIS[0] = time.time() + 6 * 3600
+        return True
+    return False
+
+
+def jina_status():
+    k = _jina_kunci_env()
+    if not k:
+        return "tanpa kunci (anonim 20/menit)"
+    if time.time() < JINA_HABIS[0]:
+        return "kunci: SALDO TOKEN HABIS → sementara anonim (cek ulang " + datetime.fromtimestamp(JINA_HABIS[0], WIB).strftime("%H:%M") + " WIB)"
+    return "kunci aktif"
+
+
+_TT_JINA_SEL = "script#__UNIVERSAL_DATA_FOR_REHYDRATION__, script#__FRONTITY_CONNECT_STATE__"
+
+
 def _tt_jina_html(jalan, timeout=40):
-    """jalan = '/@nama' dsb. Mengembalikan (html, diag)."""
-    hd = {"X-Timeout": "25", "X-Return-Format": "html"}
-    kunci = (os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip()
-    if kunci:
-        hd["Authorization"] = "Bearer " + kunci
+    """jalan = '/@nama' dsb. Mengembalikan (html, diag).
+    v1.6.4b hemat token: minta Jina hanya mengirim <script> data (X-Target-Selector), bukan seluruh halaman
+    (halaman TikTok ±300 KB ≈ puluhan ribu token per baca). Kalau skrip data tidak ikut → baca halaman penuh."""
     diag = []
     for dom in ("https://tiktok.com", "https://www.tiktok.com"):
+      for hemat in (True, False):
+        hd = {"X-Timeout": "25", "X-Return-Format": "html"}
+        if hemat:
+            hd["X-Target-Selector"] = _TT_JINA_SEL
+        kunci = _jina_kunci()
+        if kunci:
+            hd["Authorization"] = "Bearer " + kunci
         try:
             r = requests.get("https://r.jina.ai/" + dom + jalan, headers=hd, timeout=timeout)
         except Exception as e:
             diag.append(dom[8:] + ": galat " + str(e)[:50])
-            continue
-        if r.status_code == 200 and len(r.text) > 5000:
-            diag.append(dom[8:] + f": HTTP 200 · {len(r.text) // 1024} KB")
+            break
+        if kunci and _jina_saldo_habis(r):   # saldo habis → ulangi sekali tanpa kunci
+            diag.append("saldo kunci Jina habis → anonim")
+            hd.pop("Authorization", None)
+            try:
+                r = requests.get("https://r.jina.ai/" + dom + jalan, headers=hd, timeout=timeout)
+            except Exception as e:
+                diag.append(dom[8:] + ": galat " + str(e)[:50])
+                break
+        ada = r.status_code == 200 and ("__UNIVERSAL_DATA_FOR_REHYDRATION__" in r.text or "__FRONTITY_CONNECT_STATE__" in r.text)
+        if ada and (hemat or len(r.text) > 5000):
+            diag.append(dom[8:] + f": HTTP 200 · {len(r.text) // 1024} KB" + (" (hemat)" if hemat else ""))
             return r.text, " | ".join(diag)
+        if r.status_code == 200 and hemat:
+            continue   # skrip data tidak ikut → coba halaman penuh
         try:
             pesan = (r.json().get("name") or r.json().get("message") or "")[:60]
         except Exception:
             pesan = r.text[:60].replace("\n", " ")
         diag.append(dom[8:] + f": HTTP {r.status_code} {pesan}")
-        if r.status_code == 429:
-            break
+        break
     return "", " | ".join(diag)
 
 
 def _tt_video_detail_jina(nama, vid):
+    """v1.6.4b: lewat halaman EMBED video (data ±15 KB) — dulu halaman video penuh (±250 KB/baca, boros token Jina).
+    Embed memuat views, like, komentar, share, tanggal, durasi, tanda iklan (isAd), musik + statistik akun; TIDAK memuat 'simpan'."""
+    try:
+        html, _ = _tt_jina_html(f"/embed/v2/{vid}", timeout=25)
+        m = re.search(r'id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', html or "", re.S)
+        if m:
+            data = (json.loads(m.group(1)).get("source") or {}).get("data") or {}
+            vd = next((v.get("videoData") for v in data.values() if isinstance(v, dict) and v.get("videoData")), None) or {}
+            it, au = vd.get("itemInfos") or {}, vd.get("authorStats") or {}
+            if it.get("id"):
+                return {"like": _int(it.get("diggCount"), None), "komentar": _int(it.get("commentCount"), None),
+                        "share": _int(it.get("shareCount"), None), "simpan": None,
+                        "tayang": _int(it.get("playCount"), None), "unggah": _int(it.get("createTime"), None),
+                        "durasi": _int(((it.get("video") or {}).get("videoMeta") or {}).get("duration"), None), "iklan": bool(it.get("isAd")),
+                        "musik": ((vd.get("musicInfos") or {}).get("musicName") or "")[:60], "toko": bool(it.get("isECVideo")),
+                        "_vt": _int(au.get("videoCount"), None), "_mengikuti": _int(au.get("followingCount"), None)}
+        return None
+    except Exception:
+        return None
+
+
+def _tt_video_detail_jina_penuh(nama, vid):   # cadangan lama (halaman video penuh) — tidak dipakai otomatis
     try:
         html, _ = _tt_jina_html(f"/@{nama}/video/{vid}", timeout=25)
         d = _tt_rehidrasi(html).get("webapp.video-detail") or {}
@@ -9420,8 +9507,13 @@ def _tt_video_detail_jina(nama, vid):
         return None
 
 
-def _tt_profil_jina(nama):
-    """(profil, embed, diag) lewat Jina — profil & embed diambil paralel."""
+def _tt_profil_jina(nama, ringan=False):
+    """(profil, embed, diag) lewat Jina — profil & embed diambil paralel.
+    ringan=True (potret Akun dipantau): hanya embed (±27 KB) — halaman profil (±270 KB) dilewati."""
+    if ringan:
+        he, de = _tt_jina_html(f"/embed/@{nama}")
+        emb = _tt_embed_parse(he, nama) if he else {}
+        return {}, emb, {"jina_profil": "dilewati (mode ringan)", "jina_embed": de + (f" · {len(emb.get('videoList') or [])} video" if emb.get("userInfo") else "")}
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
         fp = ex.submit(_tt_jina_html, f"/@{nama}")
         fe = ex.submit(_tt_jina_html, f"/embed/@{nama}")
@@ -9436,7 +9528,7 @@ def _tt_profil_jina(nama):
 TT_LANGSUNG_MATI = [0.0]   # v1.5.11: jalur langsung terakhir diblokir → lewati sampai waktu ini (Jina langsung dipakai)
 
 
-def tt_akun(u):
+def tt_akun(u, ringan=False):
     nama = _tt_nama(u)
     if not nama:
         return {"ok": False, "error": "Tulis nama akun TikTok (mis. @somethincofficial) atau tempel link profilnya."}
@@ -9448,7 +9540,7 @@ def tt_akun(u):
             prof, emb, diag = _tt_profil_embed(nama, cepat=True)
         jalur = "langsung"
         if not prof.get("userInfo") and not emb.get("userInfo") and prof.get("statusCode") != 10221:
-            p2, e2, d2 = _tt_profil_jina(nama)
+            p2, e2, d2 = _tt_profil_jina(nama, ringan=ringan)
             diag.update(d2)
             if p2.get("userInfo") or e2.get("userInfo") or p2.get("statusCode") == 10221:
                 prof, emb, jalur = p2, e2, "jina"
@@ -9474,10 +9566,18 @@ def tt_akun(u):
                 "kategori": cu.get("category") or "", "organisasi": bool(us.get("isOrganization")),
                 "dibuat": _int(us.get("createTime"), None), "privat": bool(us.get("privateAccount") or eu.get("privateAccount"))}
         vl = [v for v in (emb.get("videoList") or []) if isinstance(v, dict) and v.get("id")][:13]
-        berkunci = bool((os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip())
+        berkunci = bool(_jina_kunci())
+        if ringan:   # v1.6.4b potret Akun dipantau: cukup 1 detail (untuk jumlah video akun); tayang lainnya dari embed
+            vl_det = vl[:1] if jalur == "jina" and akun.get("video_total") is None else []
+        else:
+            vl_det = vl
         with concurrent.futures.ThreadPoolExecutor(max_workers=13 if (jalur == "jina" and berkunci) else 4) as ex:
             fdet = _tt_video_detail_jina if jalur == "jina" else _tt_video_detail
-            det = list(ex.map(lambda v: fdet(akun["nama"], v["id"]), vl))
+            det = list(ex.map(lambda v: fdet(akun["nama"], v["id"]), vl_det)) + [None] * (len(vl) - len(vl_det))
+        if akun.get("video_total") is None:   # jalur ringan/embed: jumlah video & mengikuti dari statistik akun di embed video
+            akun["video_total"] = next((x["_vt"] for x in det if x and x.get("_vt") is not None), None)
+        if akun.get("mengikuti") is None:
+            akun["mengikuti"] = next((x["_mengikuti"] for x in det if x and x.get("_mengikuti") is not None), None)
         video = []
         for v, dd in zip(vl, det):
             dd = dd or {}
@@ -9502,12 +9602,19 @@ def tt_akun(u):
                 "per_bulan": round(akun["video_total"] / max((time.time() - akun["dibuat"]) / 2629800, 1), 1)
                 if akun.get("video_total") and akun.get("dibuat") else None}
         h_ = {"ok": True, "akun": akun, "video": video, "ringkas": ring, "jam": _iso_kini(), "jalur": jalur}
-        threading.Thread(target=tta_serap_akun, args=(h_,), daemon=True).start()   # v1.5.12 arsip akun
+        if not ringan:   # v1.6.4b potret ringan tidak punya data profil lengkap → jangan menimpa arsip akun
+            threading.Thread(target=tta_serap_akun, args=(h_,), daemon=True).start()   # v1.5.12 arsip akun
         return h_
-    hasil = _tt_cache("akun:" + nama, 1800, ambil)
+    kc = ("akunr:" if ringan else "akun:") + nama
+    if ringan:   # hasil Intip lengkap yang masih segar dipakai dulu
+        with kunci_tt:
+            c = TT_CACHE.get("akun:" + nama)
+        if c and time.time() - c[0] < 1800 and c[1].get("ok"):
+            return c[1]
+    hasil = _tt_cache(kc, 1800, ambil)
     if not hasil.get("ok"):   # galat jangan di-cache lama
         with kunci_tt:
-            TT_CACHE.pop("akun:" + nama, None)
+            TT_CACHE.pop(kc, None)
     return hasil
 
 
@@ -9593,24 +9700,101 @@ def _tokped_urai(md):
     return out
 
 
-def tokped_cari(q, urut="laris"):
+TOKPED_GQL_MATI = [0.0]   # v1.6.4c: GraphQL langsung gagal → lewati sampai waktu ini (Jina dipakai)
+TOKPED_GQL_KET = [""]
+_TOKPED_Q4 = ("query SearchProductQueryV4($params: String!) { ace_search_product_v4(params: $params) { header { totalData responseCode "
+              "errorMessage } data { products { id name url price originalPrice ratingAverage imageUrl categoryName "
+              "labelGroups { position title type } shop { id name city isOfficial isPowerBadge url } } } } }")
+
+
+def _tokped_gql(q, urut="laris", rows=60, timeout=15):
+    """v1.6.4c: data pencarian Tokopedia langsung dari API GraphQL situsnya (yang dipakai halaman tokopedia.com sendiri), lewat
+    curl_cffi bersidik-jari Chrome. Tanpa Jina = tanpa token. Mengembalikan (produk[], total_barang) atau melempar galat."""
+    if not cffi_req:
+        raise RuntimeError("pustaka curl_cffi belum terpasang (requirements.txt)")
+    qq = quote(q)
+    params = (f"device=desktop&ob={TOKPED_URUT.get(urut, '5')}&page=1&q={qq}&rows={rows}&safe_search=false&scheme=https"
+              "&source=search&st=product&start=0&related=true&topads_bucket=true&user_cityId=176&user_districtId=2274")
+    hd = {"Origin": "https://www.tokopedia.com", "Referer": f"https://www.tokopedia.com/search?q={qq}",
+          "X-Source": "tokopedia-lite", "X-Tkpd-Lite-Service": "zeus", "X-Device": "desktop-0.0",
+          "Content-Type": "application/json", "Accept": "*/*", "Accept-Language": "id-ID,id;q=0.9"}
+    r = cffi_req.post("https://gql.tokopedia.com/graphql/SearchProductQueryV4", impersonate="chrome", headers=hd, timeout=timeout,
+                      data=json.dumps([{"operationName": "SearchProductQueryV4", "variables": {"params": params}, "query": _TOKPED_Q4}]))
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+    j = r.json()
+    j = j[0] if isinstance(j, list) and j else j
+    if j.get("errors"):
+        raise RuntimeError("GraphQL: " + str((j["errors"][0] or {}).get("message"))[:80])
+    a = (j.get("data") or {}).get("ace_search_product_v4") or {}
+    out, lihat = [], set()
+    for p in ((a.get("data") or {}).get("products") or []):
+        link = str(p.get("url") or "").split("?")[0]
+        if not link or link in lihat:
+            continue
+        lihat.add(link)
+        lg = [(str(x.get("position") or ""), str(x.get("title") or "")) for x in (p.get("labelGroups") or []) if isinstance(x, dict)]
+        terjual = next((re.sub(r"\s*terjual.*$", "", t, flags=re.I).replace(" ", "") for po, t in lg if po == "ri_product_credibility" and "terjual" in t.lower()), None)
+        mdis = next((re.match(r"(\d{1,2})%", t) for po, t in lg if po == "ri_ribbon" and re.match(r"\d{1,2}%", t)), None)
+        tawar = " ".join(t for po, t in lg if po.startswith("ri_product_offer"))
+        lbl = []
+        for x in ("Bisa COD", "Pakai Bonus", "Cashback", "Gratis Ongkir", r"Hemat s\.d\s+\d+%"):
+            m = re.search(x, tawar)
+            if m and re.sub(r"\s+", " ", m.group(0)) not in lbl:
+                lbl.append(re.sub(r"\s+", " ", m.group(0)))
+        sh = p.get("shop") or {}
+        slug = (str(sh.get("url") or link).split("tokopedia.com/") + [""])[1].split("/")[0]
+        harga = _tokped_rp(str(p.get("price") or ""))
+        coret = _tokped_rp(str(p.get("originalPrice") or "")) if p.get("originalPrice") else None
+        try:
+            rating = float(p.get("ratingAverage")) if p.get("ratingAverage") else None
+        except Exception:
+            rating = None
+        out.append({"posisi": len(out) + 1, "nama": str(p.get("name") or "")[:200], "harga": harga,
+                    "harga_coret": coret if coret and harga and coret > harga else None,
+                    "diskon": int(mdis.group(1)) if mdis else None, "rating": rating,
+                    "terjual_teks": terjual, "terjual_min": _tokped_angka_terjual(terjual),
+                    "toko": str(sh.get("name") or slug)[:80], "toko_slug": slug, "kota": str(sh.get("city") or "")[:40],
+                    "label": lbl[:4], "gambar": str(p.get("imageUrl") or ""), "url": link,
+                    "resmi": bool(sh.get("isOfficial")) or bool(re.search(r"official|resmi", str(sh.get("name") or ""), re.I)),
+                    "kategori": str(p.get("categoryName") or "")[:60]})
+    return out, _int((a.get("header") or {}).get("totalData"), None)
+
+
+def tokped_cari(q, urut="laris", paksa_jina=False):
     q = re.sub(r"\s+", " ", str(q or "")).strip()[:80]
     urut = urut if urut in TOKPED_URUT else "laris"
     if len(q) < 2:
         return {"ok": False, "error": "Ketik kata kunci produk minimal 2 huruf."}
 
     def ambil():
+        if cffi_req and not paksa_jina and time.time() >= TOKPED_GQL_MATI[0]:   # v1.6.4c: jalur langsung dulu (tanpa token)
+            try:
+                produk, total = _tokped_gql(q, urut)
+                if produk:
+                    TOKPED_GQL_KET[0] = "jalan"
+                    if urut == "laris":
+                        threading.Thread(target=tkh_catat, args=(q, produk), daemon=True).start()
+                    return {"ok": True, "produk": produk, "total_barang": total, "jalur": "langsung"}
+                TOKPED_GQL_KET[0] = "kosong"
+            except Exception as e:
+                TOKPED_GQL_KET[0] = str(e)[:80]
+                TOKPED_GQL_MATI[0] = time.time() + 3600
         url = "https://www.tokopedia.com/search?q=" + requests.utils.quote(q) + "&ob=" + TOKPED_URUT[urut]
-        hd = {"X-Timeout": "30", "X-Remove-Overlay": "true"}
-        if JINA_KUNCI:
-            hd["Authorization"] = "Bearer " + JINA_KUNCI
         galat = None
         t0 = time.time()
         for coba in range(2):
             if coba and time.time() - t0 > 35:   # jaga total < ±80 dtk (proxy Render memutus di 100 dtk)
                 break
+            hd = {"X-Timeout": "30", "X-Remove-Overlay": "true"}
+            kunci = _jina_kunci()   # v1.6.4b: saldo kunci habis → anonim
+            if kunci:
+                hd["Authorization"] = "Bearer " + kunci
             try:
                 r = requests.get("https://r.jina.ai/" + url, headers=hd, timeout=40)
+                if kunci and _jina_saldo_habis(r):
+                    hd.pop("Authorization", None)
+                    r = requests.get("https://r.jina.ai/" + url, headers=hd, timeout=40)
             except Exception as e:
                 galat = "Pembaca halaman tidak menjawab (" + str(e)[:60] + ")"
                 continue
@@ -9628,12 +9812,12 @@ def tokped_cari(q, urut="laris"):
             if produk:
                 if urut == "laris":   # v1.5.12: potret terjual harian → riwayat kenaikan
                     threading.Thread(target=tkh_catat, args=(q, produk), daemon=True).start()
-                return {"ok": True, "produk": produk}
+                return {"ok": True, "produk": produk, "jalur": "jina"}
             galat = "Halaman Tokopedia terbaca tapi daftar produknya kosong (mungkin halaman verifikasi)."
             time.sleep(1.5)
         raise RuntimeError(galat or "Tokopedia belum terbaca")
 
-    hasil = _tt_cache(f"tokped:{urut}:{q.lower()}", 6 * 3600, ambil)
+    hasil = _tt_cache(f"tokped:{urut}:{q.lower()}" + (":jina" if paksa_jina else ""), 6 * 3600, ambil)
     pr = hasil["produk"]
     hg = sorted(p["harga"] for p in pr if p["harga"])
     toko = {}
@@ -9647,7 +9831,7 @@ def tokped_cari(q, urut="laris"):
             "ringkas": {"jumlah": len(pr), "harga": {"min": hg[0], "median": hg[len(hg) // 2], "max": hg[-1]} if hg else None,
                         "terlaris": {"nama": laris["nama"], "terjual_teks": laris["terjual_teks"]} if laris.get("terjual_min") else None,
                         "diskon": sum(1 for p in pr if p["diskon"]), "toko": dom, "resmi": sum(1 for p in pr if p["resmi"])},
-            "jam": _iso_kini(), "kunci": bool(JINA_KUNCI)}
+            "jam": _iso_kini(), "kunci": bool(_jina_kunci()), "jalur": hasil.get("jalur") or "jina", "total_barang": hasil.get("total_barang")}
 
 
 # ---------- v1.6.0 pencatatan pemakaian Scan TikTok (tanpa email, hitungan per tanggal WIB) ----------
@@ -9789,14 +9973,40 @@ def tt_uji():
 
     # v1.5.11: baris oEmbed dihapus — tak dipakai fitur mana pun & selalu timeout dari IP Render (www.tiktok.com memblokir server)
 
+    def tokped_langsung():   # v1.6.4c
+        produk, total = _tokped_gql("madu anak", "laris", timeout=20)
+        if not produk:
+            raise RuntimeError("terbaca tapi 0 produk")
+        t = max(produk, key=lambda p: p["terjual_min"] or 0)
+        TOKPED_GQL_MATI[0] = 0.0
+        return (f"{len(produk)} produk dari {total or '?'} barang · terlaris: {t['nama'][:40]} ({t['terjual_teks'] or '-'} terjual) · "
+                f"{sum(1 for p in produk if p['resmi'])} toko resmi · tanpa token Jina")
+    uji("Tokopedia langsung (curl_cffi)", tokped_langsung)
+
+    def tiktok_langsung():   # v1.6.4c: embed video langsung dgn sidik-jari Chrome
+        if not cffi_req:
+            raise RuntimeError("pustaka curl_cffi belum terpasang (requirements.txt)")
+        hasil = []
+        for jl in ("https://www.tiktok.com/embed/@somethincofficial", "https://www.tiktok.com/@somethincofficial"):
+            try:
+                r = cffi_req.get(jl, impersonate="chrome", timeout=12, headers={"Accept-Language": "id-ID,id;q=0.9"})
+                ada = "FRONTITY_CONNECT" in r.text or "UNIVERSAL_DATA_FOR_REHYDRATION" in r.text
+                hasil.append(f"{jl.split('.com')[1]}: HTTP {r.status_code}, {len(r.text) // 1024} KB, data {'ADA' if ada else 'tidak ada'}")
+            except Exception as e:
+                hasil.append(f"{jl.split('.com')[1]}: galat {str(e)[:60]}")
+        if not any("data ADA" in h for h in hasil):
+            raise RuntimeError(" · ".join(hasil))
+        return " · ".join(hasil)
+    uji("TikTok langsung (curl_cffi)", tiktok_langsung)
+
     def tokped_jina():
         with kunci_tt:
-            TT_CACHE.pop("tokped:laris:madu anak", None)
-        d = tokped_cari("madu anak", "laris")
+            TT_CACHE.pop("tokped:laris:madu anak:jina", None)
+        d = tokped_cari("madu anak", "laris", paksa_jina=True)
         if not d.get("ok"):
             raise RuntimeError(d.get("error"))
         t = d["ringkas"]["terlaris"] or {}
-        return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + (" · kunci Jina" if d["kunci"] else " · tanpa kunci")
+        return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
     uji("Tokopedia lewat Jina Reader", tokped_jina)
 
     def akun_jina():
@@ -9807,11 +10017,11 @@ def tt_uji():
             raise RuntimeError("tidak terbaca — " + diag.get("jina_profil", "") + " ‖ " + diag.get("jina_embed", ""))
         vl = emb.get("videoList") or []
         dd = _tt_video_detail_jina("somethincofficial", vl[0]["id"]) if vl else None
-        kunci = bool((os.environ.get("INTAI_JINA_KUNCI") or os.environ.get("JINA_API_KEY") or "").strip())
+        kunci = bool(_jina_kunci())
         pg = f"{_int(st.get('followerCount') or eu.get('followerCount'), 0):,}".replace(",", ".")
         return (f"pengikut {pg} · {_int(st.get('videoCount'), 0) or '?'} video total · "
                 f"{len(vl)} video sampel · detail video: " + (f"like {dd['like']}, iklan {'ya' if dd['iklan'] else 'tidak'}" if dd else "gagal") +
-                (" · kunci Jina" if kunci else " · tanpa kunci"))
+                " · Jina: " + jina_status())
     uji("TikTok akun lewat Jina Reader", akun_jina)
 
     def arsip():   # v1.5.12: tanpa permintaan ke luar — hanya membaca isi arsip
@@ -11353,7 +11563,7 @@ def ttap_ubah(email, aksi, u):
     with kunci_ttk:
         TTAP["semua"][email] = L
     if aksi != "hapus":   # potret pertama langsung (pakai hasil Intip yang masih di cache bila ada)
-        threading.Thread(target=lambda: _coba(lambda: ttap_potret(tt_akun(u))), daemon=True, name="ttap-awal").start()
+        threading.Thread(target=lambda: _coba(lambda: ttap_potret(tt_akun(u, ringan=True))), daemon=True, name="ttap-awal").start()
     return {"ok": True, "pantau": L}
 
 
@@ -11423,7 +11633,7 @@ def tt_f3_tick():
                 if ok and isinstance(v, dict) and hari in v:
                     continue
                 TTAP["coba"][k] = TTAP["coba"].get(k, 0) + 1
-                h = _coba(lambda: tt_akun(u)) or {}
+                h = _coba(lambda: tt_akun(u, ringan=True)) or {}
                 if h.get("ok"):
                     ttap_potret(h)
                 time.sleep(2)
