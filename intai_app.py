@@ -42,7 +42,7 @@ except Exception:
     cffi_req = None
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.6.8"
+VERSI = "1.6.9"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -10653,6 +10653,130 @@ def trk_status_teks():
     return t + (f" · catatan: {s['galat']}" if s["galat"] else "")
 
 
+# ── v1.6.9 UJI P1 (riset GitHub: hilmiazizi/tokopaedi, MIT) — jalur API APLIKASI iOS Tokopedia ─────────────────────────
+# Uji sandbox 17 Okt: pencarian iOS memberi angka TERJUAL PERSIS (stock.sold, mis. 16.088 — bukan "10rb+"), PDP memberi
+# countSold/countReview/stok, ulasan memberi TEKS. Kunci lolos Akamai = header Bd-Device-Id (tanpa itu: HTTP/2 diputus).
+# Sidik jari TLS bawaan curl (TANPA impersonate Chrome — UA aplikasi + TLS Chrome = ditolak). Belum dipakai fitur apa pun.
+_TKI_UA = "Tokopedia/2.318.0 (com.tokopedia.Tokopedia; build:202505022018; iOS 18.5.0) Alamofire/2.318.0"
+_TKI_Q5 = ("query Search_SearchProduct($params: String!) { searchProductV5(params: $params) { header { totalData responseCode "
+           "additionalParams } data { products { id ttsProductID name url price { text number original discountPercentage } "
+           "shop { id name url city ttsSellerID } badge { title url } category { id name } rating labelGroups { position title type } "
+           "stock { sold ttsSKUID } } } } }")
+_TKI_QPDP = ("query PDP_getPDPLayout($productId: String, $shopDomain: String, $productKey: String, $apiVersion: Float, $whID: String, "
+             "$layoutID: String, $userLocation: pdpUserLocation, $extParam: String, $tokonow: pdpTokoNow) { pdpGetLayout(productID: "
+             "$productId, shopDomain: $shopDomain, productKey: $productKey, apiVersion: $apiVersion, whID: $whID, layoutID: $layoutID, "
+             "userLocation: $userLocation, extParam: $extParam, tokonow: $tokonow) { basicInfo { productID shopID shopName status "
+             "txStats { countSold itemSoldFmt } stats { rating countReview } totalStockFmt ttsPID ttsShopID } } }")
+_TKI_QREV = ("query productrevGetProductReviewList($productID: String!, $page: Int!, $limit: Int!, $sortBy: String, $filterBy: String, "
+             "$opt: String) { productrevGetProductReviewList(productID: $productID, page: $page, limit: $limit, sortBy: $sortBy, "
+             "filterBy: $filterBy, opt: $opt) { list { feedbackID variantName message productRating reviewCreateTimestamp } hasNext } }")
+
+
+def _tki_hd(jalur):
+    import uuid as _uuid
+    sidik = {"device_manufacturer": "Apple", "timezone": "Asia/Jakarta", "idfa": str(_uuid.uuid4()).upper(), "is_emulator": False,
+             "unique_id": str(_uuid.uuid4()).upper(), "access_type": 1, "device_system": "iOS", "device_model": "iPhone",
+             "is_tablet": False, "is_jailbroken_rooted": False, "screen_resolution": "2532x1170", "current_os": "18.5",
+             "language": "id", "device_name": "iPhone 13"}
+    return {"Os_type": "2", "Fingerprint-Data": base64.b64encode(json.dumps(sidik).encode()).decode(),
+            "X-Tkpd-Userid": str(secrets.randbelow(5000) + 223400013), "X-Tkpd-Path": jalur, "X-Method": "POST",
+            "Request-Method": "POST", "X-Device": "ios-2.318.0", "X-App-Version": "2.318.0", "Device-Type": "iphone",
+            "Bd-Device-Id": str(7 * 10 ** 18 + secrets.randbelow(10 ** 18)), "Accept": "application/json",
+            "Accept-Language": "id;q=1.0, en;q=0.9", "Content-Type": "application/json; encoding=utf-8", "User-Agent": _TKI_UA}
+
+
+def _tki_post(jalur, query, var, timeout=15, akamai=None):
+    if not cffi_req:
+        raise RuntimeError("pustaka curl_cffi belum terpasang (requirements.txt)")
+    hd = _tki_hd(jalur)
+    if akamai:
+        hd["X-Tkpd-Akamai"] = akamai
+    r = cffi_req.post("https://gql.tokopedia.com" + jalur, headers=hd, timeout=timeout,
+                      data=json.dumps({"query": query, "variables": var}))
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+    j = r.json()
+    if j.get("errors") and not j.get("data"):
+        raise RuntimeError("GraphQL: " + str((j["errors"][0] or {}).get("message"))[:80])
+    return j.get("data") or {}
+
+
+def tki_cari(q, halaman=1, timeout=15):
+    """UJI: pencarian Tokopedia lewat API aplikasi iOS → [{id, tts, nama, terjual(persis), harga, rating, toko}], total, lanjut."""
+    p = (f"user_warehouseId=0&user_shopId=0&user_postCode=10110&srp_initial_state=false&breadcrumb=true&ep=product&user_cityId=0"
+         f"&q={quote(q)}&related=true&source=search&srp_enter_method=normal_search&enter_method=normal_search&l_name=sre"
+         f"&user_districtId=0&catalog_rows=0&page={halaman}&srp_component_id=02.01.00.00&ob=0&src=search&with_template=true"
+         "&show_adult=false&srp_direct_middle_page=false&channel=product%20search&rf=false&navsource=home&use_page=true&device=ios")
+    d = (_tki_post("/graphql/SearchResult/getProductResult", _TKI_Q5, {"params": p}, timeout).get("searchProductV5") or {})
+    hd = d.get("header") or {}
+    out = []
+    for x in ((d.get("data") or {}).get("products") or []):
+        out.append({"id": str(x.get("id") or ""), "tts": str(x.get("ttsProductID") or ""), "nama": str(x.get("name") or "")[:120],
+                    "terjual": _int((x.get("stock") or {}).get("sold"), None), "harga": _int((x.get("price") or {}).get("number"), None),
+                    "rating": x.get("rating"), "toko": str((x.get("shop") or {}).get("name") or "")[:60]})
+    return out, _int(hd.get("totalData"), None), "has_more=true" in str(hd.get("additionalParams") or "")
+
+
+def tki_pdp(pid, timeout=15):
+    """UJI: detail produk lewat API aplikasi iOS → terjual persis, jumlah ulasan, rating, stok, id TikTok Shop."""
+    v = {"apiVersion": 1, "userLocation": {"addressID": "", "addressName": "", "receiverName": "", "postalCode": "", "districtID": "",
+         "cityID": "", "latlon": ""}, "tokonow": {"shopID": "0", "warehouses": [], "whID": "0", "serviceType": "ooc"}, "extParam": "",
+         "productId": str(pid), "shopDomain": "", "productKey": "", "whID": "", "layoutID": ""}
+    b = ((_tki_post("/graphql/ProductDetails/getPDPLayout", _TKI_QPDP, v, timeout, akamai="pdpGetLayout").get("pdpGetLayout") or {})
+         .get("basicInfo") or {})
+    if not b:
+        raise RuntimeError("PDP kosong")
+    tx, st = b.get("txStats") or {}, b.get("stats") or {}
+    return {"terjual": _int(tx.get("countSold"), None), "ulasan": _int(st.get("countReview"), None), "rating": st.get("rating"),
+            "stok": str(b.get("totalStockFmt") or ""), "tts_pid": str(b.get("ttsPID") or ""), "toko": str(b.get("shopName") or "")[:60]}
+
+
+def tki_ulasan(pid, n=10, timeout=15):
+    """UJI: teks ulasan (urut paling informatif) lewat API aplikasi iOS → [{bintang, teks, varian, waktu}], ada_lagi."""
+    d = (_tki_post("/graphql/ProductReview/getProductReviewReadingList", _TKI_QREV,
+                   {"productID": str(pid), "page": 1, "limit": max(1, min(int(n), 20)), "sortBy": "informative_score desc",
+                    "filterBy": "", "opt": ""}, timeout).get("productrevGetProductReviewList") or {})
+    return ([{"bintang": _int(x.get("productRating"), None), "teks": str(x.get("message") or "")[:600],
+              "varian": str(x.get("variantName") or "")[:60], "waktu": _int(x.get("reviewCreateTimestamp"), None)}
+             for x in (d.get("list") or [])], bool(d.get("hasNext")))
+
+
+def tki_uji_baris():
+    """Baris admin 'Tokopedia jalur aplikasi (uji P1)': cari → PDP produk teratas → 3 ulasan. Melempar galat bila semua gagal."""
+    hasil, gagal = [], []
+    pid = None
+    try:
+        t0 = time.time()
+        pr, total, lanjut = tki_cari("pasta gigi anak")
+        if not pr:
+            raise RuntimeError("0 produk")
+        ada = [p for p in pr if p["terjual"] is not None]
+        t = max(ada or pr, key=lambda p: p["terjual"] or 0)
+        pid = t["id"]
+        hasil.append(f"cari: {len(pr)} produk/halaman dari {total or '?'} ({time.time() - t0:.1f} dtk), {len(ada)} berangka terjual PERSIS"
+                     f" · terlaris: {t['nama'][:35]} = {t['terjual']} terjual · id TikTok Shop {'ada' if t['tts'] else 'tidak ada'}")
+    except Exception as e:
+        gagal.append("cari: " + str(e)[:90])
+    pid = pid or "104038810378"
+    try:
+        t0 = time.time()
+        d = tki_pdp(pid)
+        hasil.append(f"detail: terjual {d['terjual']}, {d['ulasan']} ulasan, rating {d['rating']}, stok {d['stok'] or '-'} ({time.time() - t0:.1f} dtk)")
+    except Exception as e:
+        gagal.append("detail: " + str(e)[:90])
+    try:
+        t0 = time.time()
+        u, _ = tki_ulasan(pid, 3)
+        if not u:
+            raise RuntimeError("0 ulasan")
+        hasil.append(f"ulasan: {len(u)} teks terbaca ({time.time() - t0:.1f} dtk), contoh ★{u[0]['bintang']}: “{' '.join(u[0]['teks'].split())[:70]}”")
+    except Exception as e:
+        gagal.append("ulasan: " + str(e)[:90])
+    if not hasil:
+        raise RuntimeError(" · ".join(gagal))
+    return " · ".join(hasil + (["GAGAL → " + " · ".join(gagal)] if gagal else []))
+
+
 def tt_uji():
     """Admin: cek tiap jalur TikTok (+ Tokopedia) dari server ini. v1.5.10: semua baris jalan paralel (proxy Render putus di 100 dtk)."""
     tugas = []
@@ -10733,6 +10857,7 @@ def tt_uji():
         t = d["ringkas"]["terlaris"] or {}
         return f"{len(d['produk'])} produk · terlaris: {t.get('nama', '-')[:40]} ({t.get('terjual_teks', '-')} terjual)" + " · Jina: " + jina_status()
     uji("Tokopedia lewat Jina Reader (cadangan)", tokped_jina)
+    uji("Tokopedia jalur aplikasi — terjual persis + ulasan (uji P1)", tki_uji_baris)   # v1.6.9
 
     def transkrip():   # v1.6.7 uji kelayakan: unduh video iklan Top Ads dari server ini + 1 transkrip Groq Whisper
         ik = [x for x in (tt_iklan(per="7", urut="like", bhs="id").get("iklan") or []) if x.get("video")][:3]
