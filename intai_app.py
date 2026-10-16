@@ -36,7 +36,7 @@ import requests
 import intai_mvp as mesin
 
 PORT = int(os.environ.get("PORT") or 8765)   # env PORT utk deploy (HF Spaces/Render set otomatis)
-VERSI = "1.5.12"
+VERSI = "1.5.12b"
 FOTO_MAKS = 12
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BERKAS_DATA = os.path.join(BASE_DIR, "intai_data.json")
@@ -10188,8 +10188,17 @@ def _tta_token(q):
     return [w for w in re.findall(r"[a-z0-9]+", _norm(q)) if len(w) >= 2 and w not in _TTA_HENTI]
 
 
-def _tta_skor(qn, tok, lb, teks):
-    """Skor kecocokan niche. lb = label AI, teks = teks iklan/akun (huruf kecil)."""
+_TTA_SEGMEN = re.compile(r"\b(anak|anak2|bayi|baby|babies|si kecil|balita|batita|bumil|ibu hamil|hamil|menyusui|mpasi|newborn|toddler)\b|kids?\b")
+
+
+def _tta_segmen(teks):
+    """v1.5.12b: produk khusus anak/bayi/ibu hamil — TikTok sering memasukkannya ke kategori Kecantikan dll."""
+    return bool(_TTA_SEGMEN.search(teks or ""))
+
+
+def _tta_skor(qn, tok, lb, teks, kt=""):
+    """Skor kecocokan niche. lb = label AI, teks = teks iklan/akun, kt = nama kategori TikTok (huruf kecil).
+    v1.5.12b: cocok HANYA lewat nama kategori = kecocokan lemah (3), supaya iklan yang labelnya benar-benar sesuai naik duluan."""
     s = 0.0
     if lb:
         if qn in lb:
@@ -10202,33 +10211,44 @@ def _tta_skor(qn, tok, lb, teks):
         s += 6
     hit = sum(1 for w in tok if re.search(r"\b" + re.escape(w), teks))
     s += 2 * hit / max(1, len(tok))
-    semua = all(re.search(r"\b" + re.escape(w), (" ".join(lb or []) + " " + teks)) for w in tok)
+    if kt and all(re.search(r"\b" + re.escape(w), kt) for w in tok):
+        s += 3
+    semua = all(re.search(r"\b" + re.escape(w), (" ".join(lb or []) + " " + teks + " " + (kt or ""))) for w in tok)
     if not semua and s < 8:
         return 0.0
     return s
 
 
 def _tta_teks_iklan(r):
-    return _norm(" ".join([r.get("j") or "", " ".join(r.get("tg") or []), r.get("m") or "", r.get("kt") or "",
-                           " ".join(r.get("kk") or [])]))
+    return _norm(" ".join([r.get("j") or "", " ".join(r.get("tg") or []), r.get("m") or "", " ".join(r.get("kk") or [])]))
 
 
 def _tta_cari(qn, tok):
     kat = _tta_muat()
+    seg_q = _tta_segmen(qn)
     with kunci_tta:
         iklan = []
         for ind, d in kat.items():
             for r in d.values():
-                s = _tta_skor(qn, tok, r.get("lb") or [], _tta_teks_iklan(r))
+                teks = _tta_teks_iklan(r)
+                s = _tta_skor(qn, tok, r.get("lb") or [], teks, _norm(r.get("kt") or ""))
                 if s > 0:
+                    # niche tidak menyebut anak/bayi → produk khusus anak/bayi diturunkan ke bawah (tetap ada, tidak dibuang)
+                    if not seg_q and _tta_segmen(teks + " " + " ".join(r.get("lb") or [])):
+                        s = round(s * 0.3, 2)
+                        r["_seg"] = 1
+                    else:
+                        r.pop("_seg", None)
                     iklan.append((s, r))
         akun = []
         for r in (TTA["akun"] or {}).values():
             teks = _norm(" ".join([r.get("nama") or "", r.get("tampil") or "", r.get("bio") or "", r.get("kategori") or ""] +
                                   [v.get("c") or "" for v in r.get("video") or []] +
                                   [" ".join(v.get("tg") or []) for v in r.get("video") or []]))
-            s = _tta_skor(qn, tok, r.get("lb") or [], teks)
+            s = _tta_skor(qn, tok, r.get("lb") or [], teks, _norm(r.get("kategori") or ""))
             if s > 0:
+                if not seg_q and _tta_segmen(teks + " " + " ".join(r.get("lb") or [])):
+                    s = round(s * 0.3, 2)
                 akun.append((s, r))
     iklan.sort(key=lambda z: (-z[0], -(z[1].get("like") or 0)))
     akun.sort(key=lambda z: (-z[0], -(z[1].get("pengikut") or 0)))
@@ -10297,13 +10317,25 @@ def tt_niche(q, email=None):
             d = tt_iklan(str(ind), "30", "like", "", "1")   # ikut terserap ke arsip
             ids = set()
             for x in d["iklan"]:
-                s = _tta_skor(qn, tok, [], _norm(" ".join([x["judul"], " ".join(x["tagar"]), x["merek"], x["kategori"]])))
+                s = _tta_skor(qn, tok, [], _norm(" ".join([x["judul"], " ".join(x["tagar"]), x["merek"]])), _norm(x["kategori"]))
                 x = dict(x, cocok=s > 0)
                 langsung.append(x)
                 ids.add(x["id"])
         except Exception as e:
             galat_langsung = str(e)[:140]
     cocok, akun = _tta_cari(qn, tok)
+    # v1.5.12b: iklan dengan teks sama (varian materi dari pengiklan yang sama) digabung → 1 kartu + jumlah varian
+    unik, per_k = [], {}
+    for s_, r in cocok:
+        k = (_norm(r.get("m") or ""), re.sub(r"\W+", " ", _norm(r.get("j") or "")).strip()[:70])
+        if not k[1] or k[1] == "tanpa teks":
+            k = ("id", r.get("id"))
+        if k in per_k:
+            per_k[k][2] += 1
+            continue
+        per_k[k] = [s_, r, 1]
+        unik.append(per_k[k])
+    n_seg = sum(1 for z in unik if z[1].get("_seg"))
     # sudut (dari label AI arsip): iklan yang pertama terlihat ≤7 hari vs lebih lama — HITUNGAN INTAI 🔵
     batas7 = (datetime.now(WIB) - timedelta(days=7)).strftime("%Y-%m-%d")
     sd = [r for _, r in cocok if r.get("sd")]
@@ -10321,7 +10353,8 @@ def tt_niche(q, email=None):
         kat_hit[r.get("kt") or "-"] = kat_hit.get(r.get("kt") or "-", 0) + 1
     belum = sum(1 for _, r in cocok if not r.get("lsrc"))
     tta_label_latar(maks_panggilan=3)
-    return {"ok": True, "q": q, "iklan": [_tta_keluar(r, s) for s, r in cocok[:60]], "jumlah": len(cocok),
+    return {"ok": True, "q": q, "iklan": [dict(_tta_keluar(r, s_), varian=n_, segmen_lain=bool(r.get("_seg"))) for s_, r, n_ in unik[:60]],
+            "jumlah": len(unik), "jumlah_materi": len(cocok), "n_segmen_lain": n_seg,
             "akun": [{"nama": r.get("nama"), "tampil": r.get("tampil"), "pengikut": r.get("pengikut"), "avatar": r.get("avatar") or "",
                       "penjual": r.get("penjual"), "bio": (r.get("bio") or "")[:120], "label": r.get("lb") or [],
                       "median_tayang": r.get("median_tayang"), "terakhir": r.get("p2")} for _, r in akun[:12]],
